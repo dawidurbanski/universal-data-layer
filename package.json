@@ -1,0 +1,22 @@
+{
+  "name": "universal-data-layer",
+  "version": "0.0.1",
+  "description": "Universal data layer to connect any data source with any framework",
+  "type": "module",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dawidurbanski/caraway-data-layer.git"
+  },
+  "author": "Dawid Urbanski <hi@dawidurbanski.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dawidurbanski/caraway-data-layer/issues"
+  },
+  "homepage": "https://github.com/dawidurbanski/caraway-data-layer#readme"
+}

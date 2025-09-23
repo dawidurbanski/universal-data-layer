@@ -1,10 +1,19 @@
 # Data Layer
 
-A modular, high-performance intermediate data layer for Node.js applications that seamlessly connects your NextJS frontend with multiple data sources including CMS, e-commerce platforms, and third-party services.
+A modular, high-performance intermediate data layer that provides a unified interface for sourcing, caching, and transforming data from multiple sources. Built with a framework-agnostic core architecture, it uses adapters to integrate with any Node.js framework.
 
 ## Overview
 
-This package provides a unified data layer that sits between your NextJS application and various external data sources, optimizing data fetching, caching, and delivery. Inspired by Gatsby's data layer architecture, it offers a plugin-based approach to data sourcing with intelligent caching and revalidation strategies.
+This package provides a unified data layer that sits between your application and various external data sources, optimizing data fetching, caching, and delivery. Inspired by Gatsby's data layer architecture, it offers a plugin-based approach to data sourcing with intelligent caching and revalidation strategies.
+
+### Problem This Solves
+
+This data layer addresses critical issues commonly found in modern web applications:
+- **Inconsistent Data Patterns**: Standardizes data fetching across projects
+- **API Redundancy**: Eliminates duplicate API calls through intelligent caching
+- **Performance**: Optimizes payload sizes and response times
+- **Error Handling**: Provides centralized retry logic and fallback strategies
+- **Type Safety**: Ensures consistent TypeScript types across all data sources
 
 ## Key Features
 
@@ -14,7 +23,7 @@ This package provides a unified data layer that sits between your NextJS applica
 - **Smart Caching** - Built-in caching mechanisms with configurable strategies
 - **Automatic Revalidation** - Handle data freshness with flexible revalidation policies
 - **Type-Safe** - Full TypeScript support for better developer experience
-- **Framework Agnostic** - Works with NextJS and other Node.js frameworks
+- **Framework Agnostic Core** - Pure JavaScript/TypeScript core with framework-specific adapters
 
 ## Installation
 
@@ -53,9 +62,25 @@ The data layer will support programmatic extension of data nodes, allowing devel
 - Customer testimonials
 - Review aggregation
 
-## NextJS Integration
+## Framework Integration
 
-The package will provide seamless integration with NextJS applications, supporting both API routes and static site generation patterns.
+The data layer uses a framework-agnostic core with dedicated adapters for each framework, ensuring clean separation of concerns and maximum portability.
+
+### Supported Framework Adapters
+
+#### NextJS Adapter
+- API routes with built-in caching
+- Static site generation (SSG) patterns
+- Incremental Static Regeneration (ISR)
+- Server-side rendering (SSR) with optimized data fetching
+- App Router and Pages Router support
+
+#### Planned Adapters
+- **Express/Fastify**: Middleware integration for REST APIs
+- **Nuxt.js**: Module integration for Vue applications
+- **SvelteKit**: Hooks and load functions
+- **Remix**: Loader and action integration
+- **Astro**: Integration for content-focused sites
 
 ## Performance Optimization
 
@@ -74,7 +99,49 @@ The package will provide seamless integration with NextJS applications, supporti
 - **Polling**: Periodic data refresh
 - **Manual**: Programmatic cache invalidation
 
-## Development
+## Architecture
+
+### Core Layer
+The framework-agnostic core handles:
+- Plugin management and lifecycle
+- Data fetching and transformation
+- Caching strategies and storage
+- Query resolution and optimization
+- Error handling and retry logic
+
+### Adapter Layer
+Framework-specific adapters provide:
+- Integration with framework routing
+- Request/response handling
+- Framework-specific optimizations
+- Developer experience enhancements
+
+### Plugin Layer
+Data source plugins handle:
+- Connection to external services
+- Data normalization
+- Source-specific optimizations
+- Webhook and real-time updates
+
+## Development Roadmap
+
+### Phase 1: Core Architecture (Current)
+- Framework-agnostic core implementation
+- Plugin interface and lifecycle
+- NextJS adapter as reference implementation
+- Contentful, Shopify, and Okendo plugins
+
+### Phase 2: Extended Framework Support
+- Express/Fastify adapters
+- Nuxt.js and Remix adapters
+- Enhanced caching strategies
+- Performance optimizations
+
+### Phase 3: Universal Data Layer
+- Additional data source plugins
+- GraphQL query layer
+- Plugin marketplace/registry
+- Advanced data transformation pipelines
 
 ### Creating Custom Plugins
 
