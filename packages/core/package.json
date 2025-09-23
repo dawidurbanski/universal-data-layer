@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc-watch --onSuccess \"node dist/index.js\""
   },
   "author": "Dawid Urbanski <hi@dawidurbanski.com>",
   "license": "MIT",
