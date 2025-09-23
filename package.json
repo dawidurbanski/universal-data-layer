@@ -10,7 +10,8 @@
     "check-types": "tsc --noEmit",
     "lint": "prettier --check .",
     "build": "turbo check-types lint build",
-    "dev": "turbo dev"
+    "dev": "turbo dev",
+    "start": "turbo start"
   },
   "author": "Dawid Urbanski <hi@dawidurbanski.com>",
   "repository": {

@@ -70,6 +70,7 @@ The current architecture makes ISR prohibitively expensive:
 ### Core Concept
 
 A local database approach where:
+
 1. **Data is pulled into a local/edge database** via webhooks and initial sync
 2. **Applications query this database** instead of external APIs directly
 3. **Smart revalidation** updates only what's necessary

@@ -9,6 +9,7 @@ This package provides a unified data layer that sits between your application an
 ### Problem This Solves
 
 This data layer addresses critical issues commonly found in modern web applications:
+
 - **Inconsistent Data Patterns**: Standardizes data fetching across projects
 - **API Redundancy**: Eliminates duplicate API calls through intelligent caching
 - **Performance**: Optimizes payload sizes and response times
@@ -48,16 +49,19 @@ The data layer will support programmatic extension of data nodes, allowing devel
 ### Built-in Plugins
 
 #### Contentful Plugin
+
 - Supports all Contentful content types
 - Automatic asset optimization
 - Preview mode support
 
 #### Shopify Plugin
+
 - Products, collections, and customer data
 - Webhook support for real-time updates
 - Inventory tracking
 
 #### Okendo Plugin
+
 - Product reviews and ratings
 - Customer testimonials
 - Review aggregation
@@ -69,6 +73,7 @@ The data layer uses a framework-agnostic core with dedicated adapters for each f
 ### Supported Framework Adapters
 
 #### NextJS Adapter
+
 - API routes with built-in caching
 - Static site generation (SSG) patterns
 - Incremental Static Regeneration (ISR)
@@ -76,6 +81,7 @@ The data layer uses a framework-agnostic core with dedicated adapters for each f
 - App Router and Pages Router support
 
 #### Planned Adapters
+
 - **Express/Fastify**: Middleware integration for REST APIs
 - **Nuxt.js**: Module integration for Vue applications
 - **SvelteKit**: Hooks and load functions
@@ -85,16 +91,19 @@ The data layer uses a framework-agnostic core with dedicated adapters for each f
 ## Performance Optimization
 
 ### Payload Optimization
+
 - Automatic field selection to minimize response size
 - Image optimization and responsive variants
 - Compression for large datasets
 
 ### Caching Strategies
+
 - **Memory**: Fast access, suitable for small datasets
 - **Redis**: Distributed caching for scalable applications
 - **File**: Persistent caching with minimal setup
 
 ### Revalidation
+
 - **Webhook**: Real-time updates from data sources
 - **Polling**: Periodic data refresh
 - **Manual**: Programmatic cache invalidation
@@ -102,7 +111,9 @@ The data layer uses a framework-agnostic core with dedicated adapters for each f
 ## Architecture
 
 ### Core Layer
+
 The framework-agnostic core handles:
+
 - Plugin management and lifecycle
 - Data fetching and transformation
 - Caching strategies and storage
@@ -110,14 +121,18 @@ The framework-agnostic core handles:
 - Error handling and retry logic
 
 ### Adapter Layer
+
 Framework-specific adapters provide:
+
 - Integration with framework routing
 - Request/response handling
 - Framework-specific optimizations
 - Developer experience enhancements
 
 ### Plugin Layer
+
 Data source plugins handle:
+
 - Connection to external services
 - Data normalization
 - Source-specific optimizations
@@ -126,18 +141,21 @@ Data source plugins handle:
 ## Development Roadmap
 
 ### Phase 1: Core Architecture (Current)
+
 - Framework-agnostic core implementation
 - Plugin interface and lifecycle
 - NextJS adapter as reference implementation
 - Contentful, Shopify, and Okendo plugins
 
 ### Phase 2: Extended Framework Support
+
 - Express/Fastify adapters
 - Nuxt.js and Remix adapters
 - Enhanced caching strategies
 - Performance optimizations
 
 ### Phase 3: Universal Data Layer
+
 - Additional data source plugins
 - GraphQL query layer
 - Plugin marketplace/registry

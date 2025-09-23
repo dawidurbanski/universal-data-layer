@@ -47,12 +47,12 @@ Create `data-layer.config.js` in your project root:
 module.exports = {
   plugins: [
     '@universal-data-layer/contentful',
-    '@universal-data-layer/shopify'
+    '@universal-data-layer/shopify',
   ],
   // Optional: Override default paths
   paths: {
-    nodeSource: './data-layer-node.ts'
-  }
+    nodeSource: './data-layer-node.ts',
+  },
 };
 ```
 
@@ -86,11 +86,11 @@ export const onCreateNode = [
         actions.createNodeField({
           node,
           name: 'shopifyData',
-          value: shopifyData
+          value: shopifyData,
         });
       }
-    }
-  }
+    },
+  },
 ];
 ```
 
@@ -126,31 +126,31 @@ module.exports = {
     {
       resolve: '@universal-data-layer/okendo',
       options: {
-        apiKey: process.env.CUSTOM_OKENDO_KEY
-      }
-    }
+        apiKey: process.env.CUSTOM_OKENDO_KEY,
+      },
+    },
   ],
 
   // Optional: Override default paths
   paths: {
-    nodeSource: './data-layer-node.ts',  // Default: './data-layer-node.ts'
-    cache: './.cache',                    // Default: './.cache'
-    generated: './generated'              // Default: './node_modules/@universal-data-layer/core/generated'
+    nodeSource: './data-layer-node.ts', // Default: './data-layer-node.ts'
+    cache: './.cache', // Default: './.cache'
+    generated: './generated', // Default: './node_modules/@universal-data-layer/core/generated'
   },
 
   // Optional: Server configuration
   server: {
-    port: 4000,           // Default: 4000
-    playground: true      // Default: true in development
+    port: 4000, // Default: 4000
+    playground: true, // Default: true in development
   },
 
   // Optional: Environment variable mapping
   env: {
     contentful: {
       spaceId: 'MY_CUSTOM_SPACE_ID_VAR',
-      accessToken: 'MY_CUSTOM_TOKEN_VAR'
-    }
-  }
+      accessToken: 'MY_CUSTOM_TOKEN_VAR',
+    },
+  },
 };
 ```
 
@@ -211,20 +211,28 @@ const data = await query<ProductQuery>(`...`);
 This file allows you to customize how nodes are created and enhanced:
 
 ```typescript
-import type { NodeAPI, SourceNodesArgs, CreateNodeArgs } from '@universal-data-layer/core';
+import type {
+  NodeAPI,
+  SourceNodesArgs,
+  CreateNodeArgs,
+} from '@universal-data-layer/core';
 
 // Source custom nodes
-export async function sourceNodes({ actions, createNodeId, createContentDigest }: SourceNodesArgs) {
+export async function sourceNodes({
+  actions,
+  createNodeId,
+  createContentDigest,
+}: SourceNodesArgs) {
   const customData = await fetchCustomAPI();
 
-  customData.forEach(item => {
+  customData.forEach((item) => {
     actions.createNode({
       ...item,
       id: createNodeId(`custom-${item.id}`),
       type: 'CustomNode',
       internal: {
-        contentDigest: createContentDigest(item)
-      }
+        contentDigest: createContentDigest(item),
+      },
     });
   });
 }
@@ -246,11 +254,11 @@ export const onCreateNode = [
             price: shopifyProduct.price,
             compareAtPrice: shopifyProduct.compareAtPrice,
             inventory: shopifyProduct.totalInventory,
-            variants: shopifyProduct.variants
-          }
+            variants: shopifyProduct.variants,
+          },
         });
       }
-    }
+    },
   },
   {
     priority: 20,
@@ -260,11 +268,11 @@ export const onCreateNode = [
         actions.createNodeField({
           node,
           name: 'isOnSale',
-          value: node.shopifyData?.compareAtPrice > node.shopifyData?.price
+          value: node.shopifyData?.compareAtPrice > node.shopifyData?.price,
         });
       }
-    }
-  }
+    },
+  },
 ];
 
 // Customize GraphQL schema
@@ -346,14 +354,14 @@ export default function myCustomPlugin(api: PluginAPI, options: any) {
     async sourceNodes({ actions, createNodeId, createContentDigest }) {
       const data = await fetchFromAPI(options.apiUrl);
 
-      data.items.forEach(item => {
+      data.items.forEach((item) => {
         actions.createNode({
           ...item,
           id: createNodeId(`custom-${item.id}`),
           type: 'CustomItem',
           internal: {
-            contentDigest: createContentDigest(item)
-          }
+            contentDigest: createContentDigest(item),
+          },
         });
       });
     },
@@ -366,7 +374,7 @@ export default function myCustomPlugin(api: PluginAPI, options: any) {
           customField: String
         }
       `);
-    }
+    },
   };
 }
 ```
@@ -390,6 +398,7 @@ https://your-data-layer-server.vercel.app/api/webhooks/contentful
 ```
 
 The server will:
+
 1. Receive the webhook payload
 2. Update the specific cache entries
 3. Mark affected queries for revalidation
@@ -427,6 +436,7 @@ During development, your local GraphQL server connects via WebSocket to the remo
 ### Type Generation
 
 Types are automatically generated on:
+
 - Dev server start
 - Build process
 - Manual generation: `next-data-layer generate-types`
@@ -493,18 +503,18 @@ export const onCreateNode = [
       if (node.type === 'ContentfulBlogPost') {
         // Enhance blog posts with related products
         const products = getNodesByType('ContentfulProduct');
-        const relatedProducts = products.filter(product =>
-          node.tags?.some(tag => product.tags?.includes(tag))
+        const relatedProducts = products.filter((product) =>
+          node.tags?.some((tag) => product.tags?.includes(tag))
         );
 
         actions.createNodeField({
           node,
           name: 'relatedProducts',
-          value: relatedProducts.slice(0, 3)
+          value: relatedProducts.slice(0, 3),
         });
       }
-    }
-  }
+    },
+  },
 ];
 ```
 
@@ -521,7 +531,7 @@ export const onCreateNode = [
         const [shopifyData, okendoData, inventoryData] = await Promise.all([
           fetchShopifyProduct(node.shopifyId),
           fetchOkendoReviews(node.sku),
-          fetchWarehouseInventory(node.sku)
+          fetchWarehouseInventory(node.sku),
         ]);
 
         // Create a unified product object
@@ -532,23 +542,23 @@ export const onCreateNode = [
             pricing: {
               current: shopifyData.price,
               compare: shopifyData.compareAtPrice,
-              currency: shopifyData.currency
+              currency: shopifyData.currency,
             },
             inventory: {
               shopify: shopifyData.totalInventory,
               warehouse: inventoryData.available,
-              total: shopifyData.totalInventory + inventoryData.available
+              total: shopifyData.totalInventory + inventoryData.available,
             },
             reviews: {
               average: okendoData.averageRating,
               count: okendoData.reviewCount,
-              featured: okendoData.reviews.slice(0, 3)
-            }
-          }
+              featured: okendoData.reviews.slice(0, 3),
+            },
+          },
         });
       }
-    }
-  }
+    },
+  },
 ];
 ```
 
@@ -567,6 +577,7 @@ The Universl Data Layer is organized as a monorepo with the following packages:
 ### From Direct API Calls
 
 Before:
+
 ```typescript
 // Multiple API calls, no caching
 const product = await contentfulClient.getEntry(id);
@@ -575,6 +586,7 @@ const reviews = await okendoAPI.getReviews(product.sku);
 ```
 
 After:
+
 ```typescript
 // Single GraphQL query, automatic caching
 const data = await query(`
@@ -602,21 +614,25 @@ The Data Layer adopts many Gatsby concepts but simplifies them:
 ### Common Issues
 
 **GraphQL server not starting**
+
 - Check port 4000 is available
 - Verify environment variables are set
 - Check plugin configuration in `data-layer.config.js`
 
 **Types not generating**
+
 - Run `next-data-layer generate-types` manually
 - Check write permissions for generated types location
 - Verify GraphQL schema is valid
 
 **Cache not updating**
+
 - Verify webhook configuration in CMS
 - Check network connectivity to remote server
 - Clear cache with `rm -rf .cache` and rebuild
 
 **WebSocket connection failed**
+
 - Check firewall settings
 - Verify remote server URL in environment
 - Check for proxy/VPN interference
