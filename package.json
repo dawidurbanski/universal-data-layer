@@ -29,6 +29,7 @@
     "typescript": "^5.9.2"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/universal-data-layer"
   ]
 }

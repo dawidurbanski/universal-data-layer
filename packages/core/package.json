@@ -10,5 +10,10 @@
     "dev": "tsc --watch"
   },
   "author": "Dawid Urbanski <hi@dawidurbanski.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "graphql": "^16.11.0",
+    "graphql-http": "^1.22.4",
+    "ruru": "^2.0.0-beta.30"
+  }
 }
