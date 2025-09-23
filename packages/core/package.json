@@ -1,0 +1,14 @@
+{
+  "name": "universal-data-layer",
+  "version": "0.0.1",
+  "description": "Core library for the Universal Data Layer project",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "author": "Dawid Urbanski <hi@dawidurbanski.com>",
+  "license": "MIT"
+}
