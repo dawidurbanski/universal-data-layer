@@ -7,6 +7,7 @@ A **Gatsby-inspired** unified data layer for modern web applications. This proje
 ## The Idea
 
 Modern applications often need to fetch data from multiple sources (CMSs, e-commerce platforms, APIs) with different patterns and authentication methods. This leads to:
+
 - Redundant code across projects
 - Inconsistent caching strategies
 - Performance bottlenecks from unoptimized payloads

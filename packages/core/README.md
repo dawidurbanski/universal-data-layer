@@ -66,6 +66,7 @@ type Query {
 ```
 
 Example query:
+
 ```bash
 curl http://localhost:4000/graphql \
   -H "Content-Type: application/json" \
@@ -108,11 +109,13 @@ The core package provides:
 ## Project Status
 
 This is the core foundation of the Universal Data Layer project. Current features:
+
 - Basic GraphQL server setup
 - CLI interface for easy deployment
 - GraphiQL for development
 
 Upcoming features:
+
 - Plugin system for data sources
 - Caching layer
 - Data transformation pipeline
