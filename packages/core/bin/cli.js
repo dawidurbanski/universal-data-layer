@@ -2,6 +2,8 @@
 
 import { parseArgs } from 'node:util';
 import server from '../dist/src/server.js';
+import { loadConfig } from '../dist/src/config-loader.js';
+import { createConfig } from '../dist/src/config.js';
 
 const { values } = parseArgs({
   options: {
@@ -31,14 +33,34 @@ Options:
   process.exit(0);
 }
 
-const port = parseInt(values.port, 10);
+async function start() {
+  const userConfig = await loadConfig(process.cwd());
 
-if (isNaN(port) || port < 1 || port > 65535) {
-  console.error(`Error: Invalid port number "${values.port}". Port must be between 1 and 65535.`);
-  process.exit(1);
+  const port = parseInt(values.port, 10) || userConfig.port || 4000;
+  const host = userConfig.host || 'localhost';
+
+  if (isNaN(port) || port < 1 || port > 65535) {
+    console.error(
+      `Error: Invalid port number "${values.port}". Port must be between 1 and 65535.`
+    );
+    process.exit(1);
+  }
+
+  const config = createConfig({
+    port,
+    host,
+    endpoint: userConfig.endpoint,
+  });
+
+  server.listen(port);
+  console.log(`Universal Data Layer server listening on port ${port}`);
+  console.log(`GraphQL server available at ${config.endpoint}`);
+  console.log(
+    `GraphiQL interface available at http://${host}:${port}/graphiql`
+  );
 }
 
-server.listen(port);
-console.log(`Universal Data Layer server listening on port ${port}`);
-console.log(`GraphQL server available at http://localhost:${port}/graphql`);
-console.log(`GraphiQL interface available at http://localhost:${port}/graphiql`);
+start().catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
+});
