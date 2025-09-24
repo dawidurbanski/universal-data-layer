@@ -1,4 +1,10 @@
 import server from './src/server.js';
 
-server.listen(4000); // TODO: Make this configurable
-console.log('Listening to port 4000'); // TODO: Make this configurable
+export default server;
+
+// Only start server if this module is run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const port = process.env.PORT || 4000;
+  server.listen(port);
+  console.log(`Listening to port ${port}`);
+}
