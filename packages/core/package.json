@@ -5,6 +5,9 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "universal-data-layer": "./bin/cli.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc-watch --onSuccess \"node dist/index.js\"",
