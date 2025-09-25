@@ -55,9 +55,13 @@ From the root directory:
 
 - `npm run build` - Build all packages
 - `npm run dev` - Start development mode with hot-reload
+- `npm run start` - Start the production server
+- `npm run test` - Run all tests
+- `npm run test:coverage` - Run tests with coverage report
+- `npm run typecheck` - Run TypeScript type checking
 - `npm run lint` - Run linting checks across all packages
 - `npm run fix` - Auto-fix linting and formatting issues
-- `npm run start` - Start the production server
+- `npm run changeset` - Create a changeset for your changes
 
 ## Development
 
@@ -93,6 +97,7 @@ _(In Development)_ - Plugin for integrating Contentful CMS data.
 - [Development Guide](./docs/DEVELOPMENT.md) - Setup and development workflow
 - [API Design](./docs/API.md) - Detailed API specifications
 - [Problem Statement](./docs/PROBLEM_STATEMENT.md) - The problems we're solving
+- [Release Process](./docs/RELEASE.md) - Versioning and release procedures
 - [Core Package Docs](./packages/core/README.md) - Core package documentation
 - [Contributing Guidelines](./CONTRIBUTING.md) - How to contribute
 

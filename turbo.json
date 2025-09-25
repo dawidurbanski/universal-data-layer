@@ -3,7 +3,21 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**", ".next/**", ".nuxt/**"]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "cache": false
+    },
+    "test:coverage": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "cache": false
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": []
     },
     "start": {
       "dependsOn": ["^start"]
@@ -17,6 +31,15 @@
     },
     "fix": {
       "dependsOn": []
+    },
+    "changeset": {
+      "cache": false
+    },
+    "version": {
+      "cache": false
+    },
+    "release": {
+      "cache": false
     }
   }
 }
