@@ -11,7 +11,8 @@
     "lint": "prettier --check .",
     "build": "turbo check-types lint build",
     "dev": "turbo dev",
-    "start": "turbo start"
+    "start": "turbo start",
+    "prepare": "husky"
   },
   "author": "Dawid Urbanski <hi@dawidurbanski.com>",
   "repository": {
@@ -26,6 +27,8 @@
   "packageManager": "npm@10.8.2",
   "devDependencies": {
     "@types/node": "^24.5.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.0",
     "prettier": "^3.6.2",
     "tsc-watch": "^7.1.1",
     "turbo": "^2.5.6",
@@ -34,5 +37,10 @@
   "workspaces": [
     "packages/*",
     "packages/universal-data-layer"
-  ]
+  ],
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,css,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
 }
