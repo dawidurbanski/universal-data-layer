@@ -76,22 +76,37 @@ npm run fix   # Auto-fix issues
 
 ### Commit Messages
 
-Follow conventional commit format:
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) for automated versioning and changelog generation.
 
-- `feat:` New features
-- `fix:` Bug fixes
+**Format:** `<type>(<scope>): <description>`
+
+**Types:**
+
+- `feat:` New features (triggers MINOR version bump)
+- `fix:` Bug fixes (triggers PATCH version bump)
 - `docs:` Documentation changes
 - `style:` Code style changes (formatting, etc.)
 - `refactor:` Code refactoring
+- `perf:` Performance improvements
 - `test:` Test additions or changes
-- `chore:` Build process or auxiliary tool changes
+- `build:` Build system changes
+- `ci:` CI configuration changes
+- `chore:` Other changes
+- `revert:` Revert previous commits
+
+**Scopes:** `core`, `contentful`, `shopify`, `okendo`, `cache`, `types`, `docs`, `deps`, `release`, `config`
+
+**Breaking Changes:** Add `BREAKING CHANGE:` in the commit body for MAJOR version bumps.
 
 Examples:
 
 ```
-feat: add Shopify plugin support
-fix: resolve caching issue in core package
-docs: update API documentation
+feat(core): add plugin discovery mechanism
+fix(contentful): resolve caching issue with preview mode
+docs(api): update GraphQL schema documentation
+feat(shopify): add webhook handling support
+
+BREAKING CHANGE: Plugin interface now requires version property
 ```
 
 ### Testing
@@ -100,17 +115,23 @@ Before submitting a PR:
 
 1. Ensure all packages build: `npm run build`
 2. Run linting: `npm run lint`
-3. Test your changes manually
-4. Add tests for new functionality (when test framework is implemented)
+3. Run type checking: `npm run typecheck`
+4. Run tests with coverage: `npm run test:coverage`
+5. Ensure coverage meets 90% threshold
+6. Add tests for new functionality
 
 ### Pull Request Process
 
-1. Update documentation for any API changes
-2. Ensure your PR description clearly describes the problem and solution
-3. Link any related issues
-4. Request review from maintainers
-5. Be responsive to feedback
-6. Squash commits if requested
+1. Add a changeset for your changes: `npm run changeset`
+2. Update documentation for any API changes
+3. Ensure your PR description clearly describes the problem and solution
+4. Link any related issues
+5. Ensure all CI checks pass
+6. Request review from maintainers
+7. Be responsive to feedback
+8. Squash commits if requested
+
+**Note:** Every PR that changes functionality must include a changeset. The changeset will be used to generate changelogs and determine version bumps.
 
 ## Project Structure
 
@@ -136,6 +157,17 @@ npm run dev
 npm run build
 npm run lint
 ```
+
+## Release Process
+
+This project uses automated releases with semantic versioning. When your PR is merged to `main`:
+
+1. CI/CD pipeline runs tests and checks
+2. If changesets exist, a "Version Packages" PR is created automatically
+3. Merging the Version PR triggers npm publishing
+4. All packages are versioned and released together
+
+For detailed information, see the [Release Documentation](./docs/RELEASE.md).
 
 ## Adding a New Data Source Plugin
 
