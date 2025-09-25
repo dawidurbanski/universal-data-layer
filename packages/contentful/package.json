@@ -1,6 +1,6 @@
 {
   "name": "@universal-data-layer/contentful",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Contentful plugin for the Universal Data Layer",
   "type": "module",
   "main": "dist/index.js",
