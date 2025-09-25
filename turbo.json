@@ -2,21 +2,21 @@
   "$schema": "https://turborepo.com/schema.json",
   "tasks": {
     "build": {
-      "dependsOn": ["^lint:types", "^lint", "^build"],
+      "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
-    "lint:types": {
-      "dependsOn": ["^lint:types"]
-    },
-    "lint": {
-      "dependsOn": ["^lint"]
+    "start": {
+      "dependsOn": ["^start"]
     },
     "dev": {
       "persistent": true,
       "cache": false
     },
-    "start": {
-      "dependsOn": ["^start"]
+    "lint": {
+      "dependsOn": []
+    },
+    "fix": {
+      "dependsOn": []
     }
   }
 }

@@ -1,17 +1,13 @@
 {
-  "name": "universal-data-layer",
+  "name": "@universal-data-layer/contentful",
   "version": "0.0.1",
-  "description": "Core library for the Universal Data Layer project",
+  "description": "Contentful plugin for the Universal Data Layer",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "bin": {
-    "universal-data-layer": "./bin/cli.js"
-  },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc-watch --onSuccess \"node dist/index.js\"",
-    "start": "node dist/index.js",
+    "dev": "tsc-watch",
     "lint": "npm run lint:formatting && npm run lint:quality && npm run lint:types",
     "lint:formatting": "prettier --check .",
     "lint:quality": "eslint . --config ../../eslint.config.js",
@@ -22,9 +18,6 @@
   },
   "author": "Dawid Urbanski <hi@dawidurbanski.com>",
   "license": "MIT",
-  "dependencies": {
-    "graphql": "^16.11.0",
-    "graphql-http": "^1.22.4",
-    "ruru": "^2.0.0-beta.30"
-  }
+  "dependencies": {},
+  "devDependencies": {}
 }

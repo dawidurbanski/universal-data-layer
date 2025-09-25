@@ -2,15 +2,15 @@
   "name": "universal-data-layer-monorepo",
   "version": "0.0.1",
   "description": "Universal data layer to connect any data source with any framework",
+  "type": "module",
   "directories": {
     "doc": "docs"
   },
   "scripts": {
     "turbo": "turbo",
-    "lint:types": "tsc --noEmit",
-    "lint": "prettier --check .",
-    "lint:fix": "prettier --write .",
-    "build": "turbo lint:types lint build",
+    "lint": "turbo lint",
+    "fix": "turbo fix",
+    "build": "turbo fix build",
     "dev": "turbo dev",
     "start": "turbo start",
     "prepare": "husky"
@@ -27,7 +27,12 @@
   "license": "MIT",
   "packageManager": "npm@10.8.2",
   "devDependencies": {
+    "@eslint/js": "^9.36.0",
     "@types/node": "^24.5.2",
+    "@typescript-eslint/eslint-plugin": "^8.44.1",
+    "@typescript-eslint/parser": "^8.44.1",
+    "eslint": "^9.36.0",
+    "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.0",
     "prettier": "^3.6.2",
@@ -40,7 +45,11 @@
     "packages/universal-data-layer"
   ],
   "lint-staged": {
-    "*.{js,jsx,ts,tsx,json,css,md,yml,yaml}": [
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md,yml,yaml}": [
       "prettier --write"
     ]
   }
