@@ -7,9 +7,10 @@
   },
   "scripts": {
     "turbo": "turbo",
-    "check-types": "tsc --noEmit",
+    "lint:types": "tsc --noEmit",
     "lint": "prettier --check .",
-    "build": "turbo check-types lint build",
+    "lint:fix": "prettier --write .",
+    "build": "turbo lint:types lint build",
     "dev": "turbo dev",
     "start": "turbo start",
     "prepare": "husky"
