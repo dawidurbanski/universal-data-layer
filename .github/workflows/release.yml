@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: github.repository == 'dawidurbanski/universal-data-layer'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history for all tags and branches
+          fetch-depth: 0
+          # Use a personal access token to allow triggering other workflows
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Run tests
+        run: npm run test:coverage
+
+      - name: Check coverage threshold
+        run: |
+          COVERAGE_SUMMARY=$(npm run test:coverage -- --reporter=json-summary 2>&1 | tail -n 1)
+          COVERAGE=$(echo "$COVERAGE_SUMMARY" | grep -oP '"pct":\s*\K[\d.]+' | head -1)
+
+          if [ -z "$COVERAGE" ]; then
+            echo "⚠️ Coverage data not available. Proceeding with release."
+          else
+            echo "Coverage: ${COVERAGE}%"
+
+            if (( $(echo "$COVERAGE < 90" | bc -l) )); then
+              echo "❌ Coverage ${COVERAGE}% is below the 90% threshold"
+              exit 1
+            else
+              echo "✅ Coverage ${COVERAGE}% meets the 90% threshold"
+            fi
+          fi
+
+      - name: Create Release Pull Request or Publish to npm
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          publish: npm run release
+          version: npm run version
+          commit: 'chore(release): version packages'
+          title: 'chore(release): version packages'
+          createGithubReleases: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Send release notification
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          echo "🎉 Successfully published the following packages:"
+          echo "${{ steps.changesets.outputs.publishedPackages }}"
