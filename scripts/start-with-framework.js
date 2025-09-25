@@ -18,12 +18,16 @@ if (frameworkIndex !== -1) {
 }
 
 // Build the turbo command
-const turboArgs = ['turbo', 'start', '--filter=packages/*'];
+const turboArgs = ['turbo', 'start'];
 
-// Add framework filters if specified
-frameworks.forEach((framework) => {
-  turboArgs.push(`--filter=@examples/${framework}`);
-});
+// If frameworks are specified, run everything (packages + specified examples)
+// Otherwise just run packages
+if (frameworks.length === 0) {
+  // Just run packages if no framework specified
+  turboArgs.push('--filter=packages/*');
+}
+// If frameworks are specified, we don't add any filter - this runs all workspaces
+// which includes both packages/* and examples/*
 
 // Add any other arguments passed to the script
 turboArgs.push(...args);
