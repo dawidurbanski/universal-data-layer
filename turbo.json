@@ -15,6 +15,10 @@
       "outputs": ["coverage/**"],
       "cache": false
     },
+    "test:manual": {
+      "persistent": true,
+      "cache": false
+    },
     "typecheck": {
       "dependsOn": ["^build"],
       "outputs": []

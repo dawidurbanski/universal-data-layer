@@ -78,9 +78,35 @@ All packages share the root ESLint and Prettier configurations for consistency.
 ### Running Tests
 
 ```bash
-npm run lint  # Run all linting checks
-npm run fix   # Fix formatting and linting issues
+npm run lint      # Run all linting checks
+npm run fix       # Fix formatting and linting issues
+npm run test      # Run unit tests
+npm run typecheck # Run TypeScript type checking
 ```
+
+### Manual Testing
+
+The repository includes example applications in the `examples` folder for manual testing of the data layer with different frameworks.
+
+#### Available Commands
+
+```bash
+# Run manual test for a specific framework
+npm run test:manual nextjs
+
+# Run development mode with a specific framework alongside packages
+npm run dev --with-framework=nextjs
+
+# Run multiple frameworks (future support)
+npm run dev --with-framework=nextjs,remix
+
+# Run production build with framework
+npm run start --with-framework=nextjs
+```
+
+Currently supported frameworks:
+
+- NextJS - Minimal app for testing data layer integration
 
 ## Packages
 

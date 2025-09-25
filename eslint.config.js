@@ -60,6 +60,7 @@ export default [
       '**/node_modules/**',
       '**/.turbo/**',
       '**/coverage/**',
+      '**/examples/**',
     ],
   },
 ];
