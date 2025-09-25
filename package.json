@@ -8,17 +8,18 @@
   },
   "scripts": {
     "turbo": "turbo",
-    "lint": "turbo lint",
-    "fix": "turbo fix",
-    "build": "turbo build",
-    "dev": "turbo dev",
-    "start": "turbo start",
-    "test": "turbo test",
-    "test:coverage": "turbo test:coverage",
-    "typecheck": "turbo typecheck",
+    "lint": "turbo lint --filter=packages/*",
+    "fix": "turbo fix --filter=packages/*",
+    "build": "turbo build --filter=packages/*",
+    "dev": "node scripts/dev-with-framework.js",
+    "start": "node scripts/start-with-framework.js",
+    "test": "turbo test --filter=packages/*",
+    "test:coverage": "turbo test:coverage --filter=packages/*",
+    "test:manual": "turbo dev --filter=examples/$npm_config_framework",
+    "typecheck": "turbo typecheck --filter=packages/*",
     "changeset": "changeset",
     "version": "changeset version && npm install --package-lock-only",
-    "release": "turbo build && changeset publish",
+    "release": "turbo build --filter=packages/* && changeset publish",
     "prepare": "husky"
   },
   "author": "Dawid Urbanski <hi@dawidurbanski.com>",
@@ -54,7 +55,8 @@
   },
   "workspaces": [
     "packages/*",
-    "packages/universal-data-layer"
+    "packages/universal-data-layer",
+    "examples/*"
   ],
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
