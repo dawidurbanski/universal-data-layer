@@ -22,7 +22,7 @@ const turboArgs = ['turbo', 'start', '--filter=packages/*'];
 
 // Add framework filters if specified
 frameworks.forEach((framework) => {
-  turboArgs.push(`--filter=examples/${framework}`);
+  turboArgs.push(`--filter=@examples/${framework}`);
 });
 
 // Add any other arguments passed to the script
