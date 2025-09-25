@@ -29,13 +29,19 @@ Feature requests are welcome! Please provide:
 
 ### Pull Requests
 
+Please read our [Pull Request Guidelines](./docs/PR_GUIDELINES.md) for detailed requirements and standards.
+
+Quick overview:
+
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Ensure all tests pass (`npm run lint`)
-5. Commit your changes with clear messages
-6. Push to your fork
-7. Open a Pull Request
+4. Ensure all tests pass (`npm run test`)
+5. Run linting and type checks (`npm run lint` and `npm run typecheck`)
+6. Add a changeset (`npm run changeset`)
+7. Commit your changes with [Conventional Commits](https://www.conventionalcommits.org/)
+8. Push to your fork
+9. Open a Pull Request using our template
 
 ## Development Setup
 
@@ -122,14 +128,18 @@ Before submitting a PR:
 
 ### Pull Request Process
 
+Please follow our comprehensive [Pull Request Guidelines](./docs/PR_GUIDELINES.md) which cover all requirements in detail.
+
+Key steps:
+
 1. Add a changeset for your changes: `npm run changeset`
 2. Update documentation for any API changes
 3. Ensure your PR description clearly describes the problem and solution
 4. Link any related issues
-5. Ensure all CI checks pass
-6. Request review from maintainers
-7. Be responsive to feedback
-8. Squash commits if requested
+5. Ensure all CI checks pass (tests, linting, type checking)
+6. Use the PR template to confirm all requirements are met
+7. Request review from maintainers
+8. Be responsive to feedback
 
 **Note:** Every PR that changes functionality must include a changeset. The changeset will be used to generate changelogs and determine version bumps.
 
