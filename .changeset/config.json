@@ -5,7 +5,7 @@
     { "repo": "dawidurbanski/universal-data-layer" }
   ],
   "commit": false,
-  "fixed": [["*"]],
+  "fixed": [["universal-data-layer", "@universal-data-layer/*"]],
   "linked": [],
   "access": "public",
   "baseBranch": "main",
