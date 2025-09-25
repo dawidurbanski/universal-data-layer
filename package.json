@@ -15,7 +15,7 @@
     "start": "node scripts/start-with-framework.js",
     "test": "turbo test --filter=packages/*",
     "test:coverage": "turbo test:coverage --filter=packages/*",
-    "test:manual": "turbo dev --filter=examples/$npm_config_framework",
+    "test:manual": "node scripts/test-manual.js",
     "typecheck": "turbo typecheck --filter=packages/*",
     "changeset": "changeset",
     "version": "changeset version && npm install --package-lock-only",
