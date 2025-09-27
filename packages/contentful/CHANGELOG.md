@@ -1,5 +1,15 @@
 # @universal-data-layer/contentful
 
+## 0.2.0
+
+### Patch Changes
+
+- [#19](https://github.com/dawidurbanski/universal-data-layer/pull/19) [`aa6014e`](https://github.com/dawidurbanski/universal-data-layer/commit/aa6014eb6b06b8e30dff5989f0b261fc2d0702ed) Thanks [@dawidurbanski](https://github.com/dawidurbanski)! - docs: add comprehensive PR guidelines and template
+  - Created detailed PR guidelines documentation (docs/PR_GUIDELINES.md) outlining all requirements for pull requests
+  - Added GitHub PR template (.github/pull_request_template.md) with checklist for contributors
+  - Updated CONTRIBUTING.md to reference the new PR guidelines
+  - Established clear standards for code quality, testing, changesets, and documentation in PRs
+
 ## 0.1.0
 
 ### Minor Changes
