@@ -23,109 +23,24 @@ This is a monorepo managed with npm workspaces and Turborepo:
 universal-data-layer/
 ├── packages/
 │   ├── core/                # Core library with GraphQL server
-│   └── contentful/          # Contentful plugin (in development)
+│   └── plugins/             # Plugins
+|   └── adapters/            # Framework specific adapters
 ├── docs/                    # Documentation
-│   ├── API.md               # API design specifications
-│   └── PROBLEM_STATEMENT.md # Problem we're solving
+├── examples/                # Various framework apps with sourcing from data layer enabled
 └── package.json             # Root package with workspace configuration
 ```
 
 ## Quick Start
 
-### Installation
+### Run the data layer with default settings
 
 ```bash
-# Clone the repository
-git clone https://github.com/dawidurbanski/universal-data-layer.git
-cd universal-data-layer
-
-# Install dependencies
-npm install
-
-# Build all packages
-npm run build
-
-# Start development mode
-npm run dev
+npx universal-data-layer
 ```
 
-### Available Commands
+## Sourcing data
 
-From the root directory:
-
-- `npm run build` - Build all packages
-- `npm run dev` - Start development mode with hot-reload
-- `npm run start` - Start the production server
-- `npm run test` - Run all tests
-- `npm run test:coverage` - Run tests with coverage report
-- `npm run typecheck` - Run TypeScript type checking
-- `npm run lint` - Run linting checks across all packages
-- `npm run fix` - Auto-fix linting and formatting issues
-- `npm run changeset` - Create a changeset for your changes
-
-## Development
-
-This monorepo uses:
-
-- **Turborepo** for build orchestration
-- **TypeScript** for type safety
-- **ESLint** with flat config for code quality
-- **Prettier** for code formatting
-- **Husky** for git hooks
-
-All packages share the root ESLint and Prettier configurations for consistency.
-
-### Running Tests
-
-```bash
-npm run lint      # Run all linting checks
-npm run fix       # Fix formatting and linting issues
-npm run test      # Run unit tests
-npm run typecheck # Run TypeScript type checking
-```
-
-### Manual Testing
-
-The repository includes example applications in the `examples` folder for manual testing of the data layer with different frameworks.
-
-#### Available Commands
-
-```bash
-# Run manual test for a specific framework
-npm run test:manual nextjs
-
-# Run development mode with a specific framework alongside packages
-npm run dev --with-framework=nextjs
-
-# Run multiple frameworks (future support)
-npm run dev --with-framework=nextjs,remix
-
-# Run production build with framework
-npm run start --with-framework=nextjs
-```
-
-Currently supported frameworks:
-
-- NextJS - Minimal app for testing data layer integration
-
-## Packages
-
-### [@universal-data-layer/core](./packages/core)
-
-_(In Development)_ -The core package providing the GraphQL server and plugin architecture.
-
-### [@universal-data-layer/contentful](./packages/contentful)
-
-_(In Development)_ - Plugin for integrating Contentful CMS data.
-
-## Documentation
-
-- [Development Guide](./docs/DEVELOPMENT.md) - Setup and development workflow
-- [API Design](./docs/API.md) - Detailed API specifications
-- [Problem Statement](./docs/PROBLEM_STATEMENT.md) - The problems we're solving
-- [Release Process](./docs/RELEASE.md) - Versioning and release procedures
-- [Core Package Docs](./packages/core/README.md) - Core package documentation
-- [Contributing Guidelines](./CONTRIBUTING.md) - How to contribute
+Documentation in progress. Coming soon...
 
 ## Contributing
 
