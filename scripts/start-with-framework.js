@@ -18,22 +18,26 @@ if (frameworkIndex !== -1) {
 }
 
 // Build the turbo command
-const turboArgs = ['turbo', 'start'];
+const turboArgs = ['dev'];
 
 // If frameworks are specified, run everything (packages + specified examples)
 // Otherwise just run packages
 if (frameworks.length === 0) {
-  // Just run packages if no framework specified
-  turboArgs.push('--filter=packages/*');
+  // Run all packages in the packages directory
+  turboArgs.push("--filter='./packages/*'");
+} else {
+  // Run packages and specified framework examples
+  turboArgs.push("--filter='./packages/*'");
+  frameworks.forEach((fw) => {
+    turboArgs.push(`--filter='./examples/${fw}'`);
+  });
 }
-// If frameworks are specified, we don't add any filter - this runs all workspaces
-// which includes both packages/* and examples/*
 
 // Add any other arguments passed to the script
 turboArgs.push(...args);
 
 // Run the turbo command
-const turbo = spawn('npx', turboArgs, {
+const turbo = spawn('turbo', turboArgs, {
   stdio: 'inherit',
   shell: true,
 });

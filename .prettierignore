@@ -4,6 +4,11 @@ node_modules/
 # Build outputs
 dist/
 build/
+.next/
+.nuxt/
+.output/
+.data/
+.cache/
 
 # Coverage reports
 coverage/

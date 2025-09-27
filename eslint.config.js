@@ -61,6 +61,7 @@ export default [
       '**/.turbo/**',
       '**/coverage/**',
       '**/examples/**',
+      '**/docs/**',
     ],
   },
 ];
