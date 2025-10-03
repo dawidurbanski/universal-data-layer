@@ -5,9 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "universal-data-layer & next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "universal-data-layer & next start",
-    "udl": "universal-data-layer"
+    "build": "universal-data-layer & next build --turbopack",
+    "start": "universal-data-layer & next start"
   },
   "dependencies": {
     "next": "15.5.4",
