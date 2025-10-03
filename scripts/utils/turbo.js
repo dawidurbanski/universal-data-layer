@@ -22,8 +22,6 @@ export function runTurbo(command, argPrefix = '--example=') {
   // Build the turbo command
   const turboArgs = [command];
 
-  console.log(frameworks, command);
-
   // Always run packages in watch mode
   turboArgs.push("--filter='./packages/*'");
 
