@@ -20,4 +20,13 @@ export default defineNuxtConfig({
         'A modular, high-performance intermediate data layer for universal data sourcing',
     },
   },
+  content: {
+    build: {
+      markdown: {
+        highlight: {
+          langs: ['bash', 'diff', 'json', 'js', 'ts', 'html', 'css', 'vue', 'shell', 'mdc', 'md', 'yaml', 'graphql'],
+        },
+      },
+    },
+  },
 });
