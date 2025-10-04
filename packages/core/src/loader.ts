@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { importMetaResolve } from './utils/import-meta-resolve.js';
 
 /**
  * Plugin specification - can be a simple string (package name) or an object with options
@@ -201,7 +202,7 @@ export async function loadPlugins(
       } else {
         try {
           const { fileURLToPath } = await import('node:url');
-          const packageJsonUrl = import.meta.resolve(
+          const packageJsonUrl = importMetaResolve(
             `${pluginName}/package.json`
           );
           const packageJsonPath = fileURLToPath(packageJsonUrl);
