@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc-watch --onSuccess \"node dist/index.js\"",
+    "dev": "tsc --watch",
     "start": "node dist/index.js",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest watch --passWithNoTests",

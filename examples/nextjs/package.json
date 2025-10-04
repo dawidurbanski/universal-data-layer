@@ -2,10 +2,11 @@
   "name": "@examples/nextjs",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start"
+    "dev": "universal-data-layer & next dev --turbopack",
+    "build": "universal-data-layer & next build --turbopack",
+    "start": "universal-data-layer & next start"
   },
   "dependencies": {
     "next": "15.5.4",

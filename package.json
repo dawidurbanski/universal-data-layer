@@ -10,12 +10,11 @@
     "turbo": "turbo",
     "lint": "turbo lint --filter='./packages/*'",
     "fix": "turbo fix --filter='./packages/*'",
-    "build": "turbo build --filter='./packages/*'",
-    "dev": "node scripts/dev-with-framework.js",
-    "start": "node scripts/start-with-framework.js",
+    "build": "node scripts/build.js",
+    "dev": "node scripts/dev.js",
+    "start": "node scripts/start.js",
     "test": "turbo test --filter='./packages/*'",
     "test:coverage": "turbo test:coverage --filter='./packages/*'",
-    "test:manual": "node scripts/test-manual.js",
     "typecheck": "turbo typecheck --filter='./packages/*'",
     "changeset": "changeset",
     "version": "changeset version && npm install --package-lock-only",
@@ -55,8 +54,9 @@
     "vitest": "^3.2.4"
   },
   "workspaces": [
+    "packages/universal-data-layer",
     "packages/*",
-    "packages/universal-data-layer"
+    "examples/*"
   ],
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
