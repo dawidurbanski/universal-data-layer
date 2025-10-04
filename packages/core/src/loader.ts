@@ -2,21 +2,91 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-export interface OnLoadContext {
-  options?: Record<string, unknown>;
+/**
+ * Plugin specification - can be a simple string (package name) or an object with options
+ */
+export type PluginSpec =
+  | string
+  | {
+      name: string;
+      options?: Record<string, unknown>;
+    };
+
+/**
+ * Core UDL configuration object
+ */
+export interface UDLConfig {
+  /** Plugin type */
+  type?: 'core' | 'source';
+  /** Plugin name */
+  name?: string;
+  /** Plugin version */
+  version?: string;
+  /** Server port (default: 4000) */
+  port?: number;
+  /** Server host (default: 'localhost') */
+  host?: string;
+  /** GraphQL endpoint path (default: '/graphql') */
+  endpoint?: string;
+  /** Static files path (default: '/static/') */
+  staticPath?: string;
+  /** List of plugins to load */
+  plugins?: PluginSpec[];
+}
+
+/**
+ * Context passed to the onLoad hook
+ */
+export interface OnLoadContext<T = Record<string, unknown>> {
+  /** Plugin-specific options passed from the config */
+  options?: T;
+  /** The application's UDL config */
   config?: UDLConfig;
 }
 
-export interface UDLConfig {
-  port?: number;
-  host?: string;
-  endpoint?: string;
-  plugins?: (string | { name: string; options?: Record<string, unknown> })[];
+/**
+ * UDL Config File structure
+ * Used for both app and plugin config files
+ */
+export interface UDLConfigFile {
+  /** The config object exported from udl.config.{ts,js} */
+  config: UDLConfig;
+  /** Optional lifecycle hook called when config is loaded */
+  onLoad?: <T = Record<string, unknown>>(
+    context?: OnLoadContext<T>
+  ) => void | Promise<void>;
 }
 
-export interface UDLConfigFile {
+/**
+ * Helper function for defining plugin configs with typed options
+ * Provides better type inference and autocomplete for plugin configurations
+ *
+ * @example
+ * ```ts
+ * // In your plugin's udl.config.ts
+ * import { defineConfig, OnLoadContext } from 'universal-data-layer';
+ *
+ * interface MyPluginOptions {
+ *   apiKey: string;
+ *   environment: 'dev' | 'prod';
+ * }
+ *
+ * export const { config, onLoad } = defineConfig<MyPluginOptions>({
+ *   config: {
+ *     plugins: []
+ *   },
+ *   onLoad: async (context) => {
+ *     // context.options is now typed as MyPluginOptions
+ *     console.log(context?.options?.apiKey);
+ *   }
+ * });
+ * ```
+ */
+export function defineConfig<T = Record<string, unknown>>(configFile: {
   config: UDLConfig;
-  onLoad?: (context?: OnLoadContext) => void | Promise<void>;
+  onLoad?: (context?: OnLoadContext<T>) => void | Promise<void>;
+}): UDLConfigFile {
+  return configFile as UDLConfigFile;
 }
 
 /**
@@ -52,26 +122,54 @@ export async function loadConfigFile(
 
 /**
  * High-level: Loads the application's UDL config from standard locations
- * Searches for udl.config.{js,mjs,cjs} and executes onLoad hook
+ * Searches for udl.config.{ts,js,mjs,cjs} and executes onLoad hook
+ * For TypeScript configs, uses tsx to load them at runtime
  * @param cwd - Working directory to search for config (default: process.cwd())
  * @returns The loaded config or empty object if no config found
  */
 export async function loadAppConfig(
   cwd: string = process.cwd()
 ): Promise<UDLConfig> {
-  const configPaths = [
-    join(cwd, 'udl.config.js'),
-    join(cwd, 'udl.config.mjs'),
-    join(cwd, 'udl.config.cjs'),
+  const configFiles = [
+    'udl.config.ts',
+    'udl.config.js',
+    'udl.config.mjs',
+    'udl.config.cjs',
   ];
 
-  for (const configPath of configPaths) {
-    const absolutePath = resolve(configPath);
-    // Pass empty context for app's onLoad
-    const config = await loadConfigFile(absolutePath, { config: {} });
+  for (const configFile of configFiles) {
+    const configPath = join(cwd, configFile);
 
-    if (config) {
-      return config;
+    if (existsSync(configPath)) {
+      const absolutePath = resolve(configPath);
+
+      // Use tsx for .ts files, regular import for others
+      if (configFile.endsWith('.ts')) {
+        try {
+          // Use tsx to register TypeScript loader
+          const { register } = await import('tsx/esm/api');
+          const unregister = register();
+
+          try {
+            const config = await loadConfigFile(absolutePath, { config: {} });
+            if (config) {
+              return config;
+            }
+          } finally {
+            unregister();
+          }
+        } catch (error) {
+          console.error(
+            `Failed to load TypeScript config from ${absolutePath}:`,
+            error
+          );
+        }
+      } else {
+        const config = await loadConfigFile(absolutePath, { config: {} });
+        if (config) {
+          return config;
+        }
+      }
     }
   }
 
@@ -81,12 +179,10 @@ export async function loadAppConfig(
 /**
  * High-level: Loads and initializes plugins by executing their onLoad hooks
  * @param plugins - Array of plugin specifiers (package names, file paths, or plugin objects with name and options)
+ * @param appConfig - The application's UDL config to pass to plugin onLoad hooks
  */
 export async function loadPlugins(
-  plugins: (
-    | string
-    | { name: string; options?: Record<string, unknown> }
-  )[] = [],
+  plugins: PluginSpec[] = [],
   appConfig?: UDLConfig
 ): Promise<void> {
   for (const pluginSpec of plugins) {
@@ -120,8 +216,19 @@ export async function loadPlugins(
         }
       }
 
-      const udlConfigPath = join(pluginPath, 'udl.config.js');
-      console.log(`Loading plugin from: ${udlConfigPath}`);
+      // Check for TypeScript config first (compiled), then fallback to JS
+      const tsConfigSource = join(pluginPath, 'udl.config.ts');
+      const tsConfigCompiled = join(pluginPath, 'dist', 'udl.config.js');
+      const jsConfigPath = join(pluginPath, 'udl.config.js');
+
+      let udlConfigPath: string;
+
+      // Prefer compiled TypeScript config if source exists
+      if (existsSync(tsConfigSource)) {
+        udlConfigPath = tsConfigCompiled;
+      } else {
+        udlConfigPath = jsConfigPath;
+      }
 
       // Build context for this plugin's onLoad
       const context: OnLoadContext = {};
@@ -141,7 +248,7 @@ export async function loadPlugins(
 
       if (!plugin) {
         console.warn(
-          `Plugin ${pluginName} missing or failed to load udl.config.js file at ${udlConfigPath}`
+          `Plugin ${pluginName} missing or failed to load config file at ${udlConfigPath}`
         );
       }
     } catch (error) {
