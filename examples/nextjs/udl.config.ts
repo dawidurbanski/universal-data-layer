@@ -1,4 +1,6 @@
-export const config = {
+import type { UDLConfig, OnLoadContext } from 'universal-data-layer';
+
+export const config: UDLConfig = {
   plugins: [
     'universal-data-layer',
     {
@@ -11,6 +13,7 @@ export const config = {
   ],
 };
 
-export function onLoad({ options, config }) {
+export function onLoad(context: OnLoadContext) {
+  const { options, config } = context;
   console.log('Next.js app loaded', options, config);
 }
