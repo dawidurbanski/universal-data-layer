@@ -1,9 +1,10 @@
 import { useState, useEffect, lazy, type ComponentType } from 'react';
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
-import Sidebar from './Sidebar';
-import ScenarioContent from './ScenarioContent';
-import DocsSidebar from './DocsSidebar';
-import type { Scenario } from '../types';
+import Sidebar from '@/components/Sidebar';
+import ScenarioContent from '@/components/ScenarioContent';
+import DocsSidebar from '@/components/DocsSidebar';
+import Spotlight from '@/components/Spotlight';
+import type { Scenario } from '@/types';
 
 // Use Vite's glob import to load all test components
 // Path is relative to this file: tests/manual/src/App.tsx
@@ -16,6 +17,7 @@ const componentModules = import.meta.glob(
 function ScenarioView() {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSpotlightOpen, setIsSpotlightOpen] = useState(false);
   const navigate = useNavigate();
   const { packageName, featureName } = useParams();
   const packageFilter = __PACKAGE_FILTER__;
@@ -87,6 +89,23 @@ function ScenarioView() {
     loadScenarios();
   }, [isPackageOnlyMode, packageName, navigate]);
 
+  // Handle Cmd+K / Ctrl+K keyboard shortcut to open spotlight
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+K on Mac, Ctrl+K on Windows/Linux
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        // Only open spotlight if not in single feature mode
+        if (!isSingleFeatureMode) {
+          setIsSpotlightOpen(true);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSingleFeatureMode]);
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
@@ -124,6 +143,11 @@ function ScenarioView() {
     navigate(`/${scenario.package}/${scenario.feature}`);
   };
 
+  // Filter scenarios for spotlight based on mode
+  const spotlightScenarios = isPackageOnlyMode
+    ? scenarios.filter((s) => s.package === packageFilter)
+    : scenarios;
+
   return (
     <div className="flex h-screen">
       {!isSingleFeatureMode && (
@@ -131,6 +155,7 @@ function ScenarioView() {
           scenarios={scenarios}
           selectedScenario={selectedScenario}
           onSelectScenario={handleSelectScenario}
+          onOpenSpotlight={() => setIsSpotlightOpen(true)}
         />
       )}
 
@@ -140,6 +165,16 @@ function ScenarioView() {
           <DocsSidebar scenario={selectedScenario} />
         </div>
       </main>
+
+      {/* Spotlight - hidden in single feature mode */}
+      {!isSingleFeatureMode && (
+        <Spotlight
+          isOpen={isSpotlightOpen}
+          onClose={() => setIsSpotlightOpen(false)}
+          scenarios={spotlightScenarios}
+          onSelectScenario={handleSelectScenario}
+        />
+      )}
     </div>
   );
 }
