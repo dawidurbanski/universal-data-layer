@@ -1,7 +1,7 @@
-import { loadAppConfig, loadPlugins } from './loader.js';
-import { createConfig } from './config.js';
-import server from './server.js';
-import { rebuildHandler } from './handlers/graphql.js';
+import { loadAppConfig, loadPlugins } from '@/loader.js';
+import { createConfig } from '@/config.js';
+import server from '@/server.js';
+import { rebuildHandler } from '@/handlers/graphql.js';
 import { watch } from 'chokidar';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';

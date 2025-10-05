@@ -7,7 +7,7 @@ let currentHandler: ReturnType<typeof createHandler>;
  * Build and cache the GraphQL handler
  */
 async function initHandler() {
-  const { buildSchema } = await import('../schema.js');
+  const { buildSchema } = await import('@/schema.js');
   currentHandler = createHandler({ schema: buildSchema() });
 }
 
@@ -24,7 +24,7 @@ export async function rebuildHandler(): Promise<void> {
   try {
     // Force reimport by adding timestamp to bypass ESM cache
     const timestamp = Date.now();
-    const schemaPath = new URL('../schema.js', import.meta.url);
+    const schemaPath = new URL('@/schema.js', import.meta.url);
     const schemaUrl = `${schemaPath.href}?t=${timestamp}`;
 
     const { buildSchema } = await import(schemaUrl);

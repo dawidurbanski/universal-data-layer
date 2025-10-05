@@ -1,6 +1,6 @@
 import type { ServerResponse } from 'node:http';
 import { ruruHTML } from 'ruru/server';
-import { getConfig } from '../config.js';
+import { getConfig } from '@/config.js';
 
 export default function handler(res: ServerResponse) {
   const config = getConfig();

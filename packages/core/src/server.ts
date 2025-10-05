@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
-import staticHandler from './handlers/static.js';
-import graphqlHandler from './handlers/graphql.js';
-import graphiqlHandler from './handlers/graphiql.js';
+import staticHandler from '@/handlers/static.js';
+import graphqlHandler from '@/handlers/graphql.js';
+import graphiqlHandler from '@/handlers/graphiql.js';
 
 const server = createServer((req, res) => {
   // Add CORS headers for all requests
