@@ -125,7 +125,6 @@ Before submitting a PR:
 4. Run tests with coverage: `npm run test:coverage`
 5. Ensure coverage meets 90% threshold
 6. Add tests for new functionality
-7. For integration changes, manually test with example apps: `npm run test:manual nextjs`
 
 ### Pull Request Process
 

@@ -6,3 +6,7 @@ dist
 coverage
 .nyc_output
 *.log
+
+# Manual test environment files
+**/tests/manual/.env
+**/tests/manual/.env.local

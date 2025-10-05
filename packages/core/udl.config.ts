@@ -1,4 +1,4 @@
-import type { UDLConfig, OnLoadContext } from './src/loader.js';
+import type { UDLConfig } from './src/loader.js';
 
 export const config: UDLConfig = {
   type: 'core',
@@ -6,7 +6,6 @@ export const config: UDLConfig = {
   version: '0.0.1',
 };
 
-export function onLoad(context: OnLoadContext) {
-  const { options, config } = context;
-  console.log('Core loaded', options, config);
+export function onLoad() {
+  console.log('🟢 Core loaded');
 }

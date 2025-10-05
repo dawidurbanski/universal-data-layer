@@ -9,20 +9,20 @@
     "universal-data-layer": "./bin/cli.js"
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "start": "node dist/index.js",
+    "build": "tsc && tsc-alias",
+    "dev": "node ./bin/cli.js & tsc --watch & tsc-alias --watch",
+    "start": "node ./bin/cli.js",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest watch --passWithNoTests",
     "test:coverage": "vitest run --coverage --passWithNoTests || true",
-    "typecheck": "tsc --noEmit",
     "lint": "npm run lint:formatting && npm run lint:quality && npm run lint:types",
     "lint:formatting": "prettier --check . --ignore-path ../../.prettierignore",
     "lint:quality": "eslint . --config ../../eslint.config.js",
     "lint:types": "tsc --noEmit",
     "fix": "npm run fix:formatting && npm run fix:quality",
     "fix:formatting": "prettier --write . --ignore-path ../../.prettierignore",
-    "fix:quality": "eslint . --fix --config ../../eslint.config.js"
+    "fix:quality": "eslint . --fix --config ../../eslint.config.js",
+    "typecheck": "tsc --noEmit"
   },
   "author": "Dawid Urbanski <hi@dawidurbanski.com>",
   "license": "MIT",
@@ -36,6 +36,7 @@
     "README.md"
   ],
   "dependencies": {
+    "chokidar": "^4.0.3",
     "graphql": "^16.11.0",
     "graphql-http": "^1.22.4",
     "ruru": "^2.0.0-beta.30",

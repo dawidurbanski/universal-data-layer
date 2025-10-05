@@ -2,9 +2,14 @@ import js from '@eslint/js';
 import typescript from '@typescript-eslint/eslint-plugin';
 import typescriptParser from '@typescript-eslint/parser';
 import prettierConfig from 'eslint-config-prettier';
+import globals from 'globals';
+import react from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
 
 export default [
   js.configs.recommended,
+  react.configs.flat.recommended,
+  ...reactHooks.configs['flat/recommended'],
   prettierConfig,
   {
     files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
@@ -12,16 +17,7 @@ export default [
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: {
-        console: 'readonly',
-        process: 'readonly',
-        Buffer: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        exports: 'writable',
-        module: 'writable',
-        require: 'readonly',
-        global: 'readonly',
-        URL: 'readonly',
+        ...globals.node,
       },
     },
   },
@@ -34,13 +30,12 @@ export default [
         sourceType: 'module',
       },
       globals: {
-        console: 'readonly',
-        process: 'readonly',
-        Buffer: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        global: 'readonly',
-        URL: 'readonly',
+        ...globals.node,
+        ...globals.browser,
+        NodeJS: 'readonly',
+        __PACKAGE_FILTER__: 'readonly',
+        __FEATURE_FILTER__: 'readonly',
+        __REPO_ROOT__: 'readonly',
       },
     },
     plugins: {
@@ -52,6 +47,7 @@ export default [
         'error',
         { argsIgnorePattern: '^_' },
       ],
+      'react/react-in-jsx-scope': 'off',
     },
   },
   {
@@ -60,8 +56,14 @@ export default [
       '**/node_modules/**',
       '**/.turbo/**',
       '**/coverage/**',
-      '**/examples/**',
       '**/docs/**',
     ],
+  },
+  {
+    settings: {
+      react: {
+        version: '19.2.0',
+      },
+    },
   },
 ];
