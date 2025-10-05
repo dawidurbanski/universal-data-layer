@@ -9,8 +9,8 @@
     "universal-data-layer": "./bin/cli.js"
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "node ./bin/cli.js & tsc --watch",
+    "build": "tsc && tsc-alias",
+    "dev": "node ./bin/cli.js & tsc --watch & tsc-alias --watch",
     "start": "node ./bin/cli.js",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest watch --passWithNoTests",

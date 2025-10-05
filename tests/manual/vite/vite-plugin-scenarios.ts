@@ -1,7 +1,7 @@
 import type { Plugin, ViteDevServer } from 'vite';
 import { resolve } from 'path';
 import fs from 'fs';
-import type { Scenario, ScenarioManifest } from './types';
+import type { Scenario, ScenarioManifest } from '@/types';
 
 export function scenariosPlugin(): Plugin {
   let server: ViteDevServer;

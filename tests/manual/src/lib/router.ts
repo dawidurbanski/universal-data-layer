@@ -1,5 +1,5 @@
-import type { Scenario } from './registry';
-import { loadDocumentation } from './registry';
+import type { Scenario } from '@/lib/registry';
+import { loadDocumentation } from '@/lib/registry';
 import { marked } from 'marked';
 
 // Configure marked for better rendering

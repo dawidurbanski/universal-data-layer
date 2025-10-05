@@ -15,9 +15,16 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
     "paths": {
+      "@/*": ["./src/*"],
       "universal-data-layer": ["../../packages/core/src"]
     }
   },
-  "include": ["src/**/*", "../../packages/*/tests/manual/**/*", "vite-env.d.ts"]
+  "include": [
+    "src/**/*",
+    "../../packages/*/tests/manual/**/*",
+    "vite-env.d.ts",
+    "vite/vite-plugin-scenarios.ts"
+  ]
 }

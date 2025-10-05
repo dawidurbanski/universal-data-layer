@@ -1,4 +1,4 @@
-import type { Scenario, ScenarioRegistry } from './registry';
+import type { Scenario, ScenarioRegistry } from '@/lib/registry';
 
 export class Sidebar {
   private container: HTMLElement;

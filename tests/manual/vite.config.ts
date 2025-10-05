@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
-import { scenariosPlugin } from './src/vite-plugin-scenarios.js';
+import { scenariosPlugin } from './vite/vite-plugin-scenarios.js';
 
 export default defineConfig({
   plugins: [react(), scenariosPlugin()],
@@ -26,6 +26,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      '@': resolve(__dirname, './src'),
       'universal-data-layer': resolve(__dirname, '../../packages/core/src'),
       '/packages': resolve(__dirname, '../../packages'),
     },

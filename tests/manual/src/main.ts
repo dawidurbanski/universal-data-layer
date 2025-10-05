@@ -1,7 +1,7 @@
-import './styles/main.css';
-import { discoverScenarios } from './lib/registry';
-import { Sidebar } from './lib/sidebar';
-import { Router } from './lib/router';
+import '@/styles/main.css';
+import { discoverScenarios } from '@/lib/registry';
+import { Sidebar } from '@/lib/sidebar';
+import { Router } from '@/lib/router';
 
 async function init() {
   const sidebarContainer = document.getElementById('sidebar');

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { marked } from 'marked';
-import type { Scenario } from '../types';
+import type { Scenario } from '@/types';
 
 interface DocsSidebarProps {
   scenario: Scenario | null;

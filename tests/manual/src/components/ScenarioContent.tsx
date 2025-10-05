@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { Link } from 'react-router-dom';
-import type { Scenario } from '../types';
+import type { Scenario } from '@/types';
 
 interface ScenarioContentProps {
   scenario: Scenario | null;
