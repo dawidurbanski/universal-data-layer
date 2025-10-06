@@ -5,6 +5,7 @@ import { createContentDigest } from '@/nodes/utils/index.js';
 /**
  * Input for creating a node - allows partial internal metadata
  * The system will auto-fill missing fields like contentDigest and timestamps
+ * Supports custom fields beyond the base Node interface
  */
 export type CreateNodeInput = Omit<Node, 'internal'> & {
   internal: Omit<
@@ -15,6 +16,8 @@ export type CreateNodeInput = Omit<Node, 'internal'> & {
     createdAt?: number;
     modifiedAt?: number;
   };
+  // Allow any additional custom fields
+  [key: string]: unknown;
 };
 
 /**
