@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { NodeStore } from '../../../src/nodes/store.js';
-import type { Node } from '../../../src/nodes/types.js';
+import { NodeStore } from '@/nodes/store.js';
+import type { Node } from '@/nodes/types.js';
 
 describe('NodeStore', () => {
   let store: NodeStore;
