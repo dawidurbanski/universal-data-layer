@@ -53,11 +53,11 @@ export interface ExtendNodeOptions {
  * }, { store });
  * ```
  */
-export async function extendNode(
+export async function extendNode<T extends Node = Node>(
   nodeId: string,
   extension: ExtendNodeData,
   options: ExtendNodeOptions
-): Promise<Node> {
+): Promise<T> {
   const { store } = options;
 
   // Validate node exists
@@ -100,5 +100,5 @@ export async function extendNode(
   // Store the updated node
   store.set(extendedNode);
 
-  return extendedNode;
+  return extendedNode as T;
 }
