@@ -3,22 +3,23 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { importMetaResolve } from '@/utils/import-meta-resolve.js';
 
-/**
- * Plugin specification - can be a simple string (package name) or an object with options
- */
-export type PluginSpec =
-  | string
-  | {
-      name: string;
-      options?: Record<string, unknown>;
-    };
+export const pluginTypes = ['core', 'source', 'other'] as const;
+
+export type PluginType = (typeof pluginTypes)[number];
+
+type PluginSpecObject = {
+  name: string;
+  options?: Record<string, unknown>;
+};
+
+export type PluginSpec = string | PluginSpecObject;
 
 /**
  * Core UDL configuration object
  */
 export interface UDLConfig {
   /** Plugin type */
-  type?: 'core' | 'source';
+  type?: PluginType;
   /** Plugin name */
   name?: string;
   /** Plugin version */

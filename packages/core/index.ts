@@ -12,3 +12,11 @@ export type {
   PluginSpec,
 } from './src/loader.js';
 export { defineConfig } from './src/loader.js';
+
+// Export utility functions
+export {
+  loadPackageJson,
+  getPackageVersion,
+  getPackageName,
+  getPackageType,
+} from './src/utils/package-info.js';

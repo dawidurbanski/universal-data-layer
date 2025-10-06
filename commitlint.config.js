@@ -34,5 +34,6 @@ export default {
         'config',
       ],
     ],
+    'body-max-line-length': [2, 'always', 200],
   },
 };
