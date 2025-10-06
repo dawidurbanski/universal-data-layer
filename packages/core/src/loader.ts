@@ -2,6 +2,10 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { importMetaResolve } from '@/utils/import-meta-resolve.js';
+import { NodeStore } from '@/nodes/store.js';
+import { createNodeActions } from '@/nodes/actions/index.js';
+import { createNodeId, createContentDigest } from '@/nodes/utils/index.js';
+import { defaultStore } from '@/nodes/defaultStore.js';
 
 export const pluginTypes = ['core', 'source', 'other'] as const;
 
@@ -57,6 +61,10 @@ export interface UDLConfigFile {
   onLoad?: <T = Record<string, unknown>>(
     context?: OnLoadContext<T>
   ) => void | Promise<void>;
+  /** Optional lifecycle hook for sourcing nodes at build time */
+  sourceNodes?: <T = Record<string, unknown>>(
+    context?: import('@/nodes/index.js').SourceNodesContext<T>
+  ) => void | Promise<void>;
 }
 
 /**
@@ -92,15 +100,27 @@ export function defineConfig<T = Record<string, unknown>>(configFile: {
 }
 
 /**
+ * Options for loadConfigFile
+ */
+export interface LoadConfigFileOptions {
+  /** Context to pass to onLoad hook */
+  context?: OnLoadContext;
+  /** Plugin name (used for sourceNodes owner tracking) */
+  pluginName?: string;
+  /** Node store to use for sourceNodes (if not provided, sourceNodes won't execute) */
+  store?: NodeStore;
+}
+
+/**
  * Core function: Loads a single UDL config file from the given path
  * Expects: export const config = { ... } and optionally export function onLoad({ options, plugins }) {}
  * @param configPath - Absolute path to the config file
- * @param context - Context to pass to onLoad hook (options and plugins info)
+ * @param options - Configuration options
  * @returns The loaded config or null if file doesn't exist or fails to load
  */
 export async function loadConfigFile(
   configPath: string,
-  context?: OnLoadContext
+  options?: LoadConfigFileOptions
 ): Promise<UDLConfig | null> {
   if (!existsSync(configPath)) {
     return null;
@@ -112,7 +132,19 @@ export async function loadConfigFile(
 
     // Execute onLoad hook (named export) with context
     if (module.onLoad) {
-      await module.onLoad(context);
+      await module.onLoad(options?.context);
+    }
+
+    // Execute sourceNodes hook with node actions bound to this plugin
+    if (module.sourceNodes && options?.pluginName && options?.store) {
+      const actions = createNodeActions(options.store, options.pluginName);
+
+      await module.sourceNodes({
+        actions,
+        createNodeId,
+        createContentDigest,
+        options: options.context?.options,
+      });
     }
 
     return module.config;
@@ -153,7 +185,9 @@ export async function loadAppConfig(
           const unregister = register();
 
           try {
-            const config = await loadConfigFile(absolutePath, { config: {} });
+            const config = await loadConfigFile(absolutePath, {
+              context: { config: {} },
+            });
             if (config) {
               return config;
             }
@@ -167,7 +201,9 @@ export async function loadAppConfig(
           );
         }
       } else {
-        const config = await loadConfigFile(absolutePath, { config: {} });
+        const config = await loadConfigFile(absolutePath, {
+          context: { config: {} },
+        });
         if (config) {
           return config;
         }
@@ -179,14 +215,19 @@ export async function loadAppConfig(
 }
 
 /**
- * High-level: Loads and initializes plugins by executing their onLoad hooks
+ * High-level: Loads and initializes plugins by executing their onLoad and sourceNodes hooks
  * @param plugins - Array of plugin specifiers (package names, file paths, or plugin objects with name and options)
  * @param appConfig - The application's UDL config to pass to plugin onLoad hooks
+ * @param store - Optional node store for sourceNodes hook. If not provided, uses the defaultStore singleton
  */
 export async function loadPlugins(
   plugins: PluginSpec[] = [],
-  appConfig?: UDLConfig
-): Promise<void> {
+  appConfig?: UDLConfig,
+  store?: NodeStore
+) {
+  // Use provided store or fall back to the default singleton
+  const nodeStore = store ?? defaultStore;
+
   for (const pluginSpec of plugins) {
     try {
       // Handle both string and object plugin specs
@@ -245,8 +286,14 @@ export async function loadPlugins(
         context.config = appConfig;
       }
 
-      // Execute onLoad for plugins with context
-      const plugin = await loadConfigFile(udlConfigPath, context);
+      // Execute onLoad and sourceNodes for plugins with context
+      const options: LoadConfigFileOptions = {
+        context,
+        pluginName,
+        store: nodeStore,
+      };
+
+      const plugin = await loadConfigFile(udlConfigPath, options);
 
       if (!plugin) {
         console.warn(

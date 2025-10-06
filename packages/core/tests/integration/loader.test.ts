@@ -235,7 +235,7 @@ describe('loader integration tests', () => {
         config: { port: 4000 },
       };
 
-      await loadConfigFile(configPath, context);
+      await loadConfigFile(configPath, { context });
 
       expect(global.__testLoadContext).toEqual(context);
 
