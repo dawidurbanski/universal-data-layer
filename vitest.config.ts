@@ -22,20 +22,16 @@ export default defineConfig({
         '**/__mocks__/**',
         '**/index.ts',
         '**/handlers/**',
-        // Until we have a proper packages and true working code
-        // we need to ignore the packages folder to stop coverage from failing
-        // TODO: Remove this once we have a proper packages and true working code
-        '**/packages/**',
       ],
       // Until we have a proper packages and true working code
       // we need to ignore the packages folder to stop coverage from failing
       // TODO: Remove this once we have a proper packages and true working code
       thresholds: {
-        branches: 0,
-        functions: 0,
-        lines: 0,
-        statements: 0,
-        '100': false,
+        branches: 100,
+        functions: 100,
+        lines: 100,
+        statements: 100,
+        '100': true,
       },
     },
   },

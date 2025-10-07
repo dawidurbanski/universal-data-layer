@@ -18,7 +18,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "universal-data-layer": ["../../packages/core/src"]
+      "@core/*": ["../../packages/core/dist/src/*"]
     }
   },
   "include": [

@@ -27,7 +27,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
-      'universal-data-layer': resolve(__dirname, '../../packages/core/src'),
+      '@core': resolve(__dirname, '../../packages/core/dist/src'),
       '/packages': resolve(__dirname, '../../packages'),
     },
   },
