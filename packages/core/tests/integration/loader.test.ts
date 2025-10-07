@@ -580,7 +580,7 @@ describe('loader integration tests', () => {
 
       // Error is caught in loadConfigFile, not loadPlugins
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to load UDL config from'),
+        expect.stringContaining('Failed to load config for plugin'),
         expect.any(Error)
       );
 

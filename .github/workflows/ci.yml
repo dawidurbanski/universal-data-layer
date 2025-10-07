@@ -50,11 +50,11 @@ jobs:
 
           echo "Coverage: ${COVERAGE}%"
 
-          if (( $(echo "$COVERAGE < 90" | bc -l) )); then
-            echo "❌ Coverage ${COVERAGE}% is below the 90% threshold"
+          if (( $(echo "$COVERAGE < 100" | bc -l) )); then
+            echo "❌ Coverage ${COVERAGE}% is below the 100% threshold"
             exit 1
           else
-            echo "✅ Coverage ${COVERAGE}% meets the 90% threshold"
+            echo "✅ Coverage ${COVERAGE}% meets the 100% threshold"
           fi
 
       - name: Upload coverage reports
