@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { importMetaResolve } from '@/utils/import-meta-resolve.js';
 import { NodeStore } from '@/nodes/store.js';
@@ -45,7 +45,7 @@ export interface UDLConfig {
  */
 export interface OnLoadContext<T = Record<string, unknown>> {
   /** Plugin-specific options passed from the config */
-  options?: T;
+  options?: T | undefined;
   /** The application's UDL config */
   config?: UDLConfig;
 }
@@ -259,19 +259,10 @@ export async function loadPlugins(
         }
       }
 
-      // Check for TypeScript config first (compiled), then fallback to JS
-      const tsConfigSource = join(pluginPath, 'udl.config.ts');
-      const tsConfigCompiled = join(pluginPath, 'dist', 'udl.config.js');
+      // Check for config files in order of preference
+      const tsConfigPath = join(pluginPath, 'udl.config.ts');
       const jsConfigPath = join(pluginPath, 'udl.config.js');
-
-      let udlConfigPath: string;
-
-      // Prefer compiled TypeScript config if source exists
-      if (existsSync(tsConfigSource)) {
-        udlConfigPath = tsConfigCompiled;
-      } else {
-        udlConfigPath = jsConfigPath;
-      }
+      const tsCompiledPath = join(pluginPath, 'dist', 'udl.config.js');
 
       // Build context for this plugin's onLoad
       const context: OnLoadContext = {};
@@ -286,18 +277,69 @@ export async function loadPlugins(
         context.config = appConfig;
       }
 
-      // Execute onLoad and sourceNodes for plugins with context
-      const options: LoadConfigFileOptions = {
-        context,
-        pluginName,
-        store: nodeStore,
-      };
+      let plugin: UDLConfig | null = null;
+      let configFilePath: string | null = null;
 
-      const plugin = await loadConfigFile(udlConfigPath, options);
+      // Determine which config file exists
+      if (existsSync(tsCompiledPath)) {
+        configFilePath = tsCompiledPath;
+      } else if (existsSync(tsConfigPath)) {
+        configFilePath = tsConfigPath;
+      } else if (existsSync(jsConfigPath)) {
+        configFilePath = jsConfigPath;
+      }
+
+      if (configFilePath) {
+        try {
+          // Load config file to get the plugin's name from config.name
+          const fileUrl = pathToFileURL(resolve(configFilePath)).href;
+
+          let module: UDLConfigFile;
+
+          if (configFilePath.endsWith('.ts')) {
+            const { register } = await import('tsx/esm/api');
+            const unregister = register();
+
+            try {
+              module = await import(fileUrl);
+            } finally {
+              unregister();
+            }
+          } else {
+            module = await import(fileUrl);
+          }
+
+          // Use the plugin's config.name if available, otherwise derive from path
+          const actualPluginName = module.config?.name || basename(pluginPath);
+
+          // Now execute hooks with the actual plugin name
+          if (module.onLoad) {
+            await module.onLoad(context);
+          }
+
+          if (module.sourceNodes && nodeStore) {
+            const actions = createNodeActions(nodeStore, actualPluginName);
+
+            await module.sourceNodes({
+              actions,
+              createNodeId,
+              createContentDigest,
+              options: context?.options,
+            });
+          }
+
+          plugin = module.config;
+        } catch (error) {
+          console.error(
+            `Failed to load config for plugin ${pluginName}:`,
+            error
+          );
+        }
+      }
 
       if (!plugin) {
         console.warn(
-          `Plugin ${pluginName} missing or failed to load config file at ${udlConfigPath}`
+          `Plugin ${pluginName} missing or failed to load config file`
         );
       }
     } catch (error) {

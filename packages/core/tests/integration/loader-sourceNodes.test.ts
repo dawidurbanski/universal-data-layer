@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { loadConfigFile } from '@/loader.js';
+import { loadConfigFile, loadPlugins } from '@/loader.js';
 import { NodeStore, setDefaultStore } from '@/nodes/index.js';
 
 describe('loader - sourceNodes integration', () => {
@@ -377,6 +377,262 @@ describe('loader - sourceNodes integration', () => {
       });
 
       expect(store.getAll()).toHaveLength(0); // sourceNodes should not execute
+    });
+
+    it('should use config.name as owner when loading plugins via loadPlugins', async () => {
+      // Create a plugin directory structure
+      const pluginDir = join(testDir, 'my-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      const configPath = join(pluginDir, 'udl.config.js');
+
+      writeFileSync(
+        configPath,
+        `
+        export const config = {
+          type: 'source',
+          name: 'source-products',
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            id: createNodeId('Product', 'test-1'),
+            internal: {
+              type: 'Product',
+            },
+            parent: undefined,
+            children: undefined,
+            name: 'Test Product',
+          });
+        }
+        `
+      );
+
+      // Load the plugin using loadPlugins (passing the path)
+      await loadPlugins([pluginDir], {}, store);
+
+      const nodes = store.getAll();
+
+      expect(nodes).toHaveLength(1);
+      // The owner should be 'source-products' from config.name, not the path
+      expect(nodes[0]?.internal.owner).toBe('source-products');
+    });
+
+    it('should use directory basename as owner if config.name is not provided', async () => {
+      // Create a plugin directory structure
+      const pluginDir = join(testDir, 'my-custom-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      const configPath = join(pluginDir, 'udl.config.js');
+
+      writeFileSync(
+        configPath,
+        `
+        export const config = {
+          type: 'source',
+          // No name field
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            id: createNodeId('Product', 'test-1'),
+            internal: {
+              type: 'Product',
+            },
+            parent: undefined,
+            children: undefined,
+            name: 'Test Product',
+          });
+        }
+        `
+      );
+
+      // Load the plugin using loadPlugins
+      await loadPlugins([pluginDir], {}, store);
+
+      const nodes = store.getAll();
+
+      expect(nodes).toHaveLength(1);
+      // Should fallback to directory basename
+      expect(nodes[0]?.internal.owner).toBe('my-custom-plugin');
+    });
+
+    it('should handle relative plugin paths correctly', async () => {
+      // Create nested plugin directory
+      const pluginDir = join(testDir, 'plugins', 'data-source-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      const configPath = join(pluginDir, 'udl.config.js');
+
+      writeFileSync(
+        configPath,
+        `
+        export const config = {
+          name: 'data-source',
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            id: createNodeId('Article', '1'),
+            internal: {
+              type: 'Article',
+            },
+            parent: undefined,
+            children: undefined,
+            title: 'Test Article',
+          });
+        }
+        `
+      );
+
+      // Load using absolute path
+      await loadPlugins([pluginDir], {}, store);
+
+      const nodes = store.getAll();
+
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0]?.internal.owner).toBe('data-source');
+      expect(nodes[0]).toMatchObject({
+        title: 'Test Article',
+      });
+    });
+
+    it('should load TypeScript plugin configs with tsx', async () => {
+      // Create a plugin directory with TypeScript config
+      const pluginDir = join(testDir, 'ts-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      const configPath = join(pluginDir, 'udl.config.ts');
+
+      writeFileSync(
+        configPath,
+        `
+        import type { UDLConfig } from '@/loader.js';
+
+        export const config: UDLConfig = {
+          name: 'typescript-plugin',
+        };
+
+        export async function sourceNodes({ actions, createNodeId }: any) {
+          await actions.createNode({
+            id: createNodeId('TSNode', '1'),
+            internal: {
+              type: 'TSNode',
+            },
+            parent: undefined,
+            children: undefined,
+            fromTypeScript: true,
+          });
+        }
+        `
+      );
+
+      // Load the TypeScript plugin
+      await loadPlugins([pluginDir], {}, store);
+
+      const nodes = store.getAll();
+
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0]?.internal.owner).toBe('typescript-plugin');
+      expect(nodes[0]).toMatchObject({
+        fromTypeScript: true,
+      });
+    });
+
+    it('should prefer compiled TypeScript over source TypeScript files', async () => {
+      // Create a plugin with both source .ts and compiled .js
+      const pluginDir = join(testDir, 'compiled-plugin');
+      const distDir = join(pluginDir, 'dist');
+      mkdirSync(distDir, { recursive: true });
+
+      // Source TypeScript file (should be ignored)
+      const tsConfigPath = join(pluginDir, 'udl.config.ts');
+      writeFileSync(
+        tsConfigPath,
+        `
+        export const config = {
+          name: 'should-not-be-used',
+        };
+
+        export async function sourceNodes({ actions, createNodeId }: any) {
+          throw new Error('Should not execute source TS file');
+        }
+        `
+      );
+
+      // Compiled JavaScript file (should be used)
+      const compiledConfigPath = join(distDir, 'udl.config.js');
+      writeFileSync(
+        compiledConfigPath,
+        `
+        export const config = {
+          name: 'compiled-plugin',
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            id: createNodeId('CompiledNode', '1'),
+            internal: {
+              type: 'CompiledNode',
+            },
+            parent: undefined,
+            children: undefined,
+            compiled: true,
+          });
+        }
+        `
+      );
+
+      // Should prefer compiled version
+      await loadPlugins([pluginDir], {}, store);
+
+      const nodes = store.getAll();
+
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0]?.internal.owner).toBe('compiled-plugin');
+      expect(nodes[0]).toMatchObject({
+        compiled: true,
+      });
+    });
+
+    it('should load JavaScript plugin configs directly', async () => {
+      // Create a plugin with .js config
+      const pluginDir = join(testDir, 'js-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      const configPath = join(pluginDir, 'udl.config.js');
+
+      writeFileSync(
+        configPath,
+        `
+        export const config = {
+          name: 'javascript-plugin',
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            id: createNodeId('JSNode', '1'),
+            internal: {
+              type: 'JSNode',
+            },
+            parent: undefined,
+            children: undefined,
+            fromJavaScript: true,
+          });
+        }
+        `
+      );
+
+      // Load the JavaScript plugin
+      await loadPlugins([pluginDir], {}, store);
+
+      const nodes = store.getAll();
+
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0]?.internal.owner).toBe('javascript-plugin');
+      expect(nodes[0]).toMatchObject({
+        fromJavaScript: true,
+      });
     });
   });
 });
