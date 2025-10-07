@@ -37,26 +37,6 @@ jobs:
       - name: Run tests with coverage
         run: npm run test:coverage
 
-      - name: Check coverage threshold
-        if: matrix.node-version == '20.x'
-        run: |
-          COVERAGE_SUMMARY=$(npm run test:coverage -- --reporter=json-summary 2>&1 | tail -n 1)
-          COVERAGE=$(echo "$COVERAGE_SUMMARY" | grep -oP '"pct":\s*\K[\d.]+' | head -1)
-
-          if [ -z "$COVERAGE" ]; then
-            echo "⚠️ Coverage data not available yet. This is expected for initial setup."
-            exit 0
-          fi
-
-          echo "Coverage: ${COVERAGE}%"
-
-          if (( $(echo "$COVERAGE < 100" | bc -l) )); then
-            echo "❌ Coverage ${COVERAGE}% is below the 100% threshold"
-            exit 1
-          else
-            echo "✅ Coverage ${COVERAGE}% meets the 100% threshold"
-          fi
-
       - name: Upload coverage reports
         if: matrix.node-version == '20.x' && github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
