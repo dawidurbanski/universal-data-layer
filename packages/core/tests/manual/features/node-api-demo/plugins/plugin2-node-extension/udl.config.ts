@@ -12,13 +12,7 @@ export const config = {
   name: 'extend-products',
 };
 
-export const onLoad = () => {
-  console.log('[Plugin 2] Loading product enrichment...');
-};
-
 export async function sourceNodes({ actions }: SourceNodesContext) {
-  console.log('[Plugin 2] Enriching product nodes...');
-
   // Query all Product nodes created by Plugin 1
   const productNodes = actions.getNodesByType('Product');
 
@@ -49,11 +43,5 @@ export async function sourceNodes({ actions }: SourceNodesContext) {
       discountedPrice,
       inStock,
     });
-
-    console.log(
-      `[Plugin 2] Enriched Product: ${(node as { name?: string }).name} (${priceCategory})`
-    );
   }
-
-  console.log(`[Plugin 2] Enriched ${productNodes.length} products`);
 }
