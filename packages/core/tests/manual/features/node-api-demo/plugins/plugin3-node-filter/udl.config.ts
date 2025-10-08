@@ -33,18 +33,14 @@ export async function sourceNodes({ actions }: SourceNodesContext) {
 
     // Remove discontinued products
     if (product.category === 'discontinued') {
-      await actions.deleteNode(node.id);
-      console.log(`[Plugin 3] Removed discontinued product: ${product.name}`);
-      deletedCount++;
+      await actions.deleteNode(node.internal.id);
       continue;
     }
 
     // Could also filter by other criteria
     // Example: Remove out-of-stock products
     if (product.inStock === false) {
-      await actions.deleteNode(node.id);
-      console.log(`[Plugin 3] Removed out-of-stock product: ${product.name}`);
-      deletedCount++;
+      await actions.deleteNode(node.internal.id);
     }
   }
 

@@ -33,7 +33,7 @@ export interface CreateNodeOptions {
 /**
  * Creates or updates a node in the node store
  *
- * - Validates required fields (id, internal.type)
+ * - Validates required fields (internal.id, internal.type)
  * - Auto-generates contentDigest if not provided
  * - Sets created/modified timestamps
  * - Updates parent-child relationships bidirectionally
@@ -48,8 +48,8 @@ export interface CreateNodeOptions {
  * const store = new NodeStore();
  *
  * await createNode({
- *   id: 'product-123',
  *   internal: {
+ *     id: 'product-123',
  *     type: 'Product',
  *     owner: 'shopify-source'
  *   },
@@ -67,8 +67,8 @@ export async function createNode(
   const { store, owner } = options;
 
   // Validate required fields
-  if (!input.id) {
-    throw new Error('Node id is required');
+  if (!input.internal?.id) {
+    throw new Error('Node internal.id is required');
   }
 
   if (!input.internal?.type) {
@@ -76,7 +76,7 @@ export async function createNode(
   }
 
   // Check if node already exists to determine timestamps
-  const existingNode = store.get(input.id);
+  const existingNode = store.get(input.internal.id);
   const now = Date.now();
   const createdAt = existingNode?.internal.createdAt ?? now;
   const modifiedAt = now;
@@ -85,6 +85,7 @@ export async function createNode(
   const node: Node = {
     ...input,
     internal: {
+      id: input.internal.id,
       type: input.internal.type,
       owner: owner || input.internal.owner,
       contentDigest: input.internal.contentDigest || createContentDigest(input),
@@ -101,8 +102,8 @@ export async function createNode(
       if (!parentNode.children) {
         parentNode.children = [];
       }
-      if (!parentNode.children.includes(node.id)) {
-        parentNode.children.push(node.id);
+      if (!parentNode.children.includes(node.internal.id)) {
+        parentNode.children.push(node.internal.id);
         // Update parent node in store with new children array
         store.set(parentNode);
       }
@@ -113,7 +114,9 @@ export async function createNode(
   if (existingNode?.parent && existingNode.parent !== node.parent) {
     const oldParent = store.get(existingNode.parent);
     if (oldParent?.children) {
-      oldParent.children = oldParent.children.filter((id) => id !== node.id);
+      oldParent.children = oldParent.children.filter(
+        (id) => id !== node.internal.id
+      );
       store.set(oldParent);
     }
   }

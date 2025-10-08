@@ -12,8 +12,8 @@ describe('createNode', () => {
   describe('basic node creation', () => {
     it('creates a simple node with required fields', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
@@ -21,7 +21,7 @@ describe('createNode', () => {
 
       const node = await createNode(input, { store });
 
-      expect(node.id).toBe('test-1');
+      expect(node.internal.id).toBe('test-1');
       expect(node.internal.type).toBe('TestNode');
       expect(node.internal.owner).toBe('test-plugin');
       expect(node.internal.contentDigest).toBeTruthy();
@@ -31,8 +31,8 @@ describe('createNode', () => {
 
     it('stores the node in the NodeStore', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
@@ -42,13 +42,13 @@ describe('createNode', () => {
 
       const storedNode = store.get('test-1');
       expect(storedNode).toBeDefined();
-      expect(storedNode?.id).toBe('test-1');
+      expect(storedNode?.internal.id).toBe('test-1');
     });
 
     it('creates node with custom data fields', async () => {
       const input: CreateNodeInput = {
-        id: 'product-1',
         internal: {
+          id: 'product-1',
           type: 'Product',
           owner: 'shopify',
         },
@@ -60,7 +60,9 @@ describe('createNode', () => {
       const node = await createNode(input, { store });
 
       expect(node).toMatchObject({
-        id: 'product-1',
+        internal: {
+          id: 'product-1',
+        },
         name: 'Widget',
         price: 29.99,
         category: 'gadgets',
@@ -78,14 +80,14 @@ describe('createNode', () => {
       } as CreateNodeInput;
 
       await expect(createNode(input, { store })).rejects.toThrow(
-        'Node id is required'
+        'Node internal.id is required'
       );
     });
 
     it('throws error when internal.type is missing', async () => {
       const input = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           owner: 'test-plugin',
         },
       } as CreateNodeInput;
@@ -99,8 +101,8 @@ describe('createNode', () => {
   describe('content digest', () => {
     it('auto-generates contentDigest if not provided', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
@@ -115,8 +117,8 @@ describe('createNode', () => {
     it('uses provided contentDigest if given', async () => {
       const customDigest = 'custom-digest-123';
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
           contentDigest: customDigest,
@@ -130,14 +132,12 @@ describe('createNode', () => {
 
     it('creates different digests for different data', async () => {
       const input1: CreateNodeInput = {
-        id: 'test-1',
-        internal: { type: 'TestNode', owner: 'test-plugin' },
+        internal: { id: 'test-1', type: 'TestNode', owner: 'test-plugin' },
         data: 'value1',
       } as CreateNodeInput;
 
       const input2: CreateNodeInput = {
-        id: 'test-2',
-        internal: { type: 'TestNode', owner: 'test-plugin' },
+        internal: { id: 'test-2', type: 'TestNode', owner: 'test-plugin' },
         data: 'value2',
       } as CreateNodeInput;
 
@@ -153,8 +153,8 @@ describe('createNode', () => {
   describe('timestamps', () => {
     it('sets createdAt and modifiedAt on first creation', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
@@ -170,8 +170,8 @@ describe('createNode', () => {
 
     it('preserves createdAt but updates modifiedAt on update', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
@@ -185,8 +185,8 @@ describe('createNode', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       const updatedInput: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
@@ -206,8 +206,8 @@ describe('createNode', () => {
       const customModifiedAt = 2000000;
 
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
           createdAt: customCreatedAt,
@@ -225,8 +225,8 @@ describe('createNode', () => {
   describe('owner tracking', () => {
     it('uses owner from input', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'my-plugin',
         },
@@ -239,8 +239,8 @@ describe('createNode', () => {
 
     it('uses owner from options if provided', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'input-owner',
         },
@@ -253,8 +253,8 @@ describe('createNode', () => {
 
     it('prefers options owner over input owner', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'input-owner',
         },
@@ -273,8 +273,8 @@ describe('createNode', () => {
     it('adds node ID to parent children array', async () => {
       // Create parent
       const parent: CreateNodeInput = {
-        id: 'parent-1',
         internal: {
+          id: 'parent-1',
           type: 'Parent',
           owner: 'test-plugin',
         },
@@ -284,8 +284,8 @@ describe('createNode', () => {
 
       // Create child
       const child: CreateNodeInput = {
-        id: 'child-1',
         internal: {
+          id: 'child-1',
           type: 'Child',
           owner: 'test-plugin',
         },
@@ -301,8 +301,8 @@ describe('createNode', () => {
     it('does not duplicate child IDs in parent children array', async () => {
       // Create parent
       const parent: CreateNodeInput = {
-        id: 'parent-1',
         internal: {
+          id: 'parent-1',
           type: 'Parent',
           owner: 'test-plugin',
         },
@@ -312,8 +312,8 @@ describe('createNode', () => {
 
       // Create child
       const child: CreateNodeInput = {
-        id: 'child-1',
         internal: {
+          id: 'child-1',
           type: 'Child',
           owner: 'test-plugin',
         },
@@ -330,12 +330,10 @@ describe('createNode', () => {
     it('updates parent when child parent changes', async () => {
       // Create two parents
       const parent1: CreateNodeInput = {
-        id: 'parent-1',
-        internal: { type: 'Parent', owner: 'test-plugin' },
+        internal: { id: 'parent-1', type: 'Parent', owner: 'test-plugin' },
       };
       const parent2: CreateNodeInput = {
-        id: 'parent-2',
-        internal: { type: 'Parent', owner: 'test-plugin' },
+        internal: { id: 'parent-2', type: 'Parent', owner: 'test-plugin' },
       };
 
       await createNode(parent1, { store });
@@ -343,8 +341,7 @@ describe('createNode', () => {
 
       // Create child with parent-1
       const child: CreateNodeInput = {
-        id: 'child-1',
-        internal: { type: 'Child', owner: 'test-plugin' },
+        internal: { id: 'child-1', type: 'Child', owner: 'test-plugin' },
         parent: 'parent-1',
       };
 
@@ -352,8 +349,7 @@ describe('createNode', () => {
 
       // Update child to have parent-2
       const updatedChild: CreateNodeInput = {
-        id: 'child-1',
-        internal: { type: 'Child', owner: 'test-plugin' },
+        internal: { id: 'child-1', type: 'Child', owner: 'test-plugin' },
         parent: 'parent-2',
       };
 
@@ -368,8 +364,8 @@ describe('createNode', () => {
 
     it('handles parent that does not exist gracefully', async () => {
       const child: CreateNodeInput = {
-        id: 'child-1',
         internal: {
+          id: 'child-1',
           type: 'Child',
           owner: 'test-plugin',
         },
@@ -384,8 +380,7 @@ describe('createNode', () => {
   describe('node updates', () => {
     it('fully replaces existing node', async () => {
       const original: CreateNodeInput = {
-        id: 'test-1',
-        internal: { type: 'TestNode', owner: 'test-plugin' },
+        internal: { id: 'test-1', type: 'TestNode', owner: 'test-plugin' },
         name: 'Original',
         price: 100,
       } as CreateNodeInput;
@@ -393,8 +388,7 @@ describe('createNode', () => {
       await createNode(original, { store });
 
       const updated: CreateNodeInput = {
-        id: 'test-1',
-        internal: { type: 'TestNode', owner: 'test-plugin' },
+        internal: { id: 'test-1', type: 'TestNode', owner: 'test-plugin' },
         name: 'Updated',
       } as CreateNodeInput;
 
@@ -402,7 +396,9 @@ describe('createNode', () => {
 
       const node = store.get('test-1');
       expect(node).toMatchObject({
-        id: 'test-1',
+        internal: {
+          id: 'test-1',
+        },
         name: 'Updated',
       });
       // price should not exist in updated node
@@ -411,8 +407,7 @@ describe('createNode', () => {
 
     it('maintains type index on update', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
-        internal: { type: 'TestNode', owner: 'test-plugin' },
+        internal: { id: 'test-1', type: 'TestNode', owner: 'test-plugin' },
       };
 
       await createNode(input, { store });
@@ -420,7 +415,7 @@ describe('createNode', () => {
 
       const nodes = store.getByType('TestNode');
       expect(nodes).toHaveLength(1);
-      expect(nodes[0]?.id).toBe('test-1');
+      expect(nodes[0]?.internal.id).toBe('test-1');
     });
   });
 });

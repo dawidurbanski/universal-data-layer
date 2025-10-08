@@ -44,7 +44,7 @@ export async function sourceNodes({ actions }: SourceNodesContext) {
     const inStock = product.category !== 'discontinued';
 
     // Extend the node with computed fields
-    await actions.extendNode(node.id, {
+    await actions.extendNode(node.internal.id, {
       priceCategory,
       discountedPrice,
       inStock,

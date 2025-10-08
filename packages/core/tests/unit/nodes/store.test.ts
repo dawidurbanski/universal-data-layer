@@ -12,8 +12,8 @@ describe('NodeStore', () => {
   describe('set and get', () => {
     it('should store and retrieve a node by ID', () => {
       const node: Node = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestType',
           contentDigest: 'abc123',
           owner: 'test-plugin',
@@ -34,8 +34,8 @@ describe('NodeStore', () => {
 
     it('should update existing node when set with same ID', () => {
       const node1: Node = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestType',
           contentDigest: 'abc123',
           owner: 'test-plugin',
@@ -45,8 +45,8 @@ describe('NodeStore', () => {
       };
 
       const node2: Node = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestType',
           contentDigest: 'xyz789',
           owner: 'test-plugin',
@@ -66,8 +66,8 @@ describe('NodeStore', () => {
   describe('getByType', () => {
     it('should retrieve all nodes of a specific type', () => {
       const product1: Node = {
-        id: 'product-1',
         internal: {
+          id: 'product-1',
           type: 'Product',
           contentDigest: 'abc',
           owner: 'shop-plugin',
@@ -77,8 +77,8 @@ describe('NodeStore', () => {
       };
 
       const product2: Node = {
-        id: 'product-2',
         internal: {
+          id: 'product-2',
           type: 'Product',
           contentDigest: 'def',
           owner: 'shop-plugin',
@@ -88,8 +88,8 @@ describe('NodeStore', () => {
       };
 
       const post: Node = {
-        id: 'post-1',
         internal: {
+          id: 'post-1',
           type: 'BlogPost',
           contentDigest: 'ghi',
           owner: 'cms-plugin',
@@ -120,8 +120,8 @@ describe('NodeStore', () => {
   describe('getAll', () => {
     it('should return all nodes', () => {
       const node1: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'Type1',
           contentDigest: 'abc',
           owner: 'plugin1',
@@ -131,8 +131,8 @@ describe('NodeStore', () => {
       };
 
       const node2: Node = {
-        id: 'node-2',
         internal: {
+          id: 'node-2',
           type: 'Type2',
           contentDigest: 'def',
           owner: 'plugin2',
@@ -158,8 +158,8 @@ describe('NodeStore', () => {
   describe('getTypes', () => {
     it('should return all registered node types', () => {
       const node1: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'Product',
           contentDigest: 'abc',
           owner: 'plugin1',
@@ -169,8 +169,8 @@ describe('NodeStore', () => {
       };
 
       const node2: Node = {
-        id: 'node-2',
         internal: {
+          id: 'node-2',
           type: 'BlogPost',
           contentDigest: 'def',
           owner: 'plugin2',
@@ -194,8 +194,8 @@ describe('NodeStore', () => {
 
     it('should not duplicate types when multiple nodes of same type exist', () => {
       const node1: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'Product',
           contentDigest: 'abc',
           owner: 'plugin',
@@ -205,8 +205,8 @@ describe('NodeStore', () => {
       };
 
       const node2: Node = {
-        id: 'node-2',
         internal: {
+          id: 'node-2',
           type: 'Product',
           contentDigest: 'def',
           owner: 'plugin',
@@ -226,8 +226,8 @@ describe('NodeStore', () => {
   describe('countByType', () => {
     it('should return correct count for a type', () => {
       const node1: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'Product',
           contentDigest: 'abc',
           owner: 'plugin',
@@ -237,8 +237,8 @@ describe('NodeStore', () => {
       };
 
       const node2: Node = {
-        id: 'node-2',
         internal: {
+          id: 'node-2',
           type: 'Product',
           contentDigest: 'def',
           owner: 'plugin',
@@ -261,8 +261,8 @@ describe('NodeStore', () => {
   describe('delete', () => {
     it('should delete a node and return true', () => {
       const node: Node = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestType',
           contentDigest: 'abc123',
           owner: 'test-plugin',
@@ -284,8 +284,8 @@ describe('NodeStore', () => {
 
     it('should remove node from type index', () => {
       const node: Node = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestType',
           contentDigest: 'abc123',
           owner: 'test-plugin',
@@ -303,8 +303,8 @@ describe('NodeStore', () => {
 
     it('should clean up type index when last node of type is deleted', () => {
       const node1: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'Product',
           contentDigest: 'abc',
           owner: 'plugin',
@@ -314,8 +314,8 @@ describe('NodeStore', () => {
       };
 
       const node2: Node = {
-        id: 'node-2',
         internal: {
+          id: 'node-2',
           type: 'Product',
           contentDigest: 'def',
           owner: 'plugin',
@@ -340,8 +340,8 @@ describe('NodeStore', () => {
   describe('has', () => {
     it('should return true if node exists', () => {
       const node: Node = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestType',
           contentDigest: 'abc123',
           owner: 'test-plugin',
@@ -366,8 +366,8 @@ describe('NodeStore', () => {
 
     it('should return correct count of nodes', () => {
       const node1: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'Type1',
           contentDigest: 'abc',
           owner: 'plugin',
@@ -377,8 +377,8 @@ describe('NodeStore', () => {
       };
 
       const node2: Node = {
-        id: 'node-2',
         internal: {
+          id: 'node-2',
           type: 'Type2',
           contentDigest: 'def',
           owner: 'plugin',
@@ -396,8 +396,8 @@ describe('NodeStore', () => {
 
     it('should not increase when updating existing node', () => {
       const node1: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'Type1',
           contentDigest: 'abc',
           owner: 'plugin',
@@ -407,8 +407,8 @@ describe('NodeStore', () => {
       };
 
       const node2: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'Type1',
           contentDigest: 'xyz',
           owner: 'plugin',
@@ -426,8 +426,8 @@ describe('NodeStore', () => {
   describe('clear', () => {
     it('should remove all nodes', () => {
       const node1: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'Type1',
           contentDigest: 'abc',
           owner: 'plugin',
@@ -437,8 +437,8 @@ describe('NodeStore', () => {
       };
 
       const node2: Node = {
-        id: 'node-2',
         internal: {
+          id: 'node-2',
           type: 'Type2',
           contentDigest: 'def',
           owner: 'plugin',
@@ -465,8 +465,8 @@ describe('NodeStore', () => {
   describe('type index consistency', () => {
     it('should maintain type index when updating node with same type', () => {
       const node1: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'Product',
           contentDigest: 'abc',
           owner: 'plugin',
@@ -476,8 +476,8 @@ describe('NodeStore', () => {
       };
 
       const node2: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'Product',
           contentDigest: 'xyz',
           owner: 'plugin',
@@ -495,8 +495,8 @@ describe('NodeStore', () => {
 
     it('should update type index when changing node type', () => {
       const node1: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'Product',
           contentDigest: 'abc',
           owner: 'plugin',
@@ -506,8 +506,8 @@ describe('NodeStore', () => {
       };
 
       const node2: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'BlogPost',
           contentDigest: 'xyz',
           owner: 'plugin',
@@ -533,8 +533,8 @@ describe('NodeStore', () => {
       // Insert 10000 nodes
       for (let i = 0; i < 10000; i++) {
         const node: Node = {
-          id: `node-${i}`,
           internal: {
+            id: `node-${i}`,
             type: `Type${i % 10}`, // 10 different types
             contentDigest: `digest-${i}`,
             owner: 'test-plugin',
