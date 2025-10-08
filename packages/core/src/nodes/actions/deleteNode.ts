@@ -4,7 +4,7 @@ import type { NodeStore } from '@/nodes/store.js';
 /**
  * Input for deleting a node - accepts either a node object or node ID
  */
-export type DeleteNodeInput = string | Node | { id: string };
+export type DeleteNodeInput = string | Node | { internal: { id: string } };
 
 /**
  * Options for deleteNode function
@@ -19,14 +19,14 @@ export interface DeleteNodeOptions {
 /**
  * Deletes a node from the node store
  *
- * - Accepts node object, node ID string, or object with id property
+ * - Accepts node object, node ID string, or object with internal.id property
  * - Removes node from primary and type indexes
  * - Updates parent's children array if node has a parent
  * - Optionally cascade deletes all children
  * - Handles non-existent nodes gracefully (returns false)
  * - Returns true if deletion occurred, false otherwise
  *
- * @param input - Node, node ID, or object with id to delete
+ * @param input - Node, node ID, or object with internal.id to delete
  * @param options - Configuration including NodeStore instance and cascade option
  *
  * @example
@@ -53,7 +53,7 @@ export async function deleteNode(
   // Validate input type
   if (input === null || input === undefined) {
     throw new Error(
-      'Invalid deleteNode input: must be string, Node, or object with id'
+      'Invalid deleteNode input: must be string, Node, or object with internal.id'
     );
   }
 
@@ -61,11 +61,11 @@ export async function deleteNode(
   let nodeId: string;
   if (typeof input === 'string') {
     nodeId = input;
-  } else if (typeof input === 'object' && 'id' in input) {
-    nodeId = input.id;
+  } else if (typeof input === 'object' && 'internal' in input) {
+    nodeId = input.internal.id;
   } else {
     throw new Error(
-      'Invalid deleteNode input: must be string, Node, or object with id'
+      'Invalid deleteNode input: must be string, Node, or object with internal.id'
     );
   }
 

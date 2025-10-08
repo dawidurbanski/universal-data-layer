@@ -16,8 +16,8 @@ describe('deleteNode', () => {
   describe('basic deletion', () => {
     it('deletes a node by ID string', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
@@ -35,8 +35,8 @@ describe('deleteNode', () => {
 
     it('deletes a node by node object', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
@@ -49,17 +49,20 @@ describe('deleteNode', () => {
       expect(store.has('test-1')).toBe(false);
     });
 
-    it('deletes a node by object with id property', async () => {
+    it('deletes a node by object with internal.id property', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
       };
 
       await createNode(input, { store });
-      const deleted = await deleteNode({ id: 'test-1' }, { store });
+      const deleted = await deleteNode(
+        { internal: { id: 'test-1' } },
+        { store }
+      );
 
       expect(deleted).toBe(true);
       expect(store.has('test-1')).toBe(false);
@@ -73,8 +76,8 @@ describe('deleteNode', () => {
 
     it('handles deleting same node twice gracefully', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
@@ -93,8 +96,8 @@ describe('deleteNode', () => {
   describe('type index cleanup', () => {
     it('removes node from type index', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
@@ -110,8 +113,8 @@ describe('deleteNode', () => {
 
     it('removes type from type index when last node of type is deleted', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
@@ -127,15 +130,15 @@ describe('deleteNode', () => {
 
     it('maintains type index when deleting one of many nodes', async () => {
       const input1: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
       };
       const input2: CreateNodeInput = {
-        id: 'test-2',
         internal: {
+          id: 'test-2',
           type: 'TestNode',
           owner: 'test-plugin',
         },
@@ -156,8 +159,8 @@ describe('deleteNode', () => {
     it('removes node from parent children array', async () => {
       // Create parent
       const parent: CreateNodeInput = {
-        id: 'parent-1',
         internal: {
+          id: 'parent-1',
           type: 'Parent',
           owner: 'test-plugin',
         },
@@ -166,8 +169,8 @@ describe('deleteNode', () => {
 
       // Create child
       const child: CreateNodeInput = {
-        id: 'child-1',
         internal: {
+          id: 'child-1',
           type: 'Child',
           owner: 'test-plugin',
         },
@@ -189,8 +192,8 @@ describe('deleteNode', () => {
     it('handles deletion when parent has multiple children', async () => {
       // Create parent
       const parent: CreateNodeInput = {
-        id: 'parent-1',
         internal: {
+          id: 'parent-1',
           type: 'Parent',
           owner: 'test-plugin',
         },
@@ -199,16 +202,16 @@ describe('deleteNode', () => {
 
       // Create children
       const child1: CreateNodeInput = {
-        id: 'child-1',
         internal: {
+          id: 'child-1',
           type: 'Child',
           owner: 'test-plugin',
         },
         parent: 'parent-1',
       };
       const child2: CreateNodeInput = {
-        id: 'child-2',
         internal: {
+          id: 'child-2',
           type: 'Child',
           owner: 'test-plugin',
         },
@@ -228,8 +231,8 @@ describe('deleteNode', () => {
 
     it('handles deletion when parent does not exist', async () => {
       const child: CreateNodeInput = {
-        id: 'child-1',
         internal: {
+          id: 'child-1',
           type: 'Child',
           owner: 'test-plugin',
         },
@@ -244,8 +247,8 @@ describe('deleteNode', () => {
     it('removes parent reference from children when deleting without cascade', async () => {
       // Create parent
       const parent: CreateNodeInput = {
-        id: 'parent-1',
         internal: {
+          id: 'parent-1',
           type: 'Parent',
           owner: 'test-plugin',
         },
@@ -254,8 +257,8 @@ describe('deleteNode', () => {
 
       // Create child
       const child: CreateNodeInput = {
-        id: 'child-1',
         internal: {
+          id: 'child-1',
           type: 'Child',
           owner: 'test-plugin',
         },
@@ -277,8 +280,8 @@ describe('deleteNode', () => {
     it('deletes all children when cascade is true', async () => {
       // Create parent
       const parent: CreateNodeInput = {
-        id: 'parent-1',
         internal: {
+          id: 'parent-1',
           type: 'Parent',
           owner: 'test-plugin',
         },
@@ -287,16 +290,16 @@ describe('deleteNode', () => {
 
       // Create children
       const child1: CreateNodeInput = {
-        id: 'child-1',
         internal: {
+          id: 'child-1',
           type: 'Child',
           owner: 'test-plugin',
         },
         parent: 'parent-1',
       };
       const child2: CreateNodeInput = {
-        id: 'child-2',
         internal: {
+          id: 'child-2',
           type: 'Child',
           owner: 'test-plugin',
         },
@@ -316,8 +319,8 @@ describe('deleteNode', () => {
     it('cascades through multiple levels of hierarchy', async () => {
       // Create grandparent -> parent -> child hierarchy
       const grandparent: CreateNodeInput = {
-        id: 'grandparent-1',
         internal: {
+          id: 'grandparent-1',
           type: 'Grandparent',
           owner: 'test-plugin',
         },
@@ -325,8 +328,8 @@ describe('deleteNode', () => {
       await createNode(grandparent, { store });
 
       const parent: CreateNodeInput = {
-        id: 'parent-1',
         internal: {
+          id: 'parent-1',
           type: 'Parent',
           owner: 'test-plugin',
         },
@@ -335,8 +338,8 @@ describe('deleteNode', () => {
       await createNode(parent, { store });
 
       const child: CreateNodeInput = {
-        id: 'child-1',
         internal: {
+          id: 'child-1',
           type: 'Child',
           owner: 'test-plugin',
         },
@@ -355,8 +358,8 @@ describe('deleteNode', () => {
     it('does not delete children when cascade is false', async () => {
       // Create parent
       const parent: CreateNodeInput = {
-        id: 'parent-1',
         internal: {
+          id: 'parent-1',
           type: 'Parent',
           owner: 'test-plugin',
         },
@@ -365,8 +368,8 @@ describe('deleteNode', () => {
 
       // Create child
       const child: CreateNodeInput = {
-        id: 'child-1',
         internal: {
+          id: 'child-1',
           type: 'Child',
           owner: 'test-plugin',
         },
@@ -383,8 +386,8 @@ describe('deleteNode', () => {
 
     it('handles cascade when node has no children', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
@@ -424,8 +427,8 @@ describe('deleteNode', () => {
   describe('edge cases', () => {
     it('handles deleting node with empty children array', async () => {
       const input: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
@@ -438,15 +441,15 @@ describe('deleteNode', () => {
 
     it('correctly updates store size', async () => {
       const input1: CreateNodeInput = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'TestNode',
           owner: 'test-plugin',
         },
       };
       const input2: CreateNodeInput = {
-        id: 'test-2',
         internal: {
+          id: 'test-2',
           type: 'TestNode',
           owner: 'test-plugin',
         },
@@ -468,8 +471,8 @@ describe('deleteNode', () => {
     it('efficiently deletes node with many children using cascade', async () => {
       // Create parent
       const parent: CreateNodeInput = {
-        id: 'parent-1',
         internal: {
+          id: 'parent-1',
           type: 'Parent',
           owner: 'test-plugin',
         },
@@ -479,8 +482,8 @@ describe('deleteNode', () => {
       // Create 100 children
       for (let i = 0; i < 100; i++) {
         const child: CreateNodeInput = {
-          id: `child-${i}`,
           internal: {
+            id: `child-${i}`,
             type: 'Child',
             owner: 'test-plugin',
           },
@@ -500,8 +503,8 @@ describe('deleteNode', () => {
     it('efficiently removes parent reference from many children without cascade', async () => {
       // Create parent
       const parent: CreateNodeInput = {
-        id: 'parent-1',
         internal: {
+          id: 'parent-1',
           type: 'Parent',
           owner: 'test-plugin',
         },
@@ -511,8 +514,8 @@ describe('deleteNode', () => {
       // Create 50 children
       for (let i = 0; i < 50; i++) {
         const child: CreateNodeInput = {
-          id: `child-${i}`,
           internal: {
+            id: `child-${i}`,
             type: 'Child',
             owner: 'test-plugin',
           },

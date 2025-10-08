@@ -35,7 +35,6 @@ export default function NodeApiDemo() {
           query: `
             query {
               allProduct {
-                id
                 name
                 price
                 inStock
@@ -43,6 +42,7 @@ export default function NodeApiDemo() {
                 priceCategory
                 discountedPrice
                 internal {
+                  id
                   type
                   owner
                   contentDigest
@@ -63,7 +63,6 @@ export default function NodeApiDemo() {
       // Should be handled by Issue #25: [1.3] Create Type System and GraphQL Schema Generation #25
       // See: https://github.com/dawidurbanski/universal-data-layer/issues/25
       type Product = {
-        id: string;
         name: string;
         price: number;
         inStock: boolean;
@@ -71,6 +70,7 @@ export default function NodeApiDemo() {
         priceCategory: string;
         discountedPrice: number;
         internal: {
+          id: string;
           type: string;
           owner: string;
           contentDigest: string;
@@ -88,9 +88,9 @@ export default function NodeApiDemo() {
       // Transform GraphQL results to node display format
       const products = (result.data.allProduct || []) as Product[];
       const nodeDisplays: NodeDisplay[] = products.map((product) => {
-        const { id, internal, ...fields } = product;
+        const { internal, ...fields } = product;
         return {
-          id,
+          id: internal.id,
           type: internal.type,
           owner: internal.owner,
           fields,

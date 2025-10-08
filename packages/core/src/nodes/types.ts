@@ -3,6 +3,9 @@
  * Contains system-level information about the node's origin, integrity, and lifecycle
  */
 export interface NodeInternal {
+  /** Globally unique identifier for this node */
+  id: string;
+
   /** The GraphQL type name for this node (e.g., 'Product', 'BlogPost') */
   type: string;
 
@@ -34,8 +37,8 @@ export interface NodeInternal {
  *
  * // Create a node
  * const product: ProductNode = {
- *   id: 'product-123',
  *   internal: {
+ *     id: 'product-123',
  *     type: 'Product',
  *     contentDigest: 'abc123...',
  *     owner: 'my-source-plugin',
@@ -51,9 +54,6 @@ export interface NodeInternal {
  * ```
  */
 export interface Node {
-  /** Globally unique identifier for this node */
-  id: string;
-
   /** Internal metadata about this node's type, origin, and integrity */
   internal: NodeInternal;
 

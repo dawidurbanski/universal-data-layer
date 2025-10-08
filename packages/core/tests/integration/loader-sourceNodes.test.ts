@@ -41,8 +41,8 @@ describe('loader - sourceNodes integration', () => {
 
         export async function sourceNodes({ actions, createNodeId, createContentDigest, options }) {
           await actions.createNode({
-            id: createNodeId('Product', 'test-1'),
             internal: {
+              id: createNodeId('Product', 'test-1'),
               type: 'Product',
             },
             parent: undefined,
@@ -83,8 +83,8 @@ describe('loader - sourceNodes integration', () => {
 
         export async function sourceNodes({ actions, createNodeId, options }) {
           await actions.createNode({
-            id: createNodeId('Config', 'settings'),
             internal: {
+              id: createNodeId('Config', 'settings'),
               type: 'Config',
             },
             parent: undefined,
@@ -143,8 +143,10 @@ describe('loader - sourceNodes integration', () => {
           }
 
           await actions.createNode({
+            internal: {
             id: id1,
-            internal: { type: 'Product' },
+              type: 'Product',
+            },
             parent: undefined,
             children: undefined,
           });
@@ -176,8 +178,8 @@ describe('loader - sourceNodes integration', () => {
           const digest = createContentDigest(data);
 
           await actions.createNode({
-            id: createNodeId('Product', '1'),
             internal: {
+              id: createNodeId('Product', '1'),
               type: 'Product',
               contentDigest: digest,
             },
@@ -213,8 +215,10 @@ describe('loader - sourceNodes integration', () => {
 
         export async function sourceNodes({ actions, createNodeId }) {
           await actions.createNode({
+            internal: {
             id: createNodeId('Product', 'p1'),
-            internal: { type: 'Product' },
+              type: 'Product',
+            },
             parent: undefined,
             children: undefined,
             source: 'plugin1',
@@ -230,8 +234,10 @@ describe('loader - sourceNodes integration', () => {
 
         export async function sourceNodes({ actions, createNodeId }) {
           await actions.createNode({
+            internal: {
             id: createNodeId('Product', 'p2'),
-            internal: { type: 'Product' },
+              type: 'Product',
+            },
             parent: undefined,
             children: undefined,
             source: 'plugin2',
@@ -275,8 +281,10 @@ describe('loader - sourceNodes integration', () => {
         export async function sourceNodes({ actions, createNodeId }) {
           // Create a node
           const node = await actions.createNode({
+            internal: {
             id: createNodeId('Product', '1'),
-            internal: { type: 'Product' },
+              type: 'Product',
+            },
             parent: undefined,
             children: undefined,
             name: 'Original',
@@ -284,11 +292,11 @@ describe('loader - sourceNodes integration', () => {
           });
 
           // Get the node
-          const retrieved = actions.getNode(node.id);
+          const retrieved = actions.getNode(node.internal.id);
           if (!retrieved) throw new Error('getNode failed');
 
           // Extend the node
-          const extended = await actions.extendNode(node.id, {
+          const extended = await actions.extendNode(node.internal.id, {
             category: 'Electronics',
           });
 
@@ -303,10 +311,10 @@ describe('loader - sourceNodes integration', () => {
           if (products.length !== 1) throw new Error('getNodesByType failed');
 
           // Delete the node
-          const deleted = await actions.deleteNode(node.id);
+          const deleted = await actions.deleteNode(node.internal.id);
           if (!deleted) throw new Error('deleteNode failed');
 
-          const afterDelete = actions.getNode(node.id);
+          const afterDelete = actions.getNode(node.internal.id);
           if (afterDelete) throw new Error('Node should be deleted');
         }
         `
@@ -361,8 +369,10 @@ describe('loader - sourceNodes integration', () => {
 
         export async function sourceNodes({ actions, createNodeId }) {
           await actions.createNode({
+            internal: {
             id: createNodeId('Product', '1'),
-            internal: { type: 'Product' },
+              type: 'Product',
+            },
             parent: undefined,
             children: undefined,
           });
@@ -396,8 +406,8 @@ describe('loader - sourceNodes integration', () => {
 
         export async function sourceNodes({ actions, createNodeId }) {
           await actions.createNode({
-            id: createNodeId('Product', 'test-1'),
             internal: {
+              id: createNodeId('Product', 'test-1'),
               type: 'Product',
             },
             parent: undefined,
@@ -435,8 +445,8 @@ describe('loader - sourceNodes integration', () => {
 
         export async function sourceNodes({ actions, createNodeId }) {
           await actions.createNode({
-            id: createNodeId('Product', 'test-1'),
             internal: {
+              id: createNodeId('Product', 'test-1'),
               type: 'Product',
             },
             parent: undefined,
@@ -473,8 +483,8 @@ describe('loader - sourceNodes integration', () => {
 
         export async function sourceNodes({ actions, createNodeId }) {
           await actions.createNode({
-            id: createNodeId('Article', '1'),
             internal: {
+              id: createNodeId('Article', '1'),
               type: 'Article',
             },
             parent: undefined,
@@ -515,8 +525,8 @@ describe('loader - sourceNodes integration', () => {
 
         export async function sourceNodes({ actions, createNodeId }: any) {
           await actions.createNode({
-            id: createNodeId('TSNode', '1'),
             internal: {
+              id: createNodeId('TSNode', '1'),
               type: 'TSNode',
             },
             parent: undefined,
@@ -571,8 +581,8 @@ describe('loader - sourceNodes integration', () => {
 
         export async function sourceNodes({ actions, createNodeId }) {
           await actions.createNode({
-            id: createNodeId('CompiledNode', '1'),
             internal: {
+              id: createNodeId('CompiledNode', '1'),
               type: 'CompiledNode',
             },
             parent: undefined,
@@ -611,8 +621,8 @@ describe('loader - sourceNodes integration', () => {
 
         export async function sourceNodes({ actions, createNodeId }) {
           await actions.createNode({
-            id: createNodeId('JSNode', '1'),
             internal: {
+              id: createNodeId('JSNode', '1'),
               type: 'JSNode',
             },
             parent: undefined,

@@ -77,12 +77,11 @@ function createNodeType(typeName: string, nodes: Node[]): GraphQLObjectType {
 
   for (const node of nodes) {
     // Add standard fields
-    fieldSet.add('id');
     fieldSet.add('internal');
 
     // Add all custom fields
     for (const [key, value] of Object.entries(node)) {
-      if (key !== 'id' && key !== 'internal') {
+      if (key !== 'internal') {
         fieldSet.add(key);
         // Keep a sample value for type inference
         if (!fieldSamples.has(key)) {
@@ -96,12 +95,7 @@ function createNodeType(typeName: string, nodes: Node[]): GraphQLObjectType {
   const fields: GraphQLFieldConfigMap<Record<string, unknown>, unknown> = {};
 
   for (const fieldName of fieldSet) {
-    if (fieldName === 'id') {
-      fields[fieldName] = {
-        type: new GraphQLNonNull(GraphQLString),
-        resolve: (source) => source['id'],
-      };
-    } else if (fieldName === 'internal') {
+    if (fieldName === 'internal') {
       fields[fieldName] = {
         type: new GraphQLNonNull(InternalType),
         resolve: (source) => source['internal'],

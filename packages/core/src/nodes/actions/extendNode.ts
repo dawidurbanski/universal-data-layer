@@ -4,7 +4,7 @@ import { createContentDigest } from '@/nodes/utils/index.js';
 
 /**
  * Data to extend a node with
- * Cannot override protected system fields (id, internal, parent, children)
+ * Cannot override protected system fields (internal, parent, children)
  */
 export type ExtendNodeData = Record<string, unknown>;
 
@@ -21,7 +21,7 @@ export interface ExtendNodeOptions {
  *
  * - Merges new fields into existing node (shallow merge)
  * - Validates node exists before extending
- * - Prevents overwriting protected fields (id, internal, parent, children)
+ * - Prevents overwriting protected fields (internal, parent, children)
  * - Updates contentDigest and modifiedAt timestamp
  * - Returns the updated node
  *
@@ -40,8 +40,7 @@ export interface ExtendNodeOptions {
  *
  * // Create a product node
  * await createNode({
- *   id: 'product-123',
- *   internal: { type: 'Product', owner: 'shopify' },
+ *   internal: { id: 'product-123', type: 'Product', owner: 'shopify' },
  *   name: 'Widget',
  *   price: 150
  * }, { store });
@@ -67,7 +66,7 @@ export async function extendNode<T extends Node = Node>(
   }
 
   // Validate extension data doesn't contain protected fields
-  const protectedFields = ['id', 'internal', 'parent', 'children'];
+  const protectedFields = ['internal', 'parent', 'children'];
   const attemptedProtectedFields = Object.keys(extension).filter((key) =>
     protectedFields.includes(key)
   );
@@ -83,7 +82,6 @@ export async function extendNode<T extends Node = Node>(
     ...existingNode,
     ...extension,
     // Ensure protected fields remain unchanged
-    id: existingNode.id,
     internal: {
       ...existingNode.internal,
       modifiedAt: Date.now(),

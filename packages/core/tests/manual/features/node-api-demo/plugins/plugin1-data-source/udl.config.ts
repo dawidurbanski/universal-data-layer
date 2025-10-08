@@ -69,8 +69,8 @@ export async function sourceNodes({
     // Create the node
     await actions.createNode({
       // Required fields
-      id: nodeId,
       internal: {
+        id: nodeId,
         type: 'Product',
         owner: 'product-source',
         contentDigest: createContentDigest(product),

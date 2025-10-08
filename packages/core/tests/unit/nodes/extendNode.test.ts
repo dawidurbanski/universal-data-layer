@@ -16,8 +16,7 @@ describe('extendNode', () => {
       // Create a base node
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
           name: 'Widget',
           price: 100,
         },
@@ -35,7 +34,9 @@ describe('extendNode', () => {
       );
 
       expect(extended).toMatchObject({
-        id: 'product-1',
+        internal: {
+          id: 'product-1',
+        },
         name: 'Widget',
         price: 100,
         category: 'electronics',
@@ -47,8 +48,7 @@ describe('extendNode', () => {
       // Create a base node
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
           name: 'Widget',
           price: 100,
         },
@@ -70,8 +70,7 @@ describe('extendNode', () => {
     it('should return the extended node', async () => {
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
           name: 'Widget',
         },
         { store }
@@ -83,15 +82,14 @@ describe('extendNode', () => {
         { store }
       );
 
-      expect(extended.id).toBe('product-1');
+      expect(extended.internal.id).toBe('product-1');
       expect(extended).toHaveProperty('category', 'gadgets');
     });
 
     it('should persist changes to the store', async () => {
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
           name: 'Widget',
         },
         { store }
@@ -108,8 +106,7 @@ describe('extendNode', () => {
     it('should replace nested objects entirely (shallow merge)', async () => {
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
           metadata: { color: 'red', size: 'large' },
         },
         { store }
@@ -134,25 +131,10 @@ describe('extendNode', () => {
   });
 
   describe('protected fields', () => {
-    it('should prevent overwriting id field', async () => {
-      await createNode(
-        {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
-        },
-        { store }
-      );
-
-      await expect(
-        extendNode('product-1', { id: 'product-2' } as never, { store })
-      ).rejects.toThrow('protected fields: id');
-    });
-
     it('should prevent overwriting internal field', async () => {
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
         },
         { store }
       );
@@ -169,8 +151,7 @@ describe('extendNode', () => {
     it('should prevent overwriting parent field', async () => {
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
         },
         { store }
       );
@@ -183,8 +164,7 @@ describe('extendNode', () => {
     it('should prevent overwriting children field', async () => {
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
         },
         { store }
       );
@@ -197,8 +177,7 @@ describe('extendNode', () => {
     it('should prevent overwriting multiple protected fields', async () => {
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
         },
         { store }
       );
@@ -207,7 +186,7 @@ describe('extendNode', () => {
         extendNode(
           'product-1',
           {
-            id: 'product-2',
+            parent: 'some-parent',
             internal: { type: 'NewType', owner: 'hacker' },
           } as never,
           { store }
@@ -220,8 +199,7 @@ describe('extendNode', () => {
     it('should update contentDigest after extension', async () => {
       const original = await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
           name: 'Widget',
         },
         { store }
@@ -241,8 +219,7 @@ describe('extendNode', () => {
     it('should update modifiedAt timestamp', async () => {
       const original = await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
         },
         { store }
       );
@@ -264,8 +241,7 @@ describe('extendNode', () => {
     it('should preserve createdAt timestamp', async () => {
       const original = await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
         },
         { store }
       );
@@ -284,8 +260,7 @@ describe('extendNode', () => {
     it('should preserve owner', async () => {
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'shopify' },
+          internal: { id: 'product-1', type: 'Product', owner: 'shopify' },
         },
         { store }
       );
@@ -302,8 +277,7 @@ describe('extendNode', () => {
     it('should preserve type', async () => {
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
         },
         { store }
       );
@@ -336,16 +310,14 @@ describe('extendNode', () => {
     it('should preserve parent relationship', async () => {
       await createNode(
         {
-          id: 'parent-1',
-          internal: { type: 'Category', owner: 'test' },
+          internal: { id: 'parent-1', type: 'Category', owner: 'test' },
         },
         { store }
       );
 
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
           parent: 'parent-1',
         },
         { store }
@@ -363,16 +335,14 @@ describe('extendNode', () => {
     it('should preserve children array', async () => {
       await createNode(
         {
-          id: 'parent-1',
-          internal: { type: 'Category', owner: 'test' },
+          internal: { id: 'parent-1', type: 'Category', owner: 'test' },
         },
         { store }
       );
 
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
           parent: 'parent-1',
         },
         { store }
@@ -392,8 +362,7 @@ describe('extendNode', () => {
     it('should handle extending with computed fields', async () => {
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
           price: 150,
         },
         { store }
@@ -422,8 +391,7 @@ describe('extendNode', () => {
     it('should handle multiple sequential extensions', async () => {
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
           name: 'Widget',
         },
         { store }
@@ -449,8 +417,7 @@ describe('extendNode', () => {
     it('should handle extending with array fields', async () => {
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
         },
         { store }
       );
@@ -470,8 +437,7 @@ describe('extendNode', () => {
     it('should handle extending with null and undefined values', async () => {
       await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
           description: 'Original description',
         },
         { store }
@@ -497,8 +463,7 @@ describe('extendNode', () => {
     it('should handle empty extension object', async () => {
       const original = await createNode(
         {
-          id: 'product-1',
-          internal: { type: 'Product', owner: 'test' },
+          internal: { id: 'product-1', type: 'Product', owner: 'test' },
           name: 'Widget',
         },
         { store }
@@ -507,7 +472,7 @@ describe('extendNode', () => {
       const extended = await extendNode('product-1', {}, { store });
 
       // Should still update timestamps and digest even with empty extension
-      expect(extended.id).toBe(original.id);
+      expect(extended.internal.id).toBe(original.internal.id);
       expect(extended.internal.modifiedAt).toBeGreaterThanOrEqual(
         original.internal.modifiedAt
       );

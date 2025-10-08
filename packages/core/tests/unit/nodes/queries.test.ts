@@ -19,8 +19,8 @@ describe('Node Queries', () => {
   describe('getNode', () => {
     it('should retrieve a node by ID', () => {
       const node: Node = {
-        id: 'test-1',
         internal: {
+          id: 'test-1',
           type: 'Test',
           contentDigest: 'abc123',
           owner: 'test-plugin',
@@ -52,8 +52,8 @@ describe('Node Queries', () => {
       }
 
       const product: ProductNode = {
-        id: 'product-1',
         internal: {
+          id: 'product-1',
           type: 'Product',
           contentDigest: 'xyz789',
           owner: 'shop-plugin',
@@ -75,8 +75,8 @@ describe('Node Queries', () => {
   describe('getNodes', () => {
     it('should retrieve all nodes from store', () => {
       const node1: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'TypeA',
           contentDigest: 'hash1',
           owner: 'plugin1',
@@ -86,8 +86,8 @@ describe('Node Queries', () => {
       };
 
       const node2: Node = {
-        id: 'node-2',
         internal: {
+          id: 'node-2',
           type: 'TypeB',
           contentDigest: 'hash2',
           owner: 'plugin2',
@@ -113,8 +113,8 @@ describe('Node Queries', () => {
     it('should filter nodes with predicate', () => {
       const now = Date.now();
       const oldNode: Node = {
-        id: 'old-1',
         internal: {
+          id: 'old-1',
           type: 'Test',
           contentDigest: 'old',
           owner: 'plugin',
@@ -124,8 +124,8 @@ describe('Node Queries', () => {
       };
 
       const newNode: Node = {
-        id: 'new-1',
         internal: {
+          id: 'new-1',
           type: 'Test',
           contentDigest: 'new',
           owner: 'plugin',
@@ -148,8 +148,8 @@ describe('Node Queries', () => {
 
     it('should return empty array when predicate matches nothing', () => {
       const node: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'Test',
           contentDigest: 'hash',
           owner: 'plugin',
@@ -171,8 +171,8 @@ describe('Node Queries', () => {
       }
 
       const cheap: ProductNode = {
-        id: 'prod-1',
         internal: {
+          id: 'prod-1',
           type: 'Product',
           contentDigest: 'h1',
           owner: 'shop',
@@ -183,8 +183,8 @@ describe('Node Queries', () => {
       };
 
       const expensive: ProductNode = {
-        id: 'prod-2',
         internal: {
+          id: 'prod-2',
           type: 'Product',
           contentDigest: 'h2',
           owner: 'shop',
@@ -199,15 +199,15 @@ describe('Node Queries', () => {
 
       const results = getNodes<ProductNode>(store, (node) => node.price > 100);
       expect(results).toHaveLength(1);
-      expect(results[0]?.id).toBe('prod-2');
+      expect(results[0]?.internal.id).toBe('prod-2');
     });
   });
 
   describe('getNodesByType', () => {
     it('should retrieve nodes of specific type', () => {
       const product1: Node = {
-        id: 'prod-1',
         internal: {
+          id: 'prod-1',
           type: 'Product',
           contentDigest: 'h1',
           owner: 'shop',
@@ -217,8 +217,8 @@ describe('Node Queries', () => {
       };
 
       const product2: Node = {
-        id: 'prod-2',
         internal: {
+          id: 'prod-2',
           type: 'Product',
           contentDigest: 'h2',
           owner: 'shop',
@@ -228,8 +228,8 @@ describe('Node Queries', () => {
       };
 
       const post: Node = {
-        id: 'post-1',
         internal: {
+          id: 'post-1',
           type: 'BlogPost',
           contentDigest: 'h3',
           owner: 'cms',
@@ -264,8 +264,8 @@ describe('Node Queries', () => {
       }
 
       const electronics: ProductNode = {
-        id: 'prod-1',
         internal: {
+          id: 'prod-1',
           type: 'Product',
           contentDigest: 'h1',
           owner: 'shop',
@@ -276,8 +276,8 @@ describe('Node Queries', () => {
       };
 
       const books: ProductNode = {
-        id: 'prod-2',
         internal: {
+          id: 'prod-2',
           type: 'Product',
           contentDigest: 'h2',
           owner: 'shop',
@@ -297,13 +297,13 @@ describe('Node Queries', () => {
       );
 
       expect(results).toHaveLength(1);
-      expect(results[0]?.id).toBe('prod-1');
+      expect(results[0]?.internal.id).toBe('prod-1');
     });
 
     it('should return empty array when predicate matches nothing', () => {
       const node: Node = {
-        id: 'node-1',
         internal: {
+          id: 'node-1',
           type: 'Test',
           contentDigest: 'hash',
           owner: 'plugin',
@@ -321,8 +321,8 @@ describe('Node Queries', () => {
 
     it('should handle multiple types correctly', () => {
       const product: Node = {
-        id: 'prod-1',
         internal: {
+          id: 'prod-1',
           type: 'Product',
           contentDigest: 'h1',
           owner: 'shop',
@@ -332,8 +332,8 @@ describe('Node Queries', () => {
       };
 
       const post: Node = {
-        id: 'post-1',
         internal: {
+          id: 'post-1',
           type: 'BlogPost',
           contentDigest: 'h2',
           owner: 'cms',
@@ -350,16 +350,16 @@ describe('Node Queries', () => {
 
       expect(products).toHaveLength(1);
       expect(posts).toHaveLength(1);
-      expect(products[0]?.id).toBe('prod-1');
-      expect(posts[0]?.id).toBe('post-1');
+      expect(products[0]?.internal.id).toBe('prod-1');
+      expect(posts[0]?.internal.id).toBe('post-1');
     });
   });
 
   describe('getAllNodeTypes', () => {
     it('should return all registered node types', () => {
       const product: Node = {
-        id: 'prod-1',
         internal: {
+          id: 'prod-1',
           type: 'Product',
           contentDigest: 'h1',
           owner: 'shop',
@@ -369,8 +369,8 @@ describe('Node Queries', () => {
       };
 
       const post: Node = {
-        id: 'post-1',
         internal: {
+          id: 'post-1',
           type: 'BlogPost',
           contentDigest: 'h2',
           owner: 'cms',
@@ -380,8 +380,8 @@ describe('Node Queries', () => {
       };
 
       const author: Node = {
-        id: 'author-1',
         internal: {
+          id: 'author-1',
           type: 'Author',
           contentDigest: 'h3',
           owner: 'cms',
@@ -408,8 +408,8 @@ describe('Node Queries', () => {
 
     it('should return unique types even with multiple nodes of same type', () => {
       const product1: Node = {
-        id: 'prod-1',
         internal: {
+          id: 'prod-1',
           type: 'Product',
           contentDigest: 'h1',
           owner: 'shop',
@@ -419,8 +419,8 @@ describe('Node Queries', () => {
       };
 
       const product2: Node = {
-        id: 'prod-2',
         internal: {
+          id: 'prod-2',
           type: 'Product',
           contentDigest: 'h2',
           owner: 'shop',
@@ -440,8 +440,8 @@ describe('Node Queries', () => {
   describe('Edge cases and performance', () => {
     it('should handle nodes with parent-child relationships', () => {
       const parent: Node = {
-        id: 'parent-1',
         internal: {
+          id: 'parent-1',
           type: 'Parent',
           contentDigest: 'hp',
           owner: 'plugin',
@@ -452,8 +452,8 @@ describe('Node Queries', () => {
       };
 
       const child1: Node = {
-        id: 'child-1',
         internal: {
+          id: 'child-1',
           type: 'Child',
           contentDigest: 'hc1',
           owner: 'plugin',
@@ -464,8 +464,8 @@ describe('Node Queries', () => {
       };
 
       const child2: Node = {
-        id: 'child-2',
         internal: {
+          id: 'child-2',
           type: 'Child',
           contentDigest: 'hc2',
           owner: 'plugin',
@@ -491,8 +491,8 @@ describe('Node Queries', () => {
       // Create 1000 nodes
       for (let i = 0; i < 1000; i++) {
         store.set({
-          id: `node-${i}`,
           internal: {
+            id: `node-${i}`,
             type: i % 10 === 0 ? 'TypeA' : 'TypeB',
             contentDigest: `hash-${i}`,
             owner: 'plugin',
@@ -520,8 +520,8 @@ describe('Node Queries', () => {
       }
 
       const custom: CustomNode = {
-        id: 'custom-1',
         internal: {
+          id: 'custom-1',
           type: 'Custom',
           contentDigest: 'hc',
           owner: 'plugin',
