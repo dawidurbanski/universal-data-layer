@@ -1,5 +1,26 @@
 # universal-data-layer
 
+## 0.2.0
+
+### Minor Changes
+
+- [#41](https://github.com/dawidurbanski/universal-data-layer/pull/41) [`edb82e0`](https://github.com/dawidurbanski/universal-data-layer/commit/edb82e0b71a2939cd73e5781c4a20f6b8d61bb5d) Thanks [@dawidurbanski](https://github.com/dawidurbanski)! - Implement node creation and manipulation API
+  - Add Node and NodeInternal type definitions
+  - Implement NodeStore with Map-based storage
+  - Add utility functions for content digest and node ID generation
+  - Implement createNode function for node management
+  - Implement deleteNode function for node removal
+  - Add node query functions (getNode, getNodes, getNodesByType)
+  - Implement extendNode function for node manipulation
+  - Integrate node API with plugin system via sourceNodes hook
+  - Add automatic GraphQL schema generation from nodes
+  - Add comprehensive unit and integration tests
+  - Add manual test feature with demo plugins
+
+### Patch Changes
+
+- [#40](https://github.com/dawidurbanski/universal-data-layer/pull/40) [`6a928ff`](https://github.com/dawidurbanski/universal-data-layer/commit/6a928ff5ec09162186c35f0d417c2768ccf21f1c) Thanks [@dawidurbanski](https://github.com/dawidurbanski)! - Manual testing setup integrated into current dev mode
+
 ## 0.1.0
 
 ### Minor Changes
