@@ -62,8 +62,6 @@ export async function sourceNodes({
   createNodeId,
   createContentDigest,
 }: SourceNodesContext) {
-  console.log('[Plugin 1] Sourcing product data...');
-
   for (const product of products) {
     // Create deterministic node ID from product type and external ID
     const nodeId = createNodeId('Product', product.id);
@@ -86,9 +84,5 @@ export async function sourceNodes({
       category: product.category,
       description: product.description,
     });
-
-    console.log(`[Plugin 1] Created Product node: ${product.name}`);
   }
-
-  console.log(`[Plugin 1] Sourced ${products.length} products`);
 }

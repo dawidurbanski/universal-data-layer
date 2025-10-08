@@ -12,17 +12,9 @@ export const config = {
   name: 'filter-products',
 };
 
-export const onLoad = () => {
-  console.log('[Plugin 3] Loading product curator...');
-};
-
 export async function sourceNodes({ actions }: SourceNodesContext) {
-  console.log('[Plugin 3] Curating product catalog...');
-
   // Query all Product nodes
   const productNodes = actions.getNodesByType('Product');
-
-  let deletedCount = 0;
 
   for (const node of productNodes) {
     const product = node as typeof node & {
@@ -43,10 +35,4 @@ export async function sourceNodes({ actions }: SourceNodesContext) {
       await actions.deleteNode(node.internal.id);
     }
   }
-
-  const remainingProducts = actions.getNodesByType('Product');
-
-  console.log(
-    `[Plugin 3] Removed ${deletedCount} products, ${remainingProducts.length} remaining`
-  );
 }
