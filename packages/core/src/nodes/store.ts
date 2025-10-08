@@ -28,9 +28,51 @@ export class NodeStore {
   /** Secondary index: node type -> Set of node IDs */
   private typeIndex: Map<string, Set<string>>;
 
+  /** Field indexes: nodeType -> fieldName -> fieldValue -> nodeId */
+  private fieldIndexes: Map<string, Map<string, Map<unknown, string>>>;
+
+  /** Registered indexes: nodeType -> Set of field names */
+  private registeredIndexes: Map<string, Set<string>>;
+
   constructor() {
     this.nodes = new Map();
     this.typeIndex = new Map();
+    this.fieldIndexes = new Map();
+    this.registeredIndexes = new Map();
+  }
+
+  /**
+   * Register a field to be indexed for a specific node type
+   * @param nodeType - The node type to index (e.g., 'Product')
+   * @param fieldName - The field name to index (e.g., 'slug')
+   */
+  registerIndex(nodeType: string, fieldName: string): void {
+    if (!this.registeredIndexes.has(nodeType)) {
+      this.registeredIndexes.set(nodeType, new Set());
+    }
+    this.registeredIndexes.get(nodeType)!.add(fieldName);
+
+    // Initialize field index structure if needed
+    if (!this.fieldIndexes.has(nodeType)) {
+      this.fieldIndexes.set(nodeType, new Map());
+    }
+    if (!this.fieldIndexes.get(nodeType)!.has(fieldName)) {
+      this.fieldIndexes.get(nodeType)!.set(fieldName, new Map());
+    }
+
+    // Index existing nodes of this type
+    const existingNodes = this.getByType(nodeType);
+    for (const node of existingNodes) {
+      const fieldValue = (node as unknown as Record<string, unknown>)[
+        fieldName
+      ];
+      if (fieldValue !== undefined && fieldValue !== null) {
+        this.fieldIndexes
+          .get(nodeType)!
+          .get(fieldName)!
+          .set(fieldValue, node.internal.id);
+      }
+    }
   }
 
   /**
@@ -38,14 +80,50 @@ export class NodeStore {
    * Maintains both primary ID index and secondary type index
    */
   set(node: Node): void {
+    const nodeType = node.internal.type;
+    const nodeId = node.internal.id;
+
+    // Get existing node to clean up old field indexes
+    const existingNode = this.nodes.get(nodeId);
+
     // Store in primary index
-    this.nodes.set(node.id, node);
+    this.nodes.set(nodeId, node);
 
     // Update type index
-    if (!this.typeIndex.has(node.internal.type)) {
-      this.typeIndex.set(node.internal.type, new Set());
+    if (!this.typeIndex.has(nodeType)) {
+      this.typeIndex.set(nodeType, new Set());
     }
-    this.typeIndex.get(node.internal.type)!.add(node.id);
+    this.typeIndex.get(nodeType)!.add(nodeId);
+
+    // Update field indexes
+    const registeredFields = this.registeredIndexes.get(nodeType);
+    if (registeredFields) {
+      for (const fieldName of registeredFields) {
+        // Remove old field value from index if node existed
+        if (existingNode) {
+          const oldFieldValue = (
+            existingNode as unknown as Record<string, unknown>
+          )[fieldName];
+          if (oldFieldValue !== undefined && oldFieldValue !== null) {
+            this.fieldIndexes
+              .get(nodeType)
+              ?.get(fieldName)
+              ?.delete(oldFieldValue);
+          }
+        }
+
+        // Add new field value to index
+        const newFieldValue = (node as unknown as Record<string, unknown>)[
+          fieldName
+        ];
+        if (newFieldValue !== undefined && newFieldValue !== null) {
+          this.fieldIndexes
+            .get(nodeType)!
+            .get(fieldName)!
+            .set(newFieldValue, nodeId);
+        }
+      }
+    }
   }
 
   /**
@@ -54,6 +132,34 @@ export class NodeStore {
    */
   get(id: string): Node | undefined {
     return this.nodes.get(id);
+  }
+
+  /**
+   * Get a node by an indexed field value
+   * @param nodeType - The node type to search
+   * @param fieldName - The indexed field name
+   * @param fieldValue - The field value to match
+   * @returns The node or undefined if not found
+   */
+  getByField(
+    nodeType: string,
+    fieldName: string,
+    fieldValue: unknown
+  ): Node | undefined {
+    const nodeId = this.fieldIndexes
+      .get(nodeType)
+      ?.get(fieldName)
+      ?.get(fieldValue);
+    return nodeId ? this.nodes.get(nodeId) : undefined;
+  }
+
+  /**
+   * Get all registered index field names for a node type
+   * @param nodeType - The node type
+   * @returns Array of registered field names
+   */
+  getRegisteredIndexes(nodeType: string): string[] {
+    return Array.from(this.registeredIndexes.get(nodeType) || []);
   }
 
   /**
@@ -111,13 +217,28 @@ export class NodeStore {
       return false;
     }
 
+    const nodeType = node.internal.type;
+
     // Remove from type index
-    const typeSet = this.typeIndex.get(node.internal.type);
+    const typeSet = this.typeIndex.get(nodeType);
     if (typeSet) {
       typeSet.delete(id);
       // Clean up empty type sets
       if (typeSet.size === 0) {
-        this.typeIndex.delete(node.internal.type);
+        this.typeIndex.delete(nodeType);
+      }
+    }
+
+    // Remove from field indexes
+    const registeredFields = this.registeredIndexes.get(nodeType);
+    if (registeredFields) {
+      for (const fieldName of registeredFields) {
+        const fieldValue = (node as unknown as Record<string, unknown>)[
+          fieldName
+        ];
+        if (fieldValue !== undefined && fieldValue !== null) {
+          this.fieldIndexes.get(nodeType)?.get(fieldName)?.delete(fieldValue);
+        }
       }
     }
 
@@ -146,5 +267,7 @@ export class NodeStore {
   clear(): void {
     this.nodes.clear();
     this.typeIndex.clear();
+    this.fieldIndexes.clear();
+    this.registeredIndexes.clear();
   }
 }

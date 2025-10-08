@@ -526,6 +526,198 @@ describe('NodeStore', () => {
     });
   });
 
+  describe('field indexing', () => {
+    it('should register an index for a field', () => {
+      const node: Node = {
+        internal: {
+          id: 'product-1',
+          type: 'Product',
+          contentDigest: 'abc',
+          owner: 'test',
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        },
+        slug: 'test-product',
+      } as Node;
+
+      store.set(node);
+      store.registerIndex('Product', 'slug');
+
+      const registeredIndexes = store.getRegisteredIndexes('Product');
+      expect(registeredIndexes).toContain('slug');
+    });
+
+    it('should retrieve node by indexed field', () => {
+      const node: Node = {
+        internal: {
+          id: 'product-1',
+          type: 'Product',
+          contentDigest: 'abc',
+          owner: 'test',
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        },
+        slug: 'wireless-headphones',
+      } as Node;
+
+      store.set(node);
+      store.registerIndex('Product', 'slug');
+
+      const retrieved = store.getByField(
+        'Product',
+        'slug',
+        'wireless-headphones'
+      );
+      expect(retrieved).toEqual(node);
+    });
+
+    it('should return undefined for non-existent field value', () => {
+      store.registerIndex('Product', 'slug');
+      const retrieved = store.getByField('Product', 'slug', 'non-existent');
+      expect(retrieved).toBeUndefined();
+    });
+
+    it('should update field index when node is updated', () => {
+      const node1: Node = {
+        internal: {
+          id: 'product-1',
+          type: 'Product',
+          contentDigest: 'abc',
+          owner: 'test',
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        },
+        slug: 'old-slug',
+      } as Node;
+
+      store.set(node1);
+      store.registerIndex('Product', 'slug');
+
+      const node2: Node = {
+        internal: {
+          id: 'product-1',
+          type: 'Product',
+          contentDigest: 'xyz',
+          owner: 'test',
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        },
+        slug: 'new-slug',
+      } as Node;
+
+      store.set(node2);
+
+      expect(store.getByField('Product', 'slug', 'old-slug')).toBeUndefined();
+      expect(store.getByField('Product', 'slug', 'new-slug')).toEqual(node2);
+    });
+
+    it('should clean up field index on node deletion', () => {
+      const node: Node = {
+        internal: {
+          id: 'product-1',
+          type: 'Product',
+          contentDigest: 'abc',
+          owner: 'test',
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        },
+        slug: 'test-slug',
+      } as Node;
+
+      store.set(node);
+      store.registerIndex('Product', 'slug');
+
+      expect(store.getByField('Product', 'slug', 'test-slug')).toEqual(node);
+
+      store.delete('product-1');
+
+      expect(store.getByField('Product', 'slug', 'test-slug')).toBeUndefined();
+    });
+
+    it('should index existing nodes when registering a new index', () => {
+      const node1: Node = {
+        internal: {
+          id: 'product-1',
+          type: 'Product',
+          contentDigest: 'abc',
+          owner: 'test',
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        },
+        slug: 'product-one',
+      } as Node;
+
+      const node2: Node = {
+        internal: {
+          id: 'product-2',
+          type: 'Product',
+          contentDigest: 'def',
+          owner: 'test',
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        },
+        slug: 'product-two',
+      } as Node;
+
+      store.set(node1);
+      store.set(node2);
+
+      // Register index after nodes already exist
+      store.registerIndex('Product', 'slug');
+
+      expect(store.getByField('Product', 'slug', 'product-one')).toEqual(node1);
+      expect(store.getByField('Product', 'slug', 'product-two')).toEqual(node2);
+    });
+
+    it('should handle multiple indexes on same node type', () => {
+      const node: Node = {
+        internal: {
+          id: 'product-1',
+          type: 'Product',
+          contentDigest: 'abc',
+          owner: 'test',
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        },
+        slug: 'test-product',
+        sku: 'SKU-123',
+      } as Node;
+
+      store.set(node);
+      store.registerIndex('Product', 'slug');
+      store.registerIndex('Product', 'sku');
+
+      expect(store.getByField('Product', 'slug', 'test-product')).toEqual(node);
+      expect(store.getByField('Product', 'sku', 'SKU-123')).toEqual(node);
+    });
+
+    it('should clear field indexes on store.clear()', () => {
+      const node: Node = {
+        internal: {
+          id: 'product-1',
+          type: 'Product',
+          contentDigest: 'abc',
+          owner: 'test',
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        },
+        slug: 'test-product',
+      } as Node;
+
+      store.set(node);
+      store.registerIndex('Product', 'slug');
+
+      expect(store.getByField('Product', 'slug', 'test-product')).toEqual(node);
+
+      store.clear();
+
+      expect(
+        store.getByField('Product', 'slug', 'test-product')
+      ).toBeUndefined();
+      expect(store.getRegisteredIndexes('Product')).toEqual([]);
+    });
+  });
+
   describe('performance with large datasets', () => {
     it('should handle 10000 nodes efficiently', () => {
       const startTime = Date.now();

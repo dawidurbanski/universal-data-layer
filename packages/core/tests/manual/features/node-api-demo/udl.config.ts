@@ -13,7 +13,12 @@ import type { UDLConfig } from '@core/loader.js';
 export const config: UDLConfig = {
   plugins: [
     // Plugin 1: Basic data source - creates Product nodes from static data
-    './plugins/plugin1-data-source',
+    {
+      name: './plugins/plugin1-data-source',
+      options: {
+        indexes: ['slug'], // Enable slug field indexing for O(1) lookups
+      },
+    },
 
     // Plugin 2: Node extension - enriches Product nodes with computed fields
     './plugins/plugin2-node-extension',

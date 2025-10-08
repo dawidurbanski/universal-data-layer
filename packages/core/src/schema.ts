@@ -65,6 +65,7 @@ function createNodeType(typeName: string, nodes: Node[]): GraphQLObjectType {
   const InternalType = new GraphQLObjectType({
     name: `${typeName}Internal`,
     fields: {
+      id: { type: new GraphQLNonNull(GraphQLString) },
       type: { type: new GraphQLNonNull(GraphQLString) },
       owner: { type: new GraphQLNonNull(GraphQLString) },
       contentDigest: { type: GraphQLString },
@@ -163,14 +164,47 @@ export function buildSchema(): GraphQLSchema {
       resolve: () => defaultStore.getByType(typeName),
     };
 
-    // Add single node query by ID (e.g., product)
+    // Add single node query by ID and any registered indexed fields (e.g., product)
     const singularName = typeName.charAt(0).toLowerCase() + typeName.slice(1);
+
+    // Get registered indexes for this node type
+    const registeredIndexes = defaultStore.getRegisteredIndexes(typeName);
+
+    // Build args dynamically based on registered indexes
+    const queryArgs: Record<string, { type: GraphQLScalarType }> = {};
+
+    // Always include internal.id as an arg (using 'id' for convenience)
+    queryArgs['id'] = { type: GraphQLString };
+
+    // Add each registered index as an optional arg
+    for (const fieldName of registeredIndexes) {
+      queryArgs[fieldName] = { type: GraphQLString };
+    }
+
     queryFields[singularName] = {
       type: nodeType,
-      args: {
-        id: { type: new GraphQLNonNull(GraphQLString) },
+      args: queryArgs,
+      resolve: (_, args: Record<string, unknown>) => {
+        // Prioritize id lookup (O(1) via primary index)
+        if (args['id'] && typeof args['id'] === 'string') {
+          return defaultStore.get(args['id']);
+        }
+
+        // Try each indexed field (O(1) via field indexes)
+        for (const fieldName of registeredIndexes) {
+          const fieldValue = args[fieldName];
+          if (fieldValue !== undefined && fieldValue !== null) {
+            const node = defaultStore.getByField(
+              typeName,
+              fieldName,
+              fieldValue
+            );
+            if (node) return node;
+          }
+        }
+
+        return null;
       },
-      resolve: (_, { id }) => defaultStore.get(id),
     };
   }
 
