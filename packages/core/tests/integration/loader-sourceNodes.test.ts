@@ -144,7 +144,7 @@ describe('loader - sourceNodes integration', () => {
 
           await actions.createNode({
             internal: {
-            id: id1,
+              id: id1,
               type: 'Product',
             },
             parent: undefined,
@@ -216,7 +216,7 @@ describe('loader - sourceNodes integration', () => {
         export async function sourceNodes({ actions, createNodeId }) {
           await actions.createNode({
             internal: {
-            id: createNodeId('Product', 'p1'),
+              id: createNodeId('Product', 'p1'),
               type: 'Product',
             },
             parent: undefined,
@@ -235,7 +235,7 @@ describe('loader - sourceNodes integration', () => {
         export async function sourceNodes({ actions, createNodeId }) {
           await actions.createNode({
             internal: {
-            id: createNodeId('Product', 'p2'),
+              id: createNodeId('Product', 'p2'),
               type: 'Product',
             },
             parent: undefined,
@@ -282,7 +282,7 @@ describe('loader - sourceNodes integration', () => {
           // Create a node
           const node = await actions.createNode({
             internal: {
-            id: createNodeId('Product', '1'),
+              id: createNodeId('Product', '1'),
               type: 'Product',
             },
             parent: undefined,
@@ -370,7 +370,7 @@ describe('loader - sourceNodes integration', () => {
         export async function sourceNodes({ actions, createNodeId }) {
           await actions.createNode({
             internal: {
-            id: createNodeId('Product', '1'),
+              id: createNodeId('Product', '1'),
               type: 'Product',
             },
             parent: undefined,
@@ -643,6 +643,233 @@ describe('loader - sourceNodes integration', () => {
       expect(nodes[0]).toMatchObject({
         fromJavaScript: true,
       });
+    });
+  });
+
+  describe('field indexing', () => {
+    it('should register indexes from plugin config defaults', async () => {
+      const pluginDir = join(testDir, 'indexed-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      const configPath = join(pluginDir, 'udl.config.js');
+
+      writeFileSync(
+        configPath,
+        `
+        export const config = {
+          name: 'indexed-plugin',
+          indexes: ['slug', 'sku'], // Default indexes
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('Product', '1'),
+              type: 'Product',
+            },
+            parent: undefined,
+            children: undefined,
+            name: 'Test Product',
+            slug: 'test-product',
+            sku: 'SKU-123',
+          });
+        }
+        `
+      );
+
+      await loadPlugins([pluginDir], {}, store);
+
+      // Verify indexes were registered
+      const registeredIndexes = store.getRegisteredIndexes('Product');
+      expect(registeredIndexes).toContain('slug');
+      expect(registeredIndexes).toContain('sku');
+
+      // Verify we can query by indexed fields
+      const bySlug = store.getByField('Product', 'slug', 'test-product');
+      expect(bySlug).toBeDefined();
+      expect((bySlug as { name?: string })?.name).toBe('Test Product');
+
+      const bySku = store.getByField('Product', 'sku', 'SKU-123');
+      expect(bySku).toBeDefined();
+      expect((bySku as { name?: string })?.name).toBe('Test Product');
+    });
+
+    it('should register indexes from user options', async () => {
+      const pluginDir = join(testDir, 'user-indexed-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      const configPath = join(pluginDir, 'udl.config.js');
+
+      writeFileSync(
+        configPath,
+        `
+        export const config = {
+          name: 'user-indexed-plugin',
+          // No default indexes
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('Product', '1'),
+              type: 'Product',
+            },
+            parent: undefined,
+            children: undefined,
+            name: 'User Product',
+            customField: 'custom-value',
+          });
+        }
+        `
+      );
+
+      // Load plugin with user-provided indexes option
+      await loadPlugins(
+        [
+          {
+            name: pluginDir,
+            options: {
+              indexes: ['customField'],
+            },
+          },
+        ],
+        {},
+        store
+      );
+
+      // Verify user-provided index was registered
+      const registeredIndexes = store.getRegisteredIndexes('Product');
+      expect(registeredIndexes).toContain('customField');
+
+      // Verify we can query by the custom indexed field
+      const byCustomField = store.getByField(
+        'Product',
+        'customField',
+        'custom-value'
+      );
+      expect(byCustomField).toBeDefined();
+      expect((byCustomField as { name?: string })?.name).toBe('User Product');
+    });
+
+    it('should merge plugin default indexes with user-provided indexes', async () => {
+      const pluginDir = join(testDir, 'merged-indexed-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      const configPath = join(pluginDir, 'udl.config.js');
+
+      writeFileSync(
+        configPath,
+        `
+        export const config = {
+          name: 'merged-indexed-plugin',
+          indexes: ['slug'], // Default index
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('Product', '1'),
+              type: 'Product',
+            },
+            parent: undefined,
+            children: undefined,
+            name: 'Merged Product',
+            slug: 'merged-product',
+            sku: 'MERGE-123',
+          });
+        }
+        `
+      );
+
+      // Load plugin with additional user indexes
+      await loadPlugins(
+        [
+          {
+            name: pluginDir,
+            options: {
+              indexes: ['sku'], // User adds another index
+            },
+          },
+        ],
+        {},
+        store
+      );
+
+      // Verify both indexes are registered
+      const registeredIndexes = store.getRegisteredIndexes('Product');
+      expect(registeredIndexes).toContain('slug'); // From plugin default
+      expect(registeredIndexes).toContain('sku'); // From user options
+
+      // Verify we can query by both
+      const bySlug = store.getByField('Product', 'slug', 'merged-product');
+      expect(bySlug).toBeDefined();
+
+      const bySku = store.getByField('Product', 'sku', 'MERGE-123');
+      expect(bySku).toBeDefined();
+    });
+
+    it('should only register indexes for nodes created by the plugin', async () => {
+      const plugin1Dir = join(testDir, 'plugin-1');
+      const plugin2Dir = join(testDir, 'plugin-2');
+      mkdirSync(plugin1Dir, { recursive: true });
+      mkdirSync(plugin2Dir, { recursive: true });
+
+      writeFileSync(
+        join(plugin1Dir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'plugin-1',
+          indexes: ['slug'],
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('Product', '1'),
+              type: 'Product',
+            },
+            parent: undefined,
+            children: undefined,
+            slug: 'product-1',
+          });
+        }
+        `
+      );
+
+      writeFileSync(
+        join(plugin2Dir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'plugin-2',
+          indexes: ['sku'],
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('Article', '1'),
+              type: 'Article',
+            },
+            parent: undefined,
+            children: undefined,
+            sku: 'article-1',
+          });
+        }
+        `
+      );
+
+      // Load both plugins
+      await loadPlugins([plugin1Dir, plugin2Dir], {}, store);
+
+      // Product should have 'slug' index (from plugin-1)
+      const productIndexes = store.getRegisteredIndexes('Product');
+      expect(productIndexes).toContain('slug');
+      expect(productIndexes).not.toContain('sku');
+
+      // Article should have 'sku' index (from plugin-2)
+      const articleIndexes = store.getRegisteredIndexes('Article');
+      expect(articleIndexes).toContain('sku');
+      expect(articleIndexes).not.toContain('slug');
     });
   });
 });

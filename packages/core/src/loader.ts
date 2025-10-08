@@ -13,7 +13,10 @@ export type PluginType = (typeof pluginTypes)[number];
 
 type PluginSpecObject = {
   name: string;
-  options?: Record<string, unknown>;
+  options?: Record<string, unknown> & {
+    /** Fields to index for O(1) lookups in GraphQL queries */
+    indexes?: string[];
+  };
 };
 
 export type PluginSpec = string | PluginSpecObject;
@@ -38,6 +41,8 @@ export interface UDLConfig {
   staticPath?: string;
   /** List of plugins to load */
   plugins?: PluginSpec[];
+  /** Default indexed fields for this plugin (for source plugins) */
+  indexes?: string[];
 }
 
 /**
@@ -317,7 +322,16 @@ export async function loadPlugins(
             await module.onLoad(context);
           }
 
+          // Register indexes before sourceNodes executes
           if (module.sourceNodes && nodeStore) {
+            // Merge plugin default indexes with user-provided indexes
+            const pluginDefaultIndexes = module.config?.indexes || [];
+            const userIndexes =
+              (pluginOptions as { indexes?: string[] })?.indexes || [];
+            const allIndexes = [
+              ...new Set([...pluginDefaultIndexes, ...userIndexes]),
+            ];
+
             const actions = createNodeActions(nodeStore, actualPluginName);
 
             await module.sourceNodes({
@@ -326,6 +340,17 @@ export async function loadPlugins(
               createContentDigest,
               options: context?.options,
             });
+
+            // After sourceNodes completes, register indexes for all node types created by this plugin
+            const nodeTypes = nodeStore.getTypes();
+            for (const nodeType of nodeTypes) {
+              const sampleNode = nodeStore.getByType(nodeType)[0];
+              if (sampleNode?.internal.owner === actualPluginName) {
+                for (const fieldName of allIndexes) {
+                  nodeStore.registerIndex(nodeType, fieldName);
+                }
+              }
+            }
           }
 
           plugin = module.config;
