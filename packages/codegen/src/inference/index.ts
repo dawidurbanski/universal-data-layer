@@ -22,3 +22,10 @@ export {
   clearIntrospectionCache,
   type IntrospectOptions,
 } from './from-graphql.js';
+
+export {
+  inferSchemaFromResponse,
+  mergeResponseInferences,
+  inferSchemaFromJsonString,
+  type InferFromResponseOptions,
+} from './from-response.js';

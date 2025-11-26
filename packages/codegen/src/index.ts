@@ -55,4 +55,9 @@ export {
   parseIntrospectionResult,
   clearIntrospectionCache,
   type IntrospectOptions,
+  // From REST response
+  inferSchemaFromResponse,
+  mergeResponseInferences,
+  inferSchemaFromJsonString,
+  type InferFromResponseOptions,
 } from './inference/index.js';
