@@ -67,4 +67,7 @@ export {
   TypeScriptGenerator,
   generateTypeScript,
   type TypeScriptGeneratorOptions,
+  TypeGuardGenerator,
+  generateTypeGuards,
+  type TypeGuardGeneratorOptions,
 } from './generators/index.js';

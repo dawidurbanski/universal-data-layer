@@ -13,3 +13,9 @@ export {
   generateTypeScript,
   type TypeScriptGeneratorOptions,
 } from './typescript.js';
+
+export {
+  TypeGuardGenerator,
+  generateTypeGuards,
+  type TypeGuardGeneratorOptions,
+} from './type-guards.js';
