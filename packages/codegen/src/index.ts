@@ -70,4 +70,7 @@ export {
   TypeGuardGenerator,
   generateTypeGuards,
   type TypeGuardGeneratorOptions,
+  FetchHelperGenerator,
+  generateFetchHelpers,
+  type FetchHelperGeneratorOptions,
 } from './generators/index.js';
