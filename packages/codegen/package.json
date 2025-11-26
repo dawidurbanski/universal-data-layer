@@ -1,0 +1,43 @@
+{
+  "name": "@udl/codegen",
+  "version": "0.1.0",
+  "description": "Type generation and code generation utilities for Universal Data Layer",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "udl-codegen": "./bin/cli.js"
+  },
+  "scripts": {
+    "build": "tsc && tsc-alias",
+    "dev": "tsc --watch & tsc-alias --watch",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest watch --passWithNoTests",
+    "test:coverage": "vitest run --coverage",
+    "lint": "npm run lint:formatting && npm run lint:quality && npm run lint:types",
+    "lint:formatting": "prettier --check . --ignore-path ../../.prettierignore",
+    "lint:quality": "eslint . --config ../../eslint.config.js",
+    "lint:types": "tsc --noEmit",
+    "fix": "npm run fix:formatting && npm run fix:quality",
+    "fix:formatting": "prettier --write . --ignore-path ../../.prettierignore",
+    "fix:quality": "eslint . --fix --config ../../eslint.config.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "author": "Dawid Urbanski <hi@dawidurbanski.com>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ],
+  "dependencies": {
+    "universal-data-layer": "*"
+  },
+  "peerDependencies": {
+    "graphql": "^16.0.0"
+  }
+}

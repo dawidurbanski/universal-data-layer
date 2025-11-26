@@ -1,0 +1,174 @@
+/**
+ * Core type definitions for the UDL code generation system.
+ *
+ * These types represent the internal schema format used by all generators.
+ * Content type definitions can be created manually, inferred from node stores,
+ * introspected from GraphQL APIs, or derived from REST API responses.
+ */
+
+/**
+ * Supported primitive field types
+ */
+export type PrimitiveType =
+  | 'string'
+  | 'number'
+  | 'boolean'
+  | 'null'
+  | 'unknown';
+
+/**
+ * Supported complex field types
+ */
+export type ComplexType = 'array' | 'object' | 'reference';
+
+/**
+ * All supported field types
+ */
+export type FieldType = PrimitiveType | ComplexType;
+
+/**
+ * Definition of a single field within a content type
+ */
+export interface FieldDefinition {
+  /** Field name (property key) */
+  name: string;
+
+  /** The type of this field */
+  type: FieldType;
+
+  /** Whether this field is required (non-nullable) */
+  required: boolean;
+
+  /** Optional description for JSDoc generation */
+  description?: string;
+
+  /**
+   * For array fields: the type definition of array items
+   * Required when type is 'array'
+   */
+  arrayItemType?: FieldDefinition;
+
+  /**
+   * For object fields: nested field definitions
+   * Required when type is 'object'
+   */
+  objectFields?: FieldDefinition[];
+
+  /**
+   * For reference fields: the name of the referenced content type
+   * Required when type is 'reference'
+   */
+  referenceType?: string;
+}
+
+/**
+ * Definition of a content type (maps to a TypeScript interface)
+ */
+export interface ContentTypeDefinition {
+  /** Content type name (will be used as interface name) */
+  name: string;
+
+  /** Optional description for JSDoc generation */
+  description?: string;
+
+  /** Fields belonging to this content type */
+  fields: FieldDefinition[];
+
+  /**
+   * Field names that are indexed for O(1) lookups.
+   * Used by fetch helper generator to create getBy{Field} functions.
+   */
+  indexes?: string[];
+
+  /**
+   * The plugin/source that owns this content type definition.
+   * Useful for tracking where types originated.
+   */
+  owner?: string;
+}
+
+/**
+ * Configuration for the code generation system
+ */
+export interface CodegenConfig {
+  /**
+   * Output directory or file path for generated code.
+   * If ends with .ts, generates single file.
+   * Otherwise, generates multi-file structure in directory.
+   * @default './generated'
+   */
+  output?: string;
+
+  /**
+   * Whether to generate type guard functions (is{Type}, assert{Type}).
+   * @default false
+   */
+  guards?: boolean;
+
+  /**
+   * Whether to generate fetch helper functions (getAll{Type}s, get{Type}ById, etc.).
+   * @default false
+   */
+  helpers?: boolean;
+
+  /**
+   * GraphQL endpoint URL for fetch helpers.
+   * @default 'http://localhost:4000/graphql'
+   */
+  endpoint?: string;
+
+  /**
+   * Custom scalar type mappings.
+   * Maps GraphQL/source scalar names to TypeScript types.
+   * @example { DateTime: 'Date', JSON: 'Record<string, unknown>' }
+   */
+  customScalars?: Record<string, string>;
+
+  /**
+   * Whether generated types should extend the UDL Node interface.
+   * @default true
+   */
+  extendNode?: boolean;
+
+  /**
+   * Whether to include JSDoc comments in generated code.
+   * @default true
+   */
+  includeJsDoc?: boolean;
+
+  /**
+   * Output format for type definitions.
+   * @default 'interface'
+   */
+  exportFormat?: 'interface' | 'type';
+}
+
+/**
+ * Default configuration values
+ */
+export const DEFAULT_CODEGEN_CONFIG: Required<CodegenConfig> = {
+  output: './generated',
+  guards: false,
+  helpers: false,
+  endpoint: 'http://localhost:4000/graphql',
+  customScalars: {},
+  extendNode: true,
+  includeJsDoc: true,
+  exportFormat: 'interface',
+};
+
+/**
+ * Merge user config with defaults
+ */
+export function resolveCodegenConfig(
+  config?: CodegenConfig
+): Required<CodegenConfig> {
+  return {
+    ...DEFAULT_CODEGEN_CONFIG,
+    ...config,
+    customScalars: {
+      ...DEFAULT_CODEGEN_CONFIG.customScalars,
+      ...config?.customScalars,
+    },
+  };
+}
