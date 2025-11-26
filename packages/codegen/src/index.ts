@@ -74,3 +74,13 @@ export {
   generateFetchHelpers,
   type FetchHelperGeneratorOptions,
 } from './generators/index.js';
+
+// Output
+export {
+  FileWriter,
+  writeGeneratedFiles,
+  type FileWriterOptions,
+  type WriteResult,
+  type GeneratedFile,
+  type OutputMode,
+} from './output/index.js';
