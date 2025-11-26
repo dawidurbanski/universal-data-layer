@@ -61,3 +61,10 @@ export {
   inferSchemaFromJsonString,
   type InferFromResponseOptions,
 } from './inference/index.js';
+
+// Generators
+export {
+  TypeScriptGenerator,
+  generateTypeScript,
+  type TypeScriptGeneratorOptions,
+} from './generators/index.js';
