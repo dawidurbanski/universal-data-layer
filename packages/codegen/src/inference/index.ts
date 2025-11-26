@@ -15,3 +15,10 @@ export {
   type InferFromStoreOptions,
   type NodeStoreLike,
 } from './from-store.js';
+
+export {
+  introspectGraphQLSchema,
+  parseIntrospectionResult,
+  clearIntrospectionCache,
+  type IntrospectOptions,
+} from './from-graphql.js';
