@@ -43,10 +43,16 @@ export {
 
 // Inference
 export {
+  // From store
   inferSchemaFromStore,
   inferFieldType,
   inferFieldDefinition,
   mergeFieldDefinitions,
   type InferFromStoreOptions,
   type NodeStoreLike,
+  // From GraphQL
+  introspectGraphQLSchema,
+  parseIntrospectionResult,
+  clearIntrospectionCache,
+  type IntrospectOptions,
 } from './inference/index.js';
