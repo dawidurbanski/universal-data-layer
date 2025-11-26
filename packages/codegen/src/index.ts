@@ -40,3 +40,13 @@ export {
   defaultRegistry,
   type RegisterTypesContext,
 } from './registry.js';
+
+// Inference
+export {
+  inferSchemaFromStore,
+  inferFieldType,
+  inferFieldDefinition,
+  mergeFieldDefinitions,
+  type InferFromStoreOptions,
+  type NodeStoreLike,
+} from './inference/index.js';
