@@ -32,6 +32,7 @@ export default {
         'deps',
         'release',
         'config',
+        'codegen',
       ],
     ],
     'body-max-line-length': [2, 'always', 200],
