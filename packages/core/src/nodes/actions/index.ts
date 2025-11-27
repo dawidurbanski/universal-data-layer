@@ -18,7 +18,7 @@ export {
 
 import type { Node } from '@/nodes/types.js';
 import type { NodeStore } from '@/nodes/store.js';
-import type { CreateNodeInput } from './createNode.js';
+import type { CreateNodeInput, CreateNodeOptions } from './createNode.js';
 import type { DeleteNodeInput, DeleteNodeOptions } from './deleteNode.js';
 import type { ExtendNodeData, ExtendNodeOptions } from './extendNode.js';
 import type { NodePredicate } from '@/nodes/queries.js';
@@ -34,8 +34,25 @@ import { getNode, getNodes, getNodesByType } from '@/nodes/queries.js';
 export interface NodeActions {
   /**
    * Create or update a node in the store
+   *
+   * @param input - Node data to create
+   * @param options - Optional settings including schema hints for code generation
+   *
+   * @example
+   * ```ts
+   * import { s } from 'universal-data-layer';
+   *
+   * await actions.createNode(data, {
+   *   schema: s.infer().override({
+   *     status: s.enum(['pending', 'completed']),
+   *   }),
+   * });
+   * ```
    */
-  createNode: (input: CreateNodeInput) => Promise<Node>;
+  createNode: (
+    input: CreateNodeInput,
+    options?: Omit<CreateNodeOptions, 'store' | 'owner'>
+  ) => Promise<Node>;
 
   /**
    * Delete a node from the store
@@ -86,7 +103,10 @@ export function createNodeActions(
   owner: string
 ): NodeActions {
   return {
-    createNode: (input: CreateNodeInput) => createNode(input, { store, owner }),
+    createNode: (
+      input: CreateNodeInput,
+      options?: Omit<CreateNodeOptions, 'store' | 'owner'>
+    ) => createNode(input, { store, owner, ...options }),
 
     deleteNode: (
       input: DeleteNodeInput,

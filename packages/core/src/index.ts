@@ -31,6 +31,15 @@ export { runCodegen, type RunCodegenOptions } from './codegen.js';
 // Re-export config functions
 export { createConfig, getConfig, type Config } from './config.js';
 
+// Re-export schema builder
+export {
+  s,
+  InferSchema,
+  type SchemaOption,
+  type SchemaBuilder,
+  z,
+} from './schema-builder.js';
+
 // Re-export GraphQL fetch utility
 export {
   graphqlFetch,

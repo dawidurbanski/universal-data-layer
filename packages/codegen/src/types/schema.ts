@@ -59,6 +59,17 @@ export interface FieldDefinition {
    * Required when type is 'reference'
    */
   referenceType?: string;
+
+  /**
+   * For literal/enum types: specific literal values.
+   * When present, generates union type (e.g., `'pending' | 'completed'`)
+   * instead of the base type.
+   *
+   * @example
+   * { type: 'string', literalValues: ['pending', 'completed'] }
+   * // Generates: 'pending' | 'completed'
+   */
+  literalValues?: (string | number | boolean)[];
 }
 
 /**

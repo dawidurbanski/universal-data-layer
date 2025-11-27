@@ -405,6 +405,113 @@ describe('TypeScriptGenerator', () => {
   });
 });
 
+describe('TypeScriptGenerator - literalValues', () => {
+  it('should generate string union type from literalValues', () => {
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Task',
+        fields: [
+          {
+            name: 'status',
+            type: 'string',
+            required: true,
+            literalValues: ['pending', 'in_progress', 'completed'],
+          },
+        ],
+      },
+    ];
+
+    const generator = new TypeScriptGenerator({ includeInternal: false });
+    const code = generator.generate(schemas);
+
+    expect(code).toContain("status: 'pending' | 'in_progress' | 'completed';");
+  });
+
+  it('should generate number union type from literalValues', () => {
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Task',
+        fields: [
+          {
+            name: 'priority',
+            type: 'number',
+            required: true,
+            literalValues: [1, 2, 3],
+          },
+        ],
+      },
+    ];
+
+    const generator = new TypeScriptGenerator({ includeInternal: false });
+    const code = generator.generate(schemas);
+
+    expect(code).toContain('priority: 1 | 2 | 3;');
+  });
+
+  it('should generate boolean literal type from literalValues', () => {
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Task',
+        fields: [
+          {
+            name: 'locked',
+            type: 'boolean',
+            required: true,
+            literalValues: [true],
+          },
+        ],
+      },
+    ];
+
+    const generator = new TypeScriptGenerator({ includeInternal: false });
+    const code = generator.generate(schemas);
+
+    expect(code).toContain('locked: true;');
+  });
+
+  it('should escape special characters in string literals', () => {
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Task',
+        fields: [
+          {
+            name: 'quote',
+            type: 'string',
+            required: true,
+            literalValues: ["it's working", 'double "quote"'],
+          },
+        ],
+      },
+    ];
+
+    const generator = new TypeScriptGenerator({ includeInternal: false });
+    const code = generator.generate(schemas);
+
+    expect(code).toContain("'it\\'s working'");
+  });
+
+  it('should handle optional field with literalValues', () => {
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Task',
+        fields: [
+          {
+            name: 'status',
+            type: 'string',
+            required: false,
+            literalValues: ['active', 'inactive'],
+          },
+        ],
+      },
+    ];
+
+    const generator = new TypeScriptGenerator({ includeInternal: false });
+    const code = generator.generate(schemas);
+
+    expect(code).toContain("status?: 'active' | 'inactive';");
+  });
+});
+
 describe('generateTypeScript', () => {
   it('should be a convenience function', () => {
     const schemas: ContentTypeDefinition[] = [

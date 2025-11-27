@@ -228,6 +228,13 @@ export class TypeScriptGenerator {
   private getTypeString(field: FieldDefinition): string {
     const { customScalars } = this.options;
 
+    // Handle literal values first (from schema overrides)
+    // e.g., { type: 'string', literalValues: ['pending', 'completed'] }
+    // generates: 'pending' | 'completed'
+    if (field.literalValues && field.literalValues.length > 0) {
+      return this.getLiteralUnionTypeString(field.literalValues);
+    }
+
     switch (field.type) {
       case 'array':
         return this.getArrayTypeString(field);
@@ -238,6 +245,24 @@ export class TypeScriptGenerator {
       default:
         return fieldTypeToTypeScript(field.type, customScalars);
     }
+  }
+
+  /**
+   * Get TypeScript union type string for literal values.
+   */
+  private getLiteralUnionTypeString(
+    values: (string | number | boolean)[]
+  ): string {
+    return values
+      .map((v) => {
+        if (typeof v === 'string') {
+          // Escape single quotes in the value
+          return `'${v.replace(/'/g, "\\'")}'`;
+        }
+        // Numbers and booleans don't need quotes
+        return String(v);
+      })
+      .join(' | ');
   }
 
   /**

@@ -10,6 +10,8 @@ import type {
   FieldDefinition,
   FieldType,
 } from '@/types/schema.js';
+import type { z } from 'zod';
+import { applySchemaOverrides } from './from-zod.js';
 
 /**
  * Minimal interface for a UDL Node.
@@ -26,6 +28,16 @@ interface NodeLike {
 }
 
 /**
+ * Schema info stored for a node type (matches TypeSchemaInfo from core)
+ */
+export interface TypeSchemaInfo {
+  /** Field overrides from InferSchema */
+  overrides?: Record<string, z.ZodTypeAny>;
+  /** Full Zod schema (if provided instead of InferSchema) */
+  fullSchema?: z.ZodObject<z.ZodRawShape>;
+}
+
+/**
  * Minimal interface for a UDL NodeStore.
  * Allows this module to work with any compatible store implementation.
  */
@@ -36,6 +48,8 @@ export interface NodeStoreLike {
   getByType(type: string): NodeLike[];
   /** Get registered index field names for a type */
   getRegisteredIndexes(nodeType: string): string[];
+  /** Get schema info for a type (optional - for schema override support) */
+  getTypeSchema?(nodeType: string): TypeSchemaInfo | undefined;
 }
 
 /**
@@ -366,6 +380,12 @@ export function inferSchemaFromStore(
         samplesToAnalyze[i] as unknown as Record<string, unknown>
       );
       mergedFields = mergeFieldArrays(mergedFields, nodeFields);
+    }
+
+    // Apply schema overrides if the store supports it and has overrides for this type
+    const schemaInfo = store.getTypeSchema?.(typeName);
+    if (schemaInfo?.overrides) {
+      mergedFields = applySchemaOverrides(mergedFields, schemaInfo.overrides);
     }
 
     // Get indexed fields for this type

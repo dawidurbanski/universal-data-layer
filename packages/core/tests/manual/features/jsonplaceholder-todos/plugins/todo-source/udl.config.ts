@@ -5,7 +5,8 @@
  * and creates nodes in the UDL store.
  */
 
-import type { SourceNodesContext } from '@core/nodes/index.js';
+import type { SourceNodesContext } from 'universal-data-layer';
+import { s } from 'universal-data-layer';
 
 // API response type
 interface TodoApiResponse {
@@ -46,19 +47,26 @@ export async function sourceNodes({
   for (const todo of limitedTodos) {
     const nodeId = createNodeId('Todo', String(todo.id));
 
-    await actions.createNode({
-      internal: {
-        id: nodeId,
-        type: 'Todo',
-        owner: 'jsonplaceholder-todo-source',
-        contentDigest: createContentDigest(todo),
+    await actions.createNode(
+      {
+        internal: {
+          id: nodeId,
+          type: 'Todo',
+          owner: 'jsonplaceholder-todo-source',
+          contentDigest: createContentDigest(todo),
+        },
+        // Map API fields to node fields
+        externalId: todo.id,
+        userId: todo.userId,
+        title: todo.title,
+        completed: todo.completed,
       },
-      // Map API fields to node fields
-      externalId: todo.id,
-      userId: todo.userId,
-      title: todo.title,
-      completed: todo.completed,
-    });
+      {
+        schema: s.infer().override({
+          title: s.enum(['pending', 'in_progress', 'completed']),
+        }),
+      }
+    );
   }
 
   console.log(`Created ${limitedTodos.length} Todo nodes`);
