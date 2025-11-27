@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "udl-codegen": "./bin/cli.js"
+    "udl-codegen": "./bin/udl-codegen.js"
   },
   "scripts": {
     "build": "tsc && tsc-alias",
