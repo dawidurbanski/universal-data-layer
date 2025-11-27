@@ -1,6 +1,4 @@
 import { useState } from 'react';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore - Generated at runtime, not available in CI
 import {
   getAllTodos,
   isTodo,
