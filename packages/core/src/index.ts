@@ -22,10 +22,21 @@ export {
   type LoadConfigFileOptions,
   type LoadPluginsOptions,
   type RegisterTypesContext,
+  type CodegenConfig,
 } from './loader.js';
+
+// Re-export codegen integration
+export { runCodegen, type RunCodegenOptions } from './codegen.js';
 
 // Re-export config functions
 export { createConfig, getConfig, type Config } from './config.js';
+
+// Re-export GraphQL fetch utility
+export {
+  graphqlFetch,
+  type GraphQLError,
+  type GraphQLResponse,
+} from './graphql-fetch.js';
 
 // Export the default server for programmatic usage
 export { default } from './server.js';

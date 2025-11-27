@@ -1,0 +1,216 @@
+/**
+ * Code Generation Integration
+ *
+ * Provides automatic code generation after sourceNodes completes.
+ * Uses dynamic imports so @udl/codegen is optional.
+ */
+
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import type { CodegenConfig } from '@/loader.js';
+import type { NodeStore } from '@/nodes/store.js';
+
+/**
+ * Options for running codegen
+ */
+export interface RunCodegenOptions {
+  /** Code generation configuration */
+  config: CodegenConfig;
+  /** Node store to generate from */
+  store: NodeStore;
+  /** Base directory for resolving output path */
+  basePath?: string;
+  /** Filter to only generate types for nodes owned by these plugins */
+  owners?: string[];
+}
+
+/**
+ * Generated file content
+ */
+interface GeneratedFiles {
+  types: string;
+  guards?: string;
+  helpers?: string;
+}
+
+// Type for the dynamically imported codegen module
+type CodegenModule = typeof import('@udl/codegen');
+
+/**
+ * Run code generation from the node store
+ *
+ * @param options - Codegen options
+ * @returns Promise that resolves when generation is complete
+ */
+export async function runCodegen(options: RunCodegenOptions): Promise<void> {
+  const { config, store, basePath = process.cwd(), owners } = options;
+
+  // Resolve output path
+  const outputDir = resolve(basePath, config.output || './generated');
+
+  // Try to import @udl/codegen dynamically
+  let codegen: CodegenModule;
+  try {
+    codegen = (await import('@udl/codegen')) as CodegenModule;
+  } catch {
+    console.warn(
+      '⚠️  @udl/codegen not installed. Run `npm install @udl/codegen` to enable automatic type generation.'
+    );
+    return;
+  }
+
+  const {
+    inferSchemaFromStore,
+    TypeScriptGenerator,
+    TypeGuardGenerator,
+    FetchHelperGenerator,
+  } = codegen;
+
+  // Build inference options based on config
+  const inferOptions: { owners?: string[]; types?: string[] } = {};
+  if (config.types && config.types.length > 0) {
+    inferOptions.types = config.types;
+  } else if (owners && owners.length > 0) {
+    inferOptions.owners = owners;
+  }
+
+  // Infer schemas from the node store
+  // Cast store to unknown first since NodeStore and NodeStoreLike have compatible runtime behavior
+  // but different TypeScript signatures (index signature vs specific fields)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const schemas = inferSchemaFromStore(store as any, inferOptions);
+
+  if (schemas.length === 0) {
+    console.log('ℹ️  No nodes found in store, skipping codegen');
+    return;
+  }
+
+  console.log(`📝 Generating types for ${schemas.length} node type(s)...`);
+
+  // Generate code
+  const includeJsDoc = config.includeJsDoc !== false;
+  const includeInternal = config.includeInternal !== false; // default to true
+
+  const files: GeneratedFiles = {
+    types: '',
+  };
+
+  // Generate TypeScript types (always generated)
+  const tsGenerator = new TypeScriptGenerator({
+    includeJsDoc,
+    includeInternal,
+  });
+  files.types = tsGenerator.generate(schemas);
+
+  // Generate type guards if enabled
+  if (config.guards) {
+    const guardGenerator = new TypeGuardGenerator({ includeJsDoc });
+    files.guards = guardGenerator.generate(schemas);
+  }
+
+  // Generate fetch helpers if enabled
+  if (config.helpers) {
+    const helperGenerator = new FetchHelperGenerator({
+      includeJsDoc,
+      includeInternalFields: true,
+    });
+    files.helpers = helperGenerator.generate(schemas);
+  }
+
+  // Write files to output directory
+  await writeGeneratedFiles(outputDir, files, schemas);
+
+  console.log(`✅ Generated types written to ${outputDir}`);
+}
+
+/**
+ * Write generated files to the output directory
+ */
+async function writeGeneratedFiles(
+  outputDir: string,
+  files: GeneratedFiles,
+  schemas: Array<{ name: string }>
+): Promise<void> {
+  // Ensure output directory exists
+  if (!existsSync(outputDir)) {
+    await mkdir(outputDir, { recursive: true });
+  }
+
+  // Create subdirectories
+  const typesDir = join(outputDir, 'types');
+  const guardsDir = join(outputDir, 'guards');
+  const helpersDir = join(outputDir, 'helpers');
+
+  if (!existsSync(typesDir)) {
+    await mkdir(typesDir, { recursive: true });
+  }
+
+  // Write types
+  await writeFile(join(typesDir, 'index.ts'), files.types);
+
+  // Write guards if generated
+  if (files.guards) {
+    if (!existsSync(guardsDir)) {
+      await mkdir(guardsDir, { recursive: true });
+    }
+    await writeFile(join(guardsDir, 'index.ts'), files.guards);
+  }
+
+  // Write helpers if generated
+  if (files.helpers) {
+    if (!existsSync(helpersDir)) {
+      await mkdir(helpersDir, { recursive: true });
+    }
+    await writeFile(join(helpersDir, 'index.ts'), files.helpers);
+  }
+
+  // Create main index.ts that re-exports everything
+  const indexContent = generateIndexFile(files, schemas);
+  await writeFile(join(outputDir, 'index.ts'), indexContent);
+}
+
+/**
+ * Generate the main index.ts file that re-exports all generated code
+ */
+function generateIndexFile(
+  files: GeneratedFiles,
+  schemas: Array<{ name: string }>
+): string {
+  const lines: string[] = [
+    '/**',
+    ' * Auto-generated by @udl/codegen',
+    ' * DO NOT EDIT MANUALLY',
+    ' */',
+    '',
+  ];
+
+  // Re-export types
+  const typeNames = schemas.map((s) => s.name).join(', ');
+  lines.push(`// Types`);
+  lines.push(`export type { ${typeNames} } from './types/index.js';`);
+
+  // Re-export guards if generated
+  if (files.guards) {
+    const guardNames = schemas
+      .flatMap((s) => [`is${s.name}`, `assert${s.name}`])
+      .join(', ');
+    lines.push('');
+    lines.push(`// Type Guards`);
+    lines.push(`export { ${guardNames} } from './guards/index.js';`);
+  }
+
+  // Re-export helpers if generated
+  if (files.helpers) {
+    const helperNames = schemas
+      .flatMap((s) => [`getAll${s.name}s`, `get${s.name}ById`])
+      .join(', ');
+    lines.push('');
+    lines.push(`// Fetch Helpers`);
+    lines.push(`export { ${helperNames} } from './helpers/index.js';`);
+  }
+
+  lines.push('');
+
+  return lines.join('\n');
+}

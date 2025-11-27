@@ -127,10 +127,10 @@ describe('CLI', () => {
       expect(options.config).toBe('./custom.config.js');
     });
 
-    it('should parse --no-extend-node', () => {
-      const options = parseArgs(['--no-extend-node']);
+    it('should parse --no-internal', () => {
+      const options = parseArgs(['--no-internal']);
 
-      expect(options.extendNode).toBe(false);
+      expect(options.includeInternal).toBe(false);
     });
 
     it('should parse --no-jsdoc', () => {
@@ -243,26 +243,26 @@ describe('CLI', () => {
       expect(merged.output).toBe('./cli-output');
     });
 
-    it('should merge endpoint from file config', () => {
+    it('should merge guards from file config', () => {
       const cliOptions = parseArgs([]);
       const fileConfig = {
-        endpoint: 'http://config-endpoint/graphql',
+        guards: true,
       };
 
       const merged = mergeConfig(cliOptions, fileConfig);
 
-      expect(merged.endpoint).toBe('http://config-endpoint/graphql');
+      expect(merged.guards).toBe(true);
     });
 
-    it('should prefer CLI endpoint over file config', () => {
-      const cliOptions = parseArgs(['-e', 'http://cli-endpoint/graphql']);
+    it('should merge helpers from file config', () => {
+      const cliOptions = parseArgs([]);
       const fileConfig = {
-        endpoint: 'http://config-endpoint/graphql',
+        helpers: true,
       };
 
       const merged = mergeConfig(cliOptions, fileConfig);
 
-      expect(merged.endpoint).toBe('http://cli-endpoint/graphql');
+      expect(merged.helpers).toBe(true);
     });
   });
 
@@ -345,12 +345,13 @@ describe('CLI', () => {
       expect(code.types).not.toContain('/** The name */');
     });
 
-    it('should respect --no-extend-node', () => {
-      const options = parseArgs(['--no-extend-node']);
+    it('should respect --no-internal', () => {
+      const options = parseArgs(['--no-internal']);
 
       const code = generateCode(schemas, options);
 
-      expect(code.types).not.toContain('extends Node');
+      expect(code.types).not.toContain('internal:');
+      expect(code.types).not.toContain('NodeInternal');
     });
 
     it('should respect --export-type', () => {

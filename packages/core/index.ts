@@ -20,3 +20,10 @@ export {
   getPackageName,
   getPackageType,
 } from './src/utils/package-info.js';
+
+// Export GraphQL fetch utility for generated helpers
+export {
+  graphqlFetch,
+  type GraphQLError,
+  type GraphQLResponse,
+} from './src/graphql-fetch.js';

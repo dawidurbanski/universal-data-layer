@@ -7,16 +7,159 @@ import {
   GraphQLFloat,
   GraphQLBoolean,
   GraphQLNonNull,
+  GraphQLInputObjectType,
   type GraphQLFieldConfigMap,
+  type GraphQLInputFieldConfigMap,
   GraphQLScalarType,
 } from 'graphql';
 import { defaultStore } from '@/nodes/defaultStore.js';
 import type { Node } from '@/nodes/types.js';
 
 /**
+ * Filter input types for scalar comparisons
+ */
+const StringFilterInput = new GraphQLInputObjectType({
+  name: 'StringFilterInput',
+  fields: {
+    eq: { type: GraphQLString },
+    ne: { type: GraphQLString },
+    in: { type: new GraphQLList(GraphQLString) },
+    contains: { type: GraphQLString },
+    startsWith: { type: GraphQLString },
+    endsWith: { type: GraphQLString },
+  },
+});
+
+const IntFilterInput = new GraphQLInputObjectType({
+  name: 'IntFilterInput',
+  fields: {
+    eq: { type: GraphQLInt },
+    ne: { type: GraphQLInt },
+    gt: { type: GraphQLInt },
+    gte: { type: GraphQLInt },
+    lt: { type: GraphQLInt },
+    lte: { type: GraphQLInt },
+    in: { type: new GraphQLList(GraphQLInt) },
+  },
+});
+
+const FloatFilterInput = new GraphQLInputObjectType({
+  name: 'FloatFilterInput',
+  fields: {
+    eq: { type: GraphQLFloat },
+    ne: { type: GraphQLFloat },
+    gt: { type: GraphQLFloat },
+    gte: { type: GraphQLFloat },
+    lt: { type: GraphQLFloat },
+    lte: { type: GraphQLFloat },
+    in: { type: new GraphQLList(GraphQLFloat) },
+  },
+});
+
+const BooleanFilterInput = new GraphQLInputObjectType({
+  name: 'BooleanFilterInput',
+  fields: {
+    eq: { type: GraphQLBoolean },
+    ne: { type: GraphQLBoolean },
+  },
+});
+
+/**
+ * Get the appropriate filter input type for a GraphQL scalar type
+ */
+function getFilterInputType(
+  graphqlType: GraphQLScalarType
+): GraphQLInputObjectType | null {
+  if (graphqlType === GraphQLString) return StringFilterInput;
+  if (graphqlType === GraphQLInt) return IntFilterInput;
+  if (graphqlType === GraphQLFloat) return FloatFilterInput;
+  if (graphqlType === GraphQLBoolean) return BooleanFilterInput;
+  return null;
+}
+
+/**
+ * Apply a filter to a single node field value
+ */
+function matchesFilter(
+  value: unknown,
+  filter: Record<string, unknown>
+): boolean {
+  for (const [operator, filterValue] of Object.entries(filter)) {
+    if (filterValue === undefined || filterValue === null) continue;
+
+    switch (operator) {
+      case 'eq':
+        if (value !== filterValue) return false;
+        break;
+      case 'ne':
+        if (value === filterValue) return false;
+        break;
+      case 'gt':
+        if (typeof value !== 'number' || value <= (filterValue as number))
+          return false;
+        break;
+      case 'gte':
+        if (typeof value !== 'number' || value < (filterValue as number))
+          return false;
+        break;
+      case 'lt':
+        if (typeof value !== 'number' || value >= (filterValue as number))
+          return false;
+        break;
+      case 'lte':
+        if (typeof value !== 'number' || value > (filterValue as number))
+          return false;
+        break;
+      case 'in':
+        if (!Array.isArray(filterValue) || !filterValue.includes(value))
+          return false;
+        break;
+      case 'contains':
+        if (typeof value !== 'string' || !value.includes(filterValue as string))
+          return false;
+        break;
+      case 'startsWith':
+        if (
+          typeof value !== 'string' ||
+          !value.startsWith(filterValue as string)
+        )
+          return false;
+        break;
+      case 'endsWith':
+        if (typeof value !== 'string' || !value.endsWith(filterValue as string))
+          return false;
+        break;
+    }
+  }
+  return true;
+}
+
+/**
+ * Filter nodes based on a filter object
+ */
+function filterNodes(
+  nodes: Node[],
+  filter: Record<string, Record<string, unknown>> | undefined | null
+): Node[] {
+  if (!filter) return nodes;
+
+  return nodes.filter((node) => {
+    for (const [fieldName, fieldFilter] of Object.entries(filter)) {
+      if (!fieldFilter) continue;
+      const value = node[fieldName as keyof Node];
+      if (!matchesFilter(value, fieldFilter)) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
+/**
  * Cache for GraphQL types to avoid recreating them
  */
 const typeCache = new Map<string, GraphQLObjectType>();
+const filterInputCache = new Map<string, GraphQLInputObjectType>();
 
 type InferredGraphQLType = GraphQLScalarType | GraphQLList<InferredGraphQLType>;
 
@@ -53,9 +196,29 @@ function inferGraphQLType(value: unknown): InferredGraphQLType {
 }
 
 /**
+ * Collect field samples from nodes for type inference
+ */
+function collectFieldSamples(nodes: Node[]): Map<string, unknown> {
+  const fieldSamples = new Map<string, unknown>();
+
+  for (const node of nodes) {
+    for (const [key, value] of Object.entries(node)) {
+      if (key !== 'internal' && !fieldSamples.has(key)) {
+        fieldSamples.set(key, value);
+      }
+    }
+  }
+
+  return fieldSamples;
+}
+
+/**
  * Create GraphQL object type from node samples
  */
-function createNodeType(typeName: string, nodes: Node[]): GraphQLObjectType {
+function createNodeType(
+  typeName: string,
+  fieldSamples: Map<string, unknown>
+): GraphQLObjectType {
   // Check cache first
   if (typeCache.has(typeName)) {
     return typeCache.get(typeName)!;
@@ -74,22 +237,9 @@ function createNodeType(typeName: string, nodes: Node[]): GraphQLObjectType {
 
   // Collect all field names from all nodes of this type
   const fieldSet = new Set<string>();
-  const fieldSamples = new Map<string, unknown>();
-
-  for (const node of nodes) {
-    // Add standard fields
-    fieldSet.add('internal');
-
-    // Add all custom fields
-    for (const [key, value] of Object.entries(node)) {
-      if (key !== 'internal') {
-        fieldSet.add(key);
-        // Keep a sample value for type inference
-        if (!fieldSamples.has(key)) {
-          fieldSamples.set(key, value);
-        }
-      }
-    }
+  fieldSet.add('internal');
+  for (const key of fieldSamples.keys()) {
+    fieldSet.add(key);
   }
 
   // Build GraphQL fields
@@ -133,12 +283,57 @@ function createNodeType(typeName: string, nodes: Node[]): GraphQLObjectType {
 }
 
 /**
+ * Create a filter input type for a node type based on its fields
+ */
+function createFilterInputType(
+  typeName: string,
+  fieldSamples: Map<string, unknown>
+): GraphQLInputObjectType | null {
+  // Check cache first
+  const cacheKey = `${typeName}FilterInput`;
+  if (filterInputCache.has(cacheKey)) {
+    return filterInputCache.get(cacheKey)!;
+  }
+
+  const filterFields: GraphQLInputFieldConfigMap = {};
+
+  for (const [fieldName, sampleValue] of fieldSamples) {
+    // Skip internal field - we don't filter on it directly
+    if (fieldName === 'internal') continue;
+
+    const graphqlType = inferGraphQLType(sampleValue);
+
+    // Only add scalar types that have filter inputs (not arrays or complex objects)
+    if (graphqlType instanceof GraphQLScalarType) {
+      const filterInputType = getFilterInputType(graphqlType);
+      if (filterInputType) {
+        filterFields[fieldName] = { type: filterInputType };
+      }
+    }
+  }
+
+  // If no filterable fields, return null
+  if (Object.keys(filterFields).length === 0) {
+    return null;
+  }
+
+  const filterInputType = new GraphQLInputObjectType({
+    name: cacheKey,
+    fields: filterFields,
+  });
+
+  filterInputCache.set(cacheKey, filterInputType);
+  return filterInputType;
+}
+
+/**
  * Build the GraphQL schema dynamically from the node store
  * This allows the schema to be rebuilt on demand for hot reloading
  */
 export function buildSchema(): GraphQLSchema {
-  // Clear type cache to allow for schema updates
+  // Clear type caches to allow for schema updates
   typeCache.clear();
+  filterInputCache.clear();
 
   // Get all node types from the store
   const nodeTypes = defaultStore.getTypes();
@@ -156,12 +351,24 @@ export function buildSchema(): GraphQLSchema {
     const nodes = defaultStore.getByType(typeName);
     if (nodes.length === 0) continue;
 
-    const nodeType = createNodeType(typeName, nodes);
+    // Collect field samples for type inference and filter creation
+    const fieldSamples = collectFieldSamples(nodes);
+    const nodeType = createNodeType(typeName, fieldSamples);
 
-    // Add allX field (e.g., allProduct)
+    // Create filter input type for this node type
+    const filterInputType = createFilterInputType(typeName, fieldSamples);
+
+    // Add allX field (e.g., allProduct) with optional filter argument
     queryFields[`all${typeName}`] = {
       type: new GraphQLList(nodeType),
-      resolve: () => defaultStore.getByType(typeName),
+      args: filterInputType ? { filter: { type: filterInputType } } : {},
+      resolve: (
+        _: unknown,
+        args: { filter?: Record<string, Record<string, unknown>> }
+      ) => {
+        const allNodes = defaultStore.getByType(typeName);
+        return filterNodes(allNodes, args.filter);
+      },
     };
 
     // Add single node query by ID and any registered indexed fields (e.g., product)

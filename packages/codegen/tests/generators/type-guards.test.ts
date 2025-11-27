@@ -24,8 +24,8 @@ describe('TypeGuardGenerator', () => {
       expect(code).toContain(
         'export function isProduct(value: unknown): value is Product'
       );
-      expect(code).toContain("typeof obj.name !== 'string'");
-      expect(code).toContain("typeof obj.price !== 'number'");
+      expect(code).toContain("typeof obj['name'] !== 'string'");
+      expect(code).toContain("typeof obj['price'] !== 'number'");
     });
 
     it('should generate assertGuard for a simple type', () => {
@@ -63,9 +63,9 @@ describe('TypeGuardGenerator', () => {
       const code = generator.generate(schemas);
 
       // Optional field should have existence check
-      expect(code).toContain('if (obj.description !== undefined)');
+      expect(code).toContain("if (obj['description'] !== undefined)");
       // Required field should not have existence check
-      expect(code).not.toMatch(/if \(obj\.name !== undefined\)/);
+      expect(code).not.toMatch(/if \(obj\['name'\] !== undefined\)/);
     });
 
     it('should generate JSDoc comments by default', () => {
@@ -150,10 +150,10 @@ describe('TypeGuardGenerator', () => {
       const generator = new TypeGuardGenerator();
       const code = generator.generate(schemas);
 
-      expect(code).toContain("typeof obj.str !== 'string'");
-      expect(code).toContain("typeof obj.num !== 'number'");
-      expect(code).toContain("typeof obj.bool !== 'boolean'");
-      expect(code).toContain('obj.nul !== null');
+      expect(code).toContain("typeof obj['str'] !== 'string'");
+      expect(code).toContain("typeof obj['num'] !== 'number'");
+      expect(code).toContain("typeof obj['bool'] !== 'boolean'");
+      expect(code).toContain("obj['nul'] !== null");
       // unknown type should not have any check
     });
 
@@ -175,7 +175,7 @@ describe('TypeGuardGenerator', () => {
       const generator = new TypeGuardGenerator();
       const code = generator.generate(schemas);
 
-      expect(code).toContain('if (!Array.isArray(obj.tags))');
+      expect(code).toContain("if (!Array.isArray(obj['tags']))");
     });
 
     it('should check array item types when enabled', () => {
@@ -197,7 +197,7 @@ describe('TypeGuardGenerator', () => {
       const code = generator.generate(schemas);
 
       expect(code).toContain(
-        "if (!obj.tags.every((item: unknown) => typeof item === 'string'))"
+        "if (!obj['tags'].every((item: unknown) => typeof item === 'string'))"
       );
     });
 
@@ -243,9 +243,9 @@ describe('TypeGuardGenerator', () => {
       const generator = new TypeGuardGenerator();
       const code = generator.generate(schemas);
 
-      expect(code).toContain("typeof obj.address !== 'object'");
-      expect(code).toContain('obj.address === null');
-      expect(code).toContain('Array.isArray(obj.address)');
+      expect(code).toContain("typeof obj['address'] !== 'object'");
+      expect(code).toContain("obj['address'] === null");
+      expect(code).toContain("Array.isArray(obj['address'])");
     });
 
     it('should check nested object fields with deepCheck enabled', () => {
@@ -269,10 +269,10 @@ describe('TypeGuardGenerator', () => {
       const generator = new TypeGuardGenerator({ deepCheck: true });
       const code = generator.generate(schemas);
 
-      // Should check nested required fields
-      expect(code).toContain('obj_addressObj');
-      expect(code).toContain("typeof obj_addressObj.street !== 'string'");
-      expect(code).toContain("typeof obj_addressObj.city !== 'string'");
+      // Should check nested required fields (variable name is sanitized)
+      expect(code).toContain('obj__address__Obj');
+      expect(code).toContain("typeof obj__address__Obj['street'] !== 'string'");
+      expect(code).toContain("typeof obj__address__Obj['city'] !== 'string'");
     });
 
     it('should skip nested field checks when deepCheck disabled', () => {
@@ -296,8 +296,8 @@ describe('TypeGuardGenerator', () => {
       const code = generator.generate(schemas);
 
       // Should not check nested fields
-      expect(code).not.toContain('addressObj');
-      expect(code).not.toContain('typeof obj_addressObj.street');
+      expect(code).not.toContain('obj__address__Obj');
+      expect(code).not.toContain("typeof obj__address__Obj['street']");
     });
 
     it('should handle reference types', () => {
@@ -319,8 +319,8 @@ describe('TypeGuardGenerator', () => {
       const code = generator.generate(schemas);
 
       // References are just checked as objects at runtime
-      expect(code).toContain("typeof obj.category !== 'object'");
-      expect(code).toContain('obj.category === null');
+      expect(code).toContain("typeof obj['category'] !== 'object'");
+      expect(code).toContain("obj['category'] === null");
     });
 
     it('should handle fields with special characters', () => {

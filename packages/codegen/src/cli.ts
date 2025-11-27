@@ -46,7 +46,7 @@ interface CliOptions {
   version: boolean;
 
   // Generator options
-  extendNode: boolean;
+  includeInternal: boolean;
   includeJsDoc: boolean;
   exportFormat: 'interface' | 'type';
 }
@@ -63,7 +63,7 @@ const DEFAULT_OPTIONS: CliOptions = {
   dryRun: false,
   help: false,
   version: false,
-  extendNode: true,
+  includeInternal: true,
   includeJsDoc: true,
   exportFormat: 'interface',
 };
@@ -152,8 +152,8 @@ export function parseArgs(args: string[]): CliOptions {
         break;
 
       // Generator options
-      case '--no-extend-node':
-        options.extendNode = false;
+      case '--no-internal':
+        options.includeInternal = false;
         break;
 
       case '--no-jsdoc':
@@ -304,8 +304,6 @@ export function mergeConfig(
 ): CliOptions {
   if (!fileConfig) return cliOptions;
 
-  const endpoint = cliOptions.endpoint ?? fileConfig.endpoint;
-
   return {
     ...cliOptions,
     output:
@@ -314,8 +312,7 @@ export function mergeConfig(
         : (fileConfig.output ?? cliOptions.output),
     guards: cliOptions.guards || fileConfig.guards || false,
     helpers: cliOptions.helpers || fileConfig.helpers || false,
-    ...(endpoint && { endpoint }),
-    extendNode: fileConfig.extendNode ?? cliOptions.extendNode,
+    includeInternal: fileConfig.includeInternal ?? cliOptions.includeInternal,
     includeJsDoc: fileConfig.includeJsDoc ?? cliOptions.includeJsDoc,
     exportFormat: fileConfig.exportFormat ?? cliOptions.exportFormat,
   };
@@ -351,7 +348,7 @@ export function generateCode(
 } {
   // Generate types
   const tsGenerator = new TypeScriptGenerator({
-    extendNode: options.extendNode,
+    includeInternal: options.includeInternal,
     includeJsDoc: options.includeJsDoc,
     exportFormat: options.exportFormat,
   });
@@ -370,7 +367,6 @@ export function generateCode(
   let helpers: string | undefined;
   if (options.helpers) {
     const helpersGenerator = new FetchHelperGenerator({
-      ...(options.endpoint && { endpoint: options.endpoint }),
       includeJsDoc: options.includeJsDoc,
     });
     helpers = helpersGenerator.generate(schemas);

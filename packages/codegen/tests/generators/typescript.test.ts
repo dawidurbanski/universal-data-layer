@@ -7,10 +7,11 @@ import type { ContentTypeDefinition } from '../../src/types/schema.js';
 
 describe('TypeScriptGenerator', () => {
   describe('generate', () => {
-    it('should generate a simple interface', () => {
+    it('should generate a simple interface with internal field', () => {
       const schemas: ContentTypeDefinition[] = [
         {
           name: 'Product',
+          owner: 'test-source',
           fields: [
             { name: 'name', type: 'string', required: true },
             { name: 'price', type: 'number', required: true },
@@ -21,11 +22,14 @@ describe('TypeScriptGenerator', () => {
       const generator = new TypeScriptGenerator();
       const code = generator.generate(schemas);
 
-      expect(code).toContain('export interface Product extends Node');
+      expect(code).toContain('export interface Product {');
       expect(code).toContain('name: string;');
       expect(code).toContain('price: number;');
       expect(code).toContain(
-        "import type { Node } from 'universal-data-layer'"
+        "internal: NodeInternal<'Product', 'test-source'>;"
+      );
+      expect(code).toContain(
+        "import type { NodeInternal } from 'universal-data-layer/client'"
       );
     });
 
@@ -97,6 +101,7 @@ describe('TypeScriptGenerator', () => {
       const schemas: ContentTypeDefinition[] = [
         {
           name: 'Product',
+          owner: 'test-source',
           fields: [{ name: 'name', type: 'string', required: true }],
         },
       ];
@@ -104,11 +109,14 @@ describe('TypeScriptGenerator', () => {
       const generator = new TypeScriptGenerator({ exportFormat: 'type' });
       const code = generator.generate(schemas);
 
-      expect(code).toContain('export type Product = Node & {');
+      expect(code).toContain('export type Product = {');
+      expect(code).toContain(
+        "internal: NodeInternal<'Product', 'test-source'>;"
+      );
       expect(code).not.toContain('export interface');
     });
 
-    it('should not extend Node when disabled', () => {
+    it('should not include internal field when disabled', () => {
       const schemas: ContentTypeDefinition[] = [
         {
           name: 'Product',
@@ -116,12 +124,12 @@ describe('TypeScriptGenerator', () => {
         },
       ];
 
-      const generator = new TypeScriptGenerator({ extendNode: false });
+      const generator = new TypeScriptGenerator({ includeInternal: false });
       const code = generator.generate(schemas);
 
       expect(code).toContain('export interface Product {');
-      expect(code).not.toContain('extends Node');
-      expect(code).not.toContain('import type { Node }');
+      expect(code).not.toContain('internal:');
+      expect(code).not.toContain('import type { NodeInternal }');
     });
 
     it('should handle all primitive types', () => {
@@ -319,10 +327,12 @@ describe('TypeScriptGenerator', () => {
       const schemas: ContentTypeDefinition[] = [
         {
           name: 'Product',
+          owner: 'test-source',
           fields: [{ name: 'name', type: 'string', required: true }],
         },
         {
           name: 'Category',
+          owner: 'test-source',
           fields: [{ name: 'title', type: 'string', required: true }],
         },
       ];
@@ -330,8 +340,14 @@ describe('TypeScriptGenerator', () => {
       const generator = new TypeScriptGenerator();
       const code = generator.generate(schemas);
 
-      expect(code).toContain('export interface Product extends Node');
-      expect(code).toContain('export interface Category extends Node');
+      expect(code).toContain('export interface Product {');
+      expect(code).toContain('export interface Category {');
+      expect(code).toContain(
+        "internal: NodeInternal<'Product', 'test-source'>;"
+      );
+      expect(code).toContain(
+        "internal: NodeInternal<'Category', 'test-source'>;"
+      );
     });
 
     it('should handle empty schemas array', () => {
@@ -339,7 +355,8 @@ describe('TypeScriptGenerator', () => {
       const code = generator.generate([]);
 
       expect(code).toContain('Auto-generated TypeScript types');
-      expect(code).toContain('import type { Node }');
+      // No imports when there are no schemas
+      expect(code).not.toContain('import type { NodeInternal }');
     });
 
     it('should include header comment', () => {
@@ -367,17 +384,21 @@ describe('TypeScriptGenerator', () => {
   });
 
   describe('generateType', () => {
-    it('should generate a single type', () => {
+    it('should generate a single type with internal field', () => {
       const schema: ContentTypeDefinition = {
         name: 'Product',
+        owner: 'test-source',
         fields: [{ name: 'name', type: 'string', required: true }],
       };
 
       const generator = new TypeScriptGenerator();
       const code = generator.generateType(schema);
 
-      expect(code).toContain('export interface Product extends Node');
+      expect(code).toContain('export interface Product {');
       expect(code).toContain('name: string;');
+      expect(code).toContain(
+        "internal: NodeInternal<'Product', 'test-source'>;"
+      );
       // Should not have import - that's only in full generate()
       expect(code).not.toContain('import');
     });
@@ -389,13 +410,15 @@ describe('generateTypeScript', () => {
     const schemas: ContentTypeDefinition[] = [
       {
         name: 'Product',
+        owner: 'test-source',
         fields: [{ name: 'name', type: 'string', required: true }],
       },
     ];
 
     const code = generateTypeScript(schemas);
 
-    expect(code).toContain('export interface Product extends Node');
+    expect(code).toContain('export interface Product {');
+    expect(code).toContain("internal: NodeInternal<'Product', 'test-source'>;");
   });
 
   it('should accept options', () => {
@@ -406,9 +429,9 @@ describe('generateTypeScript', () => {
       },
     ];
 
-    const code = generateTypeScript(schemas, { extendNode: false });
+    const code = generateTypeScript(schemas, { includeInternal: false });
 
     expect(code).toContain('export interface Product {');
-    expect(code).not.toContain('extends Node');
+    expect(code).not.toContain('internal:');
   });
 });
