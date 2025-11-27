@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import { getAllTodos, isTodo, type Todo } from './generated';
+import {
+  getAllTodos,
+  isTodo,
+  type Todo,
+} from './plugins/todo-source/generated';
 
 const GRAPHQL_ENDPOINT = 'http://localhost:4000/graphql';
 

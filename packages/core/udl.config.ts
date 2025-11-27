@@ -12,5 +12,5 @@ export const config: UDLConfig = {
 };
 
 export function onLoad() {
-  console.log('🟢 Core loaded');
+  console.log('🟢 Package "core" loaded');
 }

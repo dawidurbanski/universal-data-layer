@@ -19,12 +19,6 @@ export const config: UDLConfig = {
       },
     },
   ],
-  // Automatically generate types, guards, and helpers after sourceNodes
-  codegen: {
-    output: './generated',
-    guards: true,
-    helpers: true,
-    includeInternal: true, // Disable Node extension since universal-data-layer module path can't be resolved here
-    types: ['Todo'], // Only generate code for Todo nodes from this feature's plugin
-  },
+  // Codegen is now configured in the plugin's udl.config.ts
+  // Types will be generated at: plugins/todo-source/generated/
 };

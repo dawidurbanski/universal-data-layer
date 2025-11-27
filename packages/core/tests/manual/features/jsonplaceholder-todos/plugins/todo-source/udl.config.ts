@@ -20,6 +20,14 @@ export const config = {
   type: 'source' as const,
   name: 'jsonplaceholder-todo-source',
   indexes: ['userId'], // Enable userId indexing for efficient lookups
+  // Codegen config - outputs relative to this plugin folder
+  codegen: {
+    output: './generated',
+    guards: true,
+    helpers: true,
+    includeInternal: true,
+    // types not specified = auto-filter by owner (this plugin's nodes only)
+  },
 };
 
 export async function sourceNodes({
@@ -27,8 +35,6 @@ export async function sourceNodes({
   createNodeId,
   createContentDigest,
 }: SourceNodesContext) {
-  console.log('Fetching todos from JSONPlaceholder API...');
-
   // Fetch todos from the API (limit to first 20 for demo)
   const response = await fetch('https://jsonplaceholder.typicode.com/todos');
 
@@ -41,8 +47,6 @@ export async function sourceNodes({
   // Limit to first 20 todos for the demo
   // const limitedTodos = todos.slice(0, 20);
   const limitedTodos = todos;
-
-  console.log(`Fetched ${limitedTodos.length} todos, creating nodes...`);
 
   for (const todo of limitedTodos) {
     const nodeId = createNodeId('Todo', String(todo.id));
@@ -68,6 +72,4 @@ export async function sourceNodes({
       }
     );
   }
-
-  console.log(`Created ${limitedTodos.length} Todo nodes`);
 }
