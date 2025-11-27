@@ -28,6 +28,54 @@ export {
 // Re-export codegen integration
 export { runCodegen, type RunCodegenOptions } from './codegen.js';
 
+// Re-export codegen utilities
+export {
+  // Types
+  type PrimitiveType,
+  type ComplexType,
+  type FieldType,
+  type FieldDefinition,
+  type ContentTypeDefinition,
+  DEFAULT_CODEGEN_CONFIG,
+  resolveCodegenConfig,
+  // Registry
+  SchemaRegistry,
+  defaultRegistry,
+  type RegisterTypesContext as CodegenRegisterTypesContext,
+  // Inference
+  inferSchemaFromStore,
+  inferFieldType,
+  inferFieldDefinition,
+  mergeFieldDefinitions,
+  type InferFromStoreOptions,
+  type NodeStoreLike,
+  introspectGraphQLSchema,
+  parseIntrospectionResult,
+  clearIntrospectionCache,
+  type IntrospectOptions,
+  inferSchemaFromResponse,
+  mergeResponseInferences,
+  inferSchemaFromJsonString,
+  type InferFromResponseOptions,
+  // Generators
+  TypeScriptGenerator,
+  generateTypeScript,
+  type TypeScriptGeneratorOptions,
+  TypeGuardGenerator,
+  generateTypeGuards,
+  type TypeGuardGeneratorOptions,
+  FetchHelperGenerator,
+  generateFetchHelpers,
+  type FetchHelperGeneratorOptions,
+  // Output
+  FileWriter,
+  writeGeneratedFiles,
+  type FileWriterOptions,
+  type WriteResult,
+  type GeneratedFile,
+  type OutputMode,
+} from './codegen/index.js';
+
 // Re-export config functions
 export { createConfig, getConfig, type Config } from './config.js';
 

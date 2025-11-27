@@ -9,7 +9,7 @@ import type {
   ContentTypeDefinition,
   FieldDefinition,
   FieldType,
-} from '@/types/schema.js';
+} from '@/codegen/types/schema.js';
 import type { z } from 'zod';
 import { applySchemaOverrides } from './from-zod.js';
 
@@ -323,8 +323,7 @@ export interface InferFromStoreOptions {
  *
  * @example
  * ```ts
- * import { defaultStore } from 'universal-data-layer';
- * import { inferSchemaFromStore } from '@udl/codegen';
+ * import { defaultStore, inferSchemaFromStore } from 'universal-data-layer';
  *
  * const schemas = inferSchemaFromStore(defaultStore);
  * // schemas is ContentTypeDefinition[] ready for code generation

@@ -10,7 +10,10 @@
  * It provides utilities for managing, merging, and extending type definitions.
  */
 
-import type { ContentTypeDefinition, FieldDefinition } from '@/types/schema.js';
+import type {
+  ContentTypeDefinition,
+  FieldDefinition,
+} from '@/codegen/types/schema.js';
 
 /**
  * Context provided to plugin registerTypes hooks

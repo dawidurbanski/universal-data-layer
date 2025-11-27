@@ -9,7 +9,7 @@ import type {
   ContentTypeDefinition,
   FieldDefinition,
   FieldType,
-} from '@/types/schema.js';
+} from '@/codegen/types/schema.js';
 
 /**
  * Standard GraphQL introspection query
