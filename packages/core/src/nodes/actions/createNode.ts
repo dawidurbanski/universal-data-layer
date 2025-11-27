@@ -1,6 +1,7 @@
 import type { Node } from '@/nodes/types.js';
 import type { NodeStore } from '@/nodes/store.js';
 import { createContentDigest } from '@/nodes/utils/index.js';
+import type { SchemaOption } from '@/schema-builder.js';
 
 /**
  * Input for creating a node - allows partial internal metadata
@@ -28,6 +29,23 @@ export interface CreateNodeOptions {
   store: NodeStore;
   /** Optional owner to set (usually bound via context) */
   owner?: string;
+  /**
+   * Optional schema hint for code generation.
+   * Use `s.infer().override({...})` to narrow specific field types.
+   *
+   * @example
+   * ```ts
+   * import { s } from 'universal-data-layer';
+   *
+   * await createNode(data, {
+   *   store,
+   *   schema: s.infer().override({
+   *     status: s.enum(['pending', 'completed']),
+   *   }),
+   * });
+   * ```
+   */
+  schema?: SchemaOption;
 }
 
 /**
@@ -123,6 +141,11 @@ export async function createNode(
 
   // Store the node
   store.set(node);
+
+  // Store schema info if provided (first schema for a type wins)
+  if (options.schema) {
+    store.setTypeSchema(node.internal.type, options.schema);
+  }
 
   return node;
 }

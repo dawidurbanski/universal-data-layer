@@ -1,4 +1,16 @@
 import type { Node } from './types.js';
+import type { SchemaOption, InferSchema } from '@/schema-builder.js';
+import type { z } from 'zod';
+
+/**
+ * Schema info stored for a node type
+ */
+export interface TypeSchemaInfo {
+  /** Field overrides from InferSchema */
+  overrides?: Record<string, z.ZodTypeAny>;
+  /** Full Zod schema (if provided instead of InferSchema) */
+  fullSchema?: z.ZodObject<z.ZodRawShape>;
+}
 
 /**
  * In-memory node storage using Map-based indexes
@@ -34,11 +46,15 @@ export class NodeStore {
   /** Registered indexes: nodeType -> Set of field names */
   private registeredIndexes: Map<string, Set<string>>;
 
+  /** Schema info per type: nodeType -> TypeSchemaInfo */
+  private typeSchemas: Map<string, TypeSchemaInfo>;
+
   constructor() {
     this.nodes = new Map();
     this.typeIndex = new Map();
     this.fieldIndexes = new Map();
     this.registeredIndexes = new Map();
+    this.typeSchemas = new Map();
   }
 
   /**
@@ -262,6 +278,59 @@ export class NodeStore {
   }
 
   /**
+   * Set schema info for a node type.
+   * First schema for a type wins (subsequent calls are ignored).
+   *
+   * @param nodeType - The node type name
+   * @param schema - SchemaOption (InferSchema or ZodObject)
+   */
+  setTypeSchema(nodeType: string, schema: SchemaOption): void {
+    // First schema for a type wins
+    if (this.typeSchemas.has(nodeType)) {
+      return;
+    }
+
+    // Check if it's an InferSchema (has getOverrides method)
+    if (
+      schema &&
+      typeof schema === 'object' &&
+      'getOverrides' in schema &&
+      typeof schema.getOverrides === 'function'
+    ) {
+      const inferSchema = schema as InferSchema;
+      if (inferSchema.hasOverrides()) {
+        this.typeSchemas.set(nodeType, {
+          overrides: inferSchema.getOverrides(),
+        });
+      }
+    } else if (schema && typeof schema === 'object' && '_def' in schema) {
+      // It's a ZodObject (has _def property)
+      this.typeSchemas.set(nodeType, {
+        fullSchema: schema as z.ZodObject<z.ZodRawShape>,
+      });
+    }
+  }
+
+  /**
+   * Get schema info for a node type.
+   *
+   * @param nodeType - The node type name
+   * @returns TypeSchemaInfo or undefined if not set
+   */
+  getTypeSchema(nodeType: string): TypeSchemaInfo | undefined {
+    return this.typeSchemas.get(nodeType);
+  }
+
+  /**
+   * Check if a node type has schema info.
+   *
+   * @param nodeType - The node type name
+   */
+  hasTypeSchema(nodeType: string): boolean {
+    return this.typeSchemas.has(nodeType);
+  }
+
+  /**
    * Clear all nodes (useful for testing)
    */
   clear(): void {
@@ -269,5 +338,6 @@ export class NodeStore {
     this.typeIndex.clear();
     this.fieldIndexes.clear();
     this.registeredIndexes.clear();
+    this.typeSchemas.clear();
   }
 }

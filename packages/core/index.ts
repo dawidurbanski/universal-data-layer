@@ -13,6 +13,9 @@ export type {
 } from './src/loader.js';
 export { defineConfig } from './src/loader.js';
 
+// Export node types and context for plugins
+export type { SourceNodesContext } from './src/nodes/index.js';
+
 // Export utility functions
 export {
   loadPackageJson,
@@ -27,3 +30,12 @@ export {
   type GraphQLError,
   type GraphQLResponse,
 } from './src/graphql-fetch.js';
+
+// Export schema builder for type hints at createNode call sites
+export {
+  s,
+  InferSchema,
+  type SchemaOption,
+  type SchemaBuilder,
+  z,
+} from './src/schema-builder.js';
