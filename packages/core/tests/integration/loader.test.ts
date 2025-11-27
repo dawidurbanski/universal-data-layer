@@ -449,7 +449,7 @@ describe('loader integration tests', () => {
 
       const appConfig = { port: 8000 };
 
-      await loadPlugins([pluginDir], appConfig);
+      await loadPlugins([pluginDir], { appConfig });
 
       expect(global.__localPluginLoaded).toBe(true);
       expect(

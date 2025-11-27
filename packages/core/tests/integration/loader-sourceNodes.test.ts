@@ -419,7 +419,7 @@ describe('loader - sourceNodes integration', () => {
       );
 
       // Load the plugin using loadPlugins (passing the path)
-      await loadPlugins([pluginDir], {}, store);
+      await loadPlugins([pluginDir], { appConfig: {}, store });
 
       const nodes = store.getAll();
 
@@ -458,7 +458,7 @@ describe('loader - sourceNodes integration', () => {
       );
 
       // Load the plugin using loadPlugins
-      await loadPlugins([pluginDir], {}, store);
+      await loadPlugins([pluginDir], { appConfig: {}, store });
 
       const nodes = store.getAll();
 
@@ -496,7 +496,7 @@ describe('loader - sourceNodes integration', () => {
       );
 
       // Load using absolute path
-      await loadPlugins([pluginDir], {}, store);
+      await loadPlugins([pluginDir], { appConfig: {}, store });
 
       const nodes = store.getAll();
 
@@ -538,7 +538,7 @@ describe('loader - sourceNodes integration', () => {
       );
 
       // Load the TypeScript plugin
-      await loadPlugins([pluginDir], {}, store);
+      await loadPlugins([pluginDir], { appConfig: {}, store });
 
       const nodes = store.getAll();
 
@@ -594,7 +594,7 @@ describe('loader - sourceNodes integration', () => {
       );
 
       // Should prefer compiled version
-      await loadPlugins([pluginDir], {}, store);
+      await loadPlugins([pluginDir], { appConfig: {}, store });
 
       const nodes = store.getAll();
 
@@ -634,7 +634,7 @@ describe('loader - sourceNodes integration', () => {
       );
 
       // Load the JavaScript plugin
-      await loadPlugins([pluginDir], {}, store);
+      await loadPlugins([pluginDir], { appConfig: {}, store });
 
       const nodes = store.getAll();
 
@@ -677,7 +677,7 @@ describe('loader - sourceNodes integration', () => {
         `
       );
 
-      await loadPlugins([pluginDir], {}, store);
+      await loadPlugins([pluginDir], { appConfig: {}, store });
 
       // Verify indexes were registered
       const registeredIndexes = store.getRegisteredIndexes('Product');
@@ -733,8 +733,7 @@ describe('loader - sourceNodes integration', () => {
             },
           },
         ],
-        {},
-        store
+        { appConfig: {}, store }
       );
 
       // Verify user-provided index was registered
@@ -791,8 +790,7 @@ describe('loader - sourceNodes integration', () => {
             },
           },
         ],
-        {},
-        store
+        { appConfig: {}, store }
       );
 
       // Verify both indexes are registered
@@ -859,7 +857,7 @@ describe('loader - sourceNodes integration', () => {
       );
 
       // Load both plugins
-      await loadPlugins([plugin1Dir, plugin2Dir], {}, store);
+      await loadPlugins([plugin1Dir, plugin2Dir], { appConfig: {}, store });
 
       // Product should have 'slug' index (from plugin-1)
       const productIndexes = store.getRegisteredIndexes('Product');

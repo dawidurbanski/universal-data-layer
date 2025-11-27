@@ -95,7 +95,10 @@ async function loadManualTestConfigs(rootDir: string): Promise<void> {
             }
           });
 
-          await loadPlugins(resolvedPlugins, config, defaultStore);
+          await loadPlugins(resolvedPlugins, {
+            appConfig: config,
+            store: defaultStore,
+          });
         }
       } catch (error) {
         console.warn(
@@ -131,7 +134,7 @@ export async function startServer(options: StartServerOptions = {}) {
   // Load main app config plugins
   if (userConfig.plugins && userConfig.plugins.length > 0) {
     console.log('Loading plugins...');
-    await loadPlugins(userConfig.plugins, userConfig);
+    await loadPlugins(userConfig.plugins, { appConfig: userConfig });
   }
 
   // In dev mode, also load configs from manual test features

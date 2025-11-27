@@ -56,6 +56,24 @@ export interface OnLoadContext<T = Record<string, unknown>> {
 }
 
 /**
+ * Context passed to registerTypes hook
+ * This interface is generic to avoid circular dependencies with @udl/codegen.
+ * Use SchemaRegistry.createContext() from @udl/codegen to create this context.
+ */
+export interface RegisterTypesContext<T = Record<string, unknown>> {
+  /** Register a new content type definition */
+  registerType(def: unknown): void;
+  /** Extend an existing content type with additional fields */
+  extendType(typeName: string, fields: unknown[]): void;
+  /** Get a registered content type definition by name */
+  getType(name: string): unknown | undefined;
+  /** Get all registered content type definitions */
+  getAllTypes(): unknown[];
+  /** Plugin-specific options */
+  options: T | undefined;
+}
+
+/**
  * UDL Config File structure
  * Used for both app and plugin config files
  */
@@ -69,6 +87,10 @@ export interface UDLConfigFile {
   /** Optional lifecycle hook for sourcing nodes at build time */
   sourceNodes?: <T = Record<string, unknown>>(
     context?: import('@/nodes/index.js').SourceNodesContext<T>
+  ) => void | Promise<void>;
+  /** Optional lifecycle hook for registering type definitions (for codegen) */
+  registerTypes?: <T = Record<string, unknown>>(
+    context?: RegisterTypesContext<T>
   ) => void | Promise<void>;
 }
 
@@ -114,6 +136,8 @@ export interface LoadConfigFileOptions {
   pluginName?: string;
   /** Node store to use for sourceNodes (if not provided, sourceNodes won't execute) */
   store?: NodeStore;
+  /** Context to pass to registerTypes hook (from @udl/codegen SchemaRegistry) */
+  registerTypesContext?: RegisterTypesContext;
 }
 
 /**
@@ -150,6 +174,11 @@ export async function loadConfigFile(
         createContentDigest,
         options: options.context?.options,
       });
+    }
+
+    // Execute registerTypes hook if context provided (for codegen integration)
+    if (module.registerTypes && options?.registerTypesContext) {
+      await module.registerTypes(options.registerTypesContext);
     }
 
     return module.config;
@@ -220,16 +249,27 @@ export async function loadAppConfig(
 }
 
 /**
- * High-level: Loads and initializes plugins by executing their onLoad and sourceNodes hooks
+ * Options for loadPlugins function
+ */
+export interface LoadPluginsOptions {
+  /** The application's UDL config to pass to plugin onLoad hooks */
+  appConfig?: UDLConfig;
+  /** Node store for sourceNodes hook. If not provided, uses the defaultStore singleton */
+  store?: NodeStore;
+  /** Context for registerTypes hook (from @udl/codegen SchemaRegistry.createContext()) */
+  registerTypesContext?: RegisterTypesContext;
+}
+
+/**
+ * High-level: Loads and initializes plugins by executing their onLoad, sourceNodes, and registerTypes hooks
  * @param plugins - Array of plugin specifiers (package names, file paths, or plugin objects with name and options)
- * @param appConfig - The application's UDL config to pass to plugin onLoad hooks
- * @param store - Optional node store for sourceNodes hook. If not provided, uses the defaultStore singleton
+ * @param options - Configuration options including appConfig, store, and registerTypesContext
  */
 export async function loadPlugins(
   plugins: PluginSpec[] = [],
-  appConfig?: UDLConfig,
-  store?: NodeStore
+  options?: LoadPluginsOptions
 ) {
+  const { appConfig, store, registerTypesContext } = options ?? {};
   // Use provided store or fall back to the default singleton
   const nodeStore = store ?? defaultStore;
 
@@ -351,6 +391,16 @@ export async function loadPlugins(
                 }
               }
             }
+          }
+
+          // Execute registerTypes hook if context provided (for codegen integration)
+          if (module.registerTypes && registerTypesContext) {
+            // Create a plugin-specific context with options
+            const typesContext: RegisterTypesContext = {
+              ...registerTypesContext,
+              options: context?.options,
+            };
+            await module.registerTypes(typesContext);
           }
 
           plugin = module.config;
