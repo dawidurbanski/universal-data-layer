@@ -17,8 +17,7 @@
       "cache": false
     },
     "typecheck": {
-      "dependsOn": ["^build"],
-      "outputs": []
+      "dependsOn": []
     },
     "start": {
       "dependsOn": ["^start"]
