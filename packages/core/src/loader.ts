@@ -103,9 +103,8 @@ export interface OnLoadContext<T = Record<string, unknown>> {
 }
 
 /**
- * Context passed to registerTypes hook
- * This interface is generic to avoid circular dependencies with @udl/codegen.
- * Use SchemaRegistry.createContext() from @udl/codegen to create this context.
+ * Context passed to registerTypes hook.
+ * Use SchemaRegistry.createContext() to create this context.
  */
 export interface RegisterTypesContext<T = Record<string, unknown>> {
   /** Register a new content type definition */
@@ -183,7 +182,7 @@ export interface LoadConfigFileOptions {
   pluginName?: string;
   /** Node store to use for sourceNodes (if not provided, sourceNodes won't execute) */
   store?: NodeStore;
-  /** Context to pass to registerTypes hook (from @udl/codegen SchemaRegistry) */
+  /** Context to pass to registerTypes hook (from SchemaRegistry) */
   registerTypesContext?: RegisterTypesContext;
 }
 
@@ -323,7 +322,7 @@ export interface LoadPluginsOptions {
   appConfig?: UDLConfig;
   /** Node store for sourceNodes hook. If not provided, uses the defaultStore singleton */
   store?: NodeStore;
-  /** Context for registerTypes hook (from @udl/codegen SchemaRegistry.createContext()) */
+  /** Context for registerTypes hook (from SchemaRegistry.createContext()) */
   registerTypesContext?: RegisterTypesContext;
   /** Current recursion depth (for preventing infinite loops) */
   _depth?: number;

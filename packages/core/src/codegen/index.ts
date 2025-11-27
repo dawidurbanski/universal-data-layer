@@ -1,7 +1,7 @@
 /**
- * @udl/codegen - Type generation utilities for Universal Data Layer
+ * Codegen - Type generation utilities for Universal Data Layer
  *
- * This package provides tools to generate TypeScript types, type guards,
+ * This module provides tools to generate TypeScript types, type guards,
  * and fetch helpers from UDL node stores, GraphQL schemas, or REST API responses.
  *
  * @example
@@ -10,7 +10,7 @@
  *   SchemaRegistry,
  *   inferSchemaFromStore,
  *   TypeScriptGenerator,
- * } from '@udl/codegen';
+ * } from 'universal-data-layer';
  *
  * // Create a registry and populate it
  * const registry = new SchemaRegistry();

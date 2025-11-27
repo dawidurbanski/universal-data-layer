@@ -1,6 +1,6 @@
 # JSONPlaceholder Todos Demo
 
-This manual test demonstrates the complete UDL workflow: fetching data from an external REST API, sourcing it as nodes, and **automatically generating** TypeScript types with `@udl/codegen`.
+This manual test demonstrates the complete UDL workflow: fetching data from an external REST API, sourcing it as nodes, and **automatically generating** TypeScript types.
 
 ## What This Tests
 
@@ -181,7 +181,7 @@ UDL Node Store
     ↓ auto-generated
 GraphQL Schema (with filters)
     ↓ infer from store
-@udl/codegen (automatic)
+codegen (automatic)
     ↓ generate
 TypeScript types, guards, helpers
     ↓ import

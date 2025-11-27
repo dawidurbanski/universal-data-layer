@@ -5,7 +5,10 @@
  * Supports single responses or multiple samples for better accuracy.
  */
 
-import type { ContentTypeDefinition, FieldDefinition } from '@/types/schema.js';
+import type {
+  ContentTypeDefinition,
+  FieldDefinition,
+} from '@/codegen/types/schema.js';
 import { inferFieldDefinition, mergeFieldDefinitions } from './from-store.js';
 
 /**
