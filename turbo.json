@@ -16,8 +16,12 @@
       "outputs": ["coverage/**"],
       "cache": false
     },
+    "codegen": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
     "typecheck": {
-      "dependsOn": []
+      "dependsOn": ["codegen"]
     },
     "start": {
       "dependsOn": ["^start"]

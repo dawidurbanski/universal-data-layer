@@ -15,6 +15,7 @@
     "fix": "turbo fix --filter='./packages/*' && turbo fix --filter='./tests/manual' --ui=stream",
     "test": "turbo test --filter='./packages/*' --ui=stream",
     "test:coverage": "turbo test:coverage --filter='./packages/*' --ui=stream",
+    "codegen": "turbo codegen --filter='./packages/*' --ui=stream",
     "typecheck": "turbo typecheck --filter='./packages/*' --ui=stream && turbo typecheck --filter='./tests/manual' --ui=stream",
     "changeset": "changeset",
     "version": "changeset version && npm install --package-lock-only",
