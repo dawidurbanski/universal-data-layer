@@ -126,13 +126,23 @@ async function loadManualTestConfigs(
             }
           });
 
-          await loadPlugins(resolvedPlugins, {
+          const pluginResult = await loadPlugins(resolvedPlugins, {
             appConfig: config,
             store: defaultStore,
           });
+
+          // Add plugin codegen configs (from plugins themselves)
+          for (const pluginCodegen of pluginResult.codegenConfigs) {
+            codegenConfigs.push({
+              config: pluginCodegen.config,
+              basePath: pluginCodegen.pluginPath,
+              pluginNames: [pluginCodegen.pluginName],
+            });
+          }
         }
 
         // Track codegen config if present (after plugins so we have their names)
+        // This is for feature-level codegen, which is separate from plugin-level codegen
         if (config?.codegen) {
           codegenConfigs.push({
             config: config.codegen,
@@ -190,7 +200,19 @@ export async function startServer(options: StartServerOptions = {}) {
         mainAppPluginNames.push(basename(plugin.name));
       }
     }
-    await loadPlugins(userConfig.plugins, { appConfig: userConfig });
+    const pluginResult = await loadPlugins(userConfig.plugins, {
+      appConfig: userConfig,
+      store: defaultStore,
+    });
+
+    // Add plugin codegen configs (from plugins themselves)
+    for (const pluginCodegen of pluginResult.codegenConfigs) {
+      codegenConfigs.push({
+        config: pluginCodegen.config,
+        basePath: pluginCodegen.pluginPath,
+        pluginNames: [pluginCodegen.pluginName],
+      });
+    }
   }
 
   // Track main app codegen config if present (after collecting plugin names)

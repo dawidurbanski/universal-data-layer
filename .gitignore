@@ -10,3 +10,6 @@ coverage
 # Manual test environment files
 **/tests/manual/.env
 **/tests/manual/.env.local
+
+# Codegen
+generated/

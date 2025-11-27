@@ -296,6 +296,26 @@ export async function loadAppConfig(
 }
 
 /**
+ * Information about a plugin's codegen configuration
+ */
+export interface PluginCodegenInfo {
+  /** The codegen configuration from the plugin */
+  config: CodegenConfig;
+  /** Absolute path to the plugin folder (used as basePath for output) */
+  pluginPath: string;
+  /** The plugin's name (from config.name, used for owner filtering) */
+  pluginName: string;
+}
+
+/**
+ * Result of loading plugins, including collected codegen configs
+ */
+export interface LoadPluginsResult {
+  /** Codegen configurations collected from all loaded plugins (including nested) */
+  codegenConfigs: PluginCodegenInfo[];
+}
+
+/**
  * Options for loadPlugins function
  */
 export interface LoadPluginsOptions {
@@ -305,20 +325,37 @@ export interface LoadPluginsOptions {
   store?: NodeStore;
   /** Context for registerTypes hook (from @udl/codegen SchemaRegistry.createContext()) */
   registerTypesContext?: RegisterTypesContext;
+  /** Current recursion depth (for preventing infinite loops) */
+  _depth?: number;
 }
+
+/** Maximum recursion depth for nested plugins */
+const MAX_PLUGIN_DEPTH = 10;
 
 /**
  * High-level: Loads and initializes plugins by executing their onLoad, sourceNodes, and registerTypes hooks
  * @param plugins - Array of plugin specifiers (package names, file paths, or plugin objects with name and options)
  * @param options - Configuration options including appConfig, store, and registerTypesContext
+ * @returns Result containing collected codegen configs from all loaded plugins
  */
 export async function loadPlugins(
   plugins: PluginSpec[] = [],
   options?: LoadPluginsOptions
-) {
-  const { appConfig, store, registerTypesContext } = options ?? {};
+): Promise<LoadPluginsResult> {
+  const { appConfig, store, registerTypesContext, _depth = 0 } = options ?? {};
   // Use provided store or fall back to the default singleton
   const nodeStore = store ?? defaultStore;
+
+  // Collect codegen configs from plugins
+  const codegenConfigs: PluginCodegenInfo[] = [];
+
+  // Check recursion depth
+  if (_depth >= MAX_PLUGIN_DEPTH) {
+    console.warn(
+      `Maximum plugin recursion depth (${MAX_PLUGIN_DEPTH}) reached. Skipping nested plugins.`
+    );
+    return { codegenConfigs };
+  }
 
   for (const pluginSpec of plugins) {
     try {
@@ -451,6 +488,54 @@ export async function loadPlugins(
           }
 
           plugin = module.config;
+
+          // Collect codegen config if the plugin has one
+          if (module.config?.codegen) {
+            codegenConfigs.push({
+              config: module.config.codegen,
+              pluginPath: pluginPath,
+              pluginName: actualPluginName,
+            });
+          }
+
+          // Handle nested plugins recursively
+          if (module.config?.plugins && module.config.plugins.length > 0) {
+            // Resolve nested plugin paths relative to this plugin's directory
+            const resolvedNestedPlugins = module.config.plugins.map(
+              (nestedPlugin) => {
+                if (typeof nestedPlugin === 'string') {
+                  if (
+                    nestedPlugin.startsWith('./') ||
+                    nestedPlugin.startsWith('../')
+                  ) {
+                    return resolve(pluginPath, nestedPlugin);
+                  }
+                  return nestedPlugin;
+                } else {
+                  if (
+                    nestedPlugin.name.startsWith('./') ||
+                    nestedPlugin.name.startsWith('../')
+                  ) {
+                    return {
+                      ...nestedPlugin,
+                      name: resolve(pluginPath, nestedPlugin.name),
+                    };
+                  }
+                  return nestedPlugin;
+                }
+              }
+            );
+
+            const nestedResult = await loadPlugins(resolvedNestedPlugins, {
+              appConfig: module.config,
+              store: nodeStore,
+              ...(registerTypesContext && { registerTypesContext }),
+              _depth: _depth + 1,
+            });
+
+            // Merge nested codegen configs
+            codegenConfigs.push(...nestedResult.codegenConfigs);
+          }
         } catch (error) {
           console.error(
             `Failed to load config for plugin ${pluginName}:`,
@@ -471,4 +556,6 @@ export async function loadPlugins(
       );
     }
   }
+
+  return { codegenConfigs };
 }

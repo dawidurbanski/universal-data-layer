@@ -86,7 +86,7 @@ export async function runCodegen(options: RunCodegenOptions): Promise<void> {
     return;
   }
 
-  console.log(`📝 Generating types for ${schemas.length} node type(s)...`);
+  console.log(`⸆⸉ Generating types for ${schemas.length} node type(s)...`);
 
   // Generate code
   const includeJsDoc = config.includeJsDoc !== false;
@@ -121,7 +121,7 @@ export async function runCodegen(options: RunCodegenOptions): Promise<void> {
   // Write files to output directory
   await writeGeneratedFiles(outputDir, files, schemas);
 
-  console.log(`✅ Generated types written to ${outputDir}`);
+  console.log(`✅ Generated types in ${owners?.join(', ')}`);
 }
 
 /**
