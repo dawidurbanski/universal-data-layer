@@ -20,6 +20,8 @@ export {
   type PluginType,
   type OnLoadContext,
   type LoadConfigFileOptions,
+  type LoadPluginsOptions,
+  type RegisterTypesContext,
 } from './loader.js';
 
 // Re-export config functions
