@@ -16,12 +16,14 @@
     }
   },
   "bin": {
-    "universal-data-layer": "./bin/cli.js"
+    "universal-data-layer": "./bin/cli.js",
+    "udl-codegen": "./bin/codegen.js"
   },
   "scripts": {
     "build": "tsc && tsc-alias",
     "dev": "node ./bin/cli.js & tsc --watch & tsc-alias --watch",
     "start": "node ./bin/cli.js",
+    "codegen": "node ./bin/codegen.js",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest watch --passWithNoTests",
     "test:coverage": "vitest run --coverage",
