@@ -121,7 +121,7 @@ describe('FetchHelperGenerator', () => {
       );
     });
 
-    it('should use custom endpoint', () => {
+    it('should import graphqlFetch from universal-data-layer/client', () => {
       const schemas: ContentTypeDefinition[] = [
         {
           name: 'Product',
@@ -129,13 +129,11 @@ describe('FetchHelperGenerator', () => {
         },
       ];
 
-      const generator = new FetchHelperGenerator({
-        endpoint: 'https://api.example.com/graphql',
-      });
+      const generator = new FetchHelperGenerator();
       const code = generator.generate(schemas);
 
       expect(code).toContain(
-        "const GRAPHQL_ENDPOINT = 'https://api.example.com/graphql'"
+        "import { graphqlFetch } from 'universal-data-layer/client'"
       );
     });
 
@@ -248,48 +246,6 @@ describe('FetchHelperGenerator', () => {
       expect(code).toContain('DO NOT EDIT MANUALLY');
     });
 
-    it('should generate graphqlFetch helper function', () => {
-      const generator = new FetchHelperGenerator();
-      const code = generator.generate([]);
-
-      expect(code).toContain('async function graphqlFetch<T>');
-      expect(code).toContain('query: string');
-      expect(code).toContain('variables?: Record<string, unknown>');
-      expect(code).toContain('Promise<T>');
-    });
-
-    it('should handle GraphQL errors in generated code', () => {
-      const generator = new FetchHelperGenerator();
-      const code = generator.generate([]);
-
-      expect(code).toContain('if (result.errors && result.errors.length > 0)');
-      expect(code).toContain('throw new Error(`GraphQL error:');
-    });
-
-    it('should handle network errors in generated code', () => {
-      const generator = new FetchHelperGenerator();
-      const code = generator.generate([]);
-
-      expect(code).toContain('if (!response.ok)');
-      expect(code).toContain('throw new Error(`GraphQL request failed:');
-    });
-
-    it('should use custom fetch function', () => {
-      const schemas: ContentTypeDefinition[] = [
-        {
-          name: 'Product',
-          fields: [{ name: 'name', type: 'string', required: true }],
-        },
-      ];
-
-      const generator = new FetchHelperGenerator({
-        customFetchFn: 'customFetch',
-      });
-      const code = generator.generate(schemas);
-
-      expect(code).toContain('await customFetch(GRAPHQL_ENDPOINT');
-    });
-
     it('should use custom indent', () => {
       const schemas: ContentTypeDefinition[] = [
         {
@@ -387,10 +343,10 @@ describe('generateFetchHelpers', () => {
     ];
 
     const code = generateFetchHelpers(schemas, {
-      endpoint: 'https://custom.endpoint/graphql',
+      includeJsDoc: false,
     });
 
-    expect(code).toContain("'https://custom.endpoint/graphql'");
+    expect(code).not.toContain('* Fetch all Product nodes.');
   });
 });
 

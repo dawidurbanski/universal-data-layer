@@ -1,12 +1,28 @@
-import { loadAppConfig, loadPlugins, loadConfigFile } from '@/loader.js';
+import {
+  loadAppConfig,
+  loadPlugins,
+  loadConfigFile,
+  type CodegenConfig,
+} from '@/loader.js';
 import { createConfig } from '@/config.js';
 import server from '@/server.js';
 import { rebuildHandler } from '@/handlers/graphql.js';
+import { runCodegen } from '@/codegen.js';
 import { watch } from 'chokidar';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { existsSync, readdirSync } from 'node:fs';
 import { defaultStore } from '@/nodes/defaultStore.js';
+
+/**
+ * Track codegen configs from loaded features for automatic generation
+ */
+interface FeatureCodegenInfo {
+  config: CodegenConfig;
+  basePath: string;
+  /** Plugin names (resolved paths) that this feature loaded */
+  pluginNames: string[];
+}
 
 export interface StartServerOptions {
   port?: number;
@@ -17,12 +33,16 @@ export interface StartServerOptions {
 /**
  * Discover and load configs from all manual test features
  * In dev mode, each feature directory is treated as its own app
+ * @returns Array of codegen configs to run after schema is built
  */
-async function loadManualTestConfigs(rootDir: string): Promise<void> {
+async function loadManualTestConfigs(
+  rootDir: string
+): Promise<FeatureCodegenInfo[]> {
   const featuresDir = join(rootDir, 'tests', 'manual', 'features');
+  const codegenConfigs: FeatureCodegenInfo[] = [];
 
   if (!existsSync(featuresDir)) {
-    return;
+    return codegenConfigs;
   }
 
   try {
@@ -70,6 +90,10 @@ async function loadManualTestConfigs(rootDir: string): Promise<void> {
           });
         }
 
+        // Track plugin names (basenames) for filtering codegen
+        // Owner is set to basename in loader.ts, so we need to match that
+        const pluginOwnerNames: string[] = [];
+
         // Load plugins defined in this feature's config
         if (config?.plugins && config.plugins.length > 0) {
           // Resolve plugin paths relative to the feature directory
@@ -77,8 +101,12 @@ async function loadManualTestConfigs(rootDir: string): Promise<void> {
             if (typeof plugin === 'string') {
               // If it's a relative path, resolve it relative to the feature dir
               if (plugin.startsWith('./') || plugin.startsWith('../')) {
-                return resolve(featurePath, plugin);
+                const resolvedPath = resolve(featurePath, plugin);
+                // Owner is basename of the path (e.g., 'todo-source' from './plugins/todo-source')
+                pluginOwnerNames.push(basename(resolvedPath));
+                return resolvedPath;
               }
+              pluginOwnerNames.push(basename(plugin));
               return plugin;
             } else {
               // Plugin object with name and options
@@ -86,11 +114,14 @@ async function loadManualTestConfigs(rootDir: string): Promise<void> {
                 plugin.name.startsWith('./') ||
                 plugin.name.startsWith('../')
               ) {
+                const resolvedPath = resolve(featurePath, plugin.name);
+                pluginOwnerNames.push(basename(resolvedPath));
                 return {
                   ...plugin,
-                  name: resolve(featurePath, plugin.name),
+                  name: resolvedPath,
                 };
               }
+              pluginOwnerNames.push(basename(plugin.name));
               return plugin;
             }
           });
@@ -98,6 +129,15 @@ async function loadManualTestConfigs(rootDir: string): Promise<void> {
           await loadPlugins(resolvedPlugins, {
             appConfig: config,
             store: defaultStore,
+          });
+        }
+
+        // Track codegen config if present (after plugins so we have their names)
+        if (config?.codegen) {
+          codegenConfigs.push({
+            config: config.codegen,
+            basePath: featurePath,
+            pluginNames: pluginOwnerNames,
           });
         }
       } catch (error) {
@@ -110,6 +150,8 @@ async function loadManualTestConfigs(rootDir: string): Promise<void> {
   } catch (error) {
     console.warn('Failed to scan manual test features:', error);
   }
+
+  return codegenConfigs;
 }
 
 export async function startServer(options: StartServerOptions = {}) {
@@ -131,10 +173,33 @@ export async function startServer(options: StartServerOptions = {}) {
     endpoint,
   });
 
+  // Collect codegen configs to run after schema is built
+  const codegenConfigs: FeatureCodegenInfo[] = [];
+
+  // Track main app plugin owner names (basenames) for codegen filtering
+  const mainAppPluginNames: string[] = [];
+
   // Load main app config plugins
   if (userConfig.plugins && userConfig.plugins.length > 0) {
     console.log('Loading plugins...');
+    // Track plugin names before loading (use basename to match owner in nodes)
+    for (const plugin of userConfig.plugins) {
+      if (typeof plugin === 'string') {
+        mainAppPluginNames.push(basename(plugin));
+      } else {
+        mainAppPluginNames.push(basename(plugin.name));
+      }
+    }
     await loadPlugins(userConfig.plugins, { appConfig: userConfig });
+  }
+
+  // Track main app codegen config if present (after collecting plugin names)
+  if (userConfig.codegen) {
+    codegenConfigs.push({
+      config: userConfig.codegen,
+      basePath: options.configPath || process.cwd(),
+      pluginNames: mainAppPluginNames,
+    });
   }
 
   // In dev mode, also load configs from manual test features
@@ -143,12 +208,31 @@ export async function startServer(options: StartServerOptions = {}) {
     const __dirname = dirname(__filename);
     // Go up from dist/src to package root
     const packageRoot = resolve(__dirname, '..', '..');
-    await loadManualTestConfigs(packageRoot);
+    const featureConfigs = await loadManualTestConfigs(packageRoot);
+    codegenConfigs.push(...featureConfigs);
   }
 
   // Rebuild the GraphQL schema after all plugins have sourced their nodes
   console.log('🔨 Building GraphQL schema from sourced nodes...');
   await rebuildHandler();
+
+  // Run codegen for all configs that have it enabled
+  for (const {
+    config: codegenConfig,
+    basePath,
+    pluginNames,
+  } of codegenConfigs) {
+    try {
+      await runCodegen({
+        config: codegenConfig,
+        store: defaultStore,
+        basePath,
+        owners: pluginNames,
+      });
+    } catch (error) {
+      console.error(`❌ Codegen failed for ${basePath}:`, error);
+    }
+  }
 
   // Setup file watcher for hot reloading in dev mode
   if (options.watch !== false && process.env['NODE_ENV'] !== 'production') {

@@ -278,6 +278,19 @@ export interface InferFromStoreOptions {
    * @default true
    */
   includeOwner?: boolean;
+
+  /**
+   * Filter to only include types owned by these plugin names.
+   * If not provided, all types are included (unless `types` is specified).
+   */
+  owners?: string[];
+
+  /**
+   * Filter to only include these specific type names.
+   * Takes precedence over `owners` filter if both are specified.
+   * @example ['Todo', 'User']
+   */
+  types?: string[];
 }
 
 /**
@@ -307,7 +320,7 @@ export function inferSchemaFromStore(
   store: NodeStoreLike,
   options: InferFromStoreOptions = {}
 ): ContentTypeDefinition[] {
-  const { sampleSize = 10, includeOwner = true } = options;
+  const { sampleSize = 10, includeOwner = true, owners, types } = options;
 
   const contentTypes: ContentTypeDefinition[] = [];
 
@@ -315,11 +328,28 @@ export function inferSchemaFromStore(
   const typeNames = store.getTypes();
 
   for (const typeName of typeNames) {
+    // Filter by explicit types list if specified (takes precedence)
+    if (types && types.length > 0) {
+      if (!types.includes(typeName)) {
+        continue;
+      }
+    }
+
     // Get nodes of this type
     const nodes = store.getByType(typeName);
 
     if (nodes.length === 0) {
       continue;
+    }
+
+    // Determine owner from the first node
+    const owner = nodes[0]?.internal.owner;
+
+    // Filter by owners if specified (only if types filter not used)
+    if (!types && owners && owners.length > 0 && owner) {
+      if (!owners.includes(owner)) {
+        continue;
+      }
     }
 
     // Sample nodes for type inference
@@ -341,15 +371,12 @@ export function inferSchemaFromStore(
     // Get indexed fields for this type
     const indexes = store.getRegisteredIndexes(typeName);
 
-    // Determine owner from the first node
-    const owner = includeOwner ? nodes[0]?.internal.owner : undefined;
-
     // Create content type definition
     const contentType: ContentTypeDefinition = {
       name: typeName,
       fields: mergedFields,
       ...(indexes.length > 0 && { indexes }),
-      ...(owner !== undefined && { owner }),
+      ...(includeOwner && owner !== undefined && { owner }),
     };
 
     contentTypes.push(contentType);

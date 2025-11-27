@@ -122,6 +122,12 @@ export class TypeGuardGenerator {
     // Add file header
     parts.push(this.generateHeader());
 
+    // Add type imports
+    if (schemas.length > 0) {
+      parts.push(this.generateTypeImports(schemas));
+      parts.push('');
+    }
+
     // Generate guards for each type
     for (let i = 0; i < schemas.length; i++) {
       const schema = schemas[i];
@@ -134,6 +140,14 @@ export class TypeGuardGenerator {
     }
 
     return parts.join('\n');
+  }
+
+  /**
+   * Generate import statement for all types.
+   */
+  private generateTypeImports(schemas: ContentTypeDefinition[]): string {
+    const typeNames = schemas.map((s) => s.name).join(', ');
+    return `import type { ${typeNames} } from '../types/index.js';`;
   }
 
   /**
@@ -371,12 +385,10 @@ export class TypeGuardGenerator {
   }
 
   /**
-   * Get field access expression, handling special characters.
+   * Get field access expression.
+   * Always uses bracket notation for compatibility with noPropertyAccessFromIndexSignature.
    */
   private getFieldAccess(objVar: string, fieldName: string): string {
-    if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(fieldName)) {
-      return `${objVar}.${fieldName}`;
-    }
     return `${objVar}['${fieldName.replace(/'/g, "\\'")}']`;
   }
 

@@ -131,12 +131,13 @@ describe('End-to-end codegen flow', () => {
       const tsGenerator = new TypeScriptGenerator({ includeJsDoc: true });
       const code = tsGenerator.generate(schemas);
 
-      expect(code).toContain('export interface Product extends Node');
+      expect(code).toContain('export interface Product {');
       expect(code).toContain('name: string');
       expect(code).toContain('price: number');
       expect(code).toContain('inStock: boolean');
       expect(code).toContain('tags?: string[]'); // Optional (not in all nodes)
       expect(code).toContain('description?: string'); // Optional (not in all nodes)
+      expect(code).toContain('internal: NodeInternal<');
     });
 
     it('should write generated code to files', () => {
@@ -220,7 +221,7 @@ describe('End-to-end codegen flow', () => {
       const tsGenerator = new TypeScriptGenerator();
       const code = tsGenerator.generate([schema]);
 
-      expect(code).toContain('export interface BlogPost extends Node');
+      expect(code).toContain('export interface BlogPost {');
       expect(code).toContain('id: number');
       expect(code).toContain('title: string');
       expect(code).toContain('author: {');
@@ -228,6 +229,7 @@ describe('End-to-end codegen flow', () => {
       expect(code).toContain('email: string');
       expect(code).toContain('tags: string[]');
       expect(code).toContain('featured: boolean');
+      expect(code).toContain('internal: NodeInternal<');
     });
   });
 
@@ -271,9 +273,10 @@ describe('End-to-end codegen flow', () => {
       expect(schemas).toHaveLength(2);
 
       const tsCode = new TypeScriptGenerator().generate(schemas);
-      expect(tsCode).toContain('export interface Product extends Node');
-      expect(tsCode).toContain('export interface Category extends Node');
+      expect(tsCode).toContain('export interface Product {');
+      expect(tsCode).toContain('export interface Category {');
       expect(tsCode).toContain('category?: Category');
+      expect(tsCode).toContain('internal: NodeInternal<');
     });
 
     it('should merge multiple response samples to detect optional fields', () => {
@@ -459,9 +462,9 @@ describe('End-to-end codegen flow', () => {
       expect(guardsCode).toContain(
         "if (typeof value !== 'object' || value === null)"
       );
-      expect(guardsCode).toContain("typeof obj.name !== 'string'");
-      expect(guardsCode).toContain("typeof obj.age !== 'number'");
-      expect(guardsCode).toContain('if (obj.nickname !== undefined)');
+      expect(guardsCode).toContain("typeof obj['name'] !== 'string'");
+      expect(guardsCode).toContain("typeof obj['age'] !== 'number'");
+      expect(guardsCode).toContain("if (obj['nickname'] !== undefined)");
       expect(guardsCode).toContain('return true;');
 
       expect(guardsCode).toContain(
@@ -485,13 +488,11 @@ describe('End-to-end codegen flow', () => {
         },
       ];
 
-      const helpersCode = new FetchHelperGenerator({
-        endpoint: 'http://api.example.com/graphql',
-      }).generate(schemas);
+      const helpersCode = new FetchHelperGenerator().generate(schemas);
 
-      // Verify helpers
+      // Verify helpers import graphqlFetch from client subpath
       expect(helpersCode).toContain(
-        "const GRAPHQL_ENDPOINT = 'http://api.example.com/graphql'"
+        "import { graphqlFetch } from 'universal-data-layer/client'"
       );
       expect(helpersCode).toContain(
         'export async function getAllArticles(): Promise<Article[]>'

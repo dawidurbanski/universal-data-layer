@@ -12,12 +12,6 @@ import type { ContentTypeDefinition, FieldDefinition } from '@/types/schema.js';
  */
 export interface FetchHelperGeneratorOptions {
   /**
-   * The GraphQL endpoint URL.
-   * @default 'http://localhost:4000/graphql'
-   */
-  endpoint?: string;
-
-  /**
    * Whether to include JSDoc comments.
    * @default true
    */
@@ -34,40 +28,26 @@ export interface FetchHelperGeneratorOptions {
    * @default true
    */
   includeInternalFields?: boolean;
-
-  /**
-   * Custom fetch function name to use.
-   * If not provided, uses global fetch.
-   */
-  customFetchFn?: string;
-
-  /**
-   * Whether to generate async/await style or Promise chains.
-   * @default 'async'
-   */
-  style?: 'async' | 'promise';
 }
 
 /**
  * Default generator options
  */
 const DEFAULT_OPTIONS: Required<FetchHelperGeneratorOptions> = {
-  endpoint: 'http://localhost:4000/graphql',
   includeJsDoc: true,
   indent: '  ',
   includeInternalFields: true,
-  customFetchFn: '',
-  style: 'async',
 };
 
 /**
  * Fetch helper code generator for ContentTypeDefinition schemas.
  *
+ * Uses the `graphqlFetch` utility from `universal-data-layer` which automatically
+ * uses the configured server endpoint.
+ *
  * @example
  * ```ts
- * const generator = new FetchHelperGenerator({
- *   endpoint: 'http://localhost:4000/graphql',
- * });
+ * const generator = new FetchHelperGenerator();
  *
  * const schemas: ContentTypeDefinition[] = [
  *   {
@@ -103,13 +83,11 @@ export class FetchHelperGenerator {
     // Add file header
     parts.push(this.generateHeader());
 
-    // Add endpoint constant
-    parts.push(this.generateEndpointConstant());
-    parts.push('');
-
-    // Add helper functions
-    parts.push(this.generateFetchHelper());
-    parts.push('');
+    // Add imports (types + graphqlFetch)
+    if (schemas.length > 0) {
+      parts.push(this.generateImports(schemas));
+      parts.push('');
+    }
 
     // Generate helpers for each type
     for (let i = 0; i < schemas.length; i++) {
@@ -123,6 +101,17 @@ export class FetchHelperGenerator {
     }
 
     return parts.join('\n');
+  }
+
+  /**
+   * Generate import statements for types and graphqlFetch.
+   */
+  private generateImports(schemas: ContentTypeDefinition[]): string {
+    const lines: string[] = [];
+    const typeNames = schemas.map((s) => s.name).join(', ');
+    lines.push(`import type { ${typeNames} } from '../types/index.js';`);
+    lines.push(`import { graphqlFetch } from 'universal-data-layer/client';`);
+    return lines.join('\n');
   }
 
   /**
@@ -368,66 +357,6 @@ export class FetchHelperGenerator {
  * DO NOT EDIT MANUALLY
  */
 `;
-  }
-
-  /**
-   * Generate the endpoint constant.
-   */
-  private generateEndpointConstant(): string {
-    return `const GRAPHQL_ENDPOINT = '${this.options.endpoint}';`;
-  }
-
-  /**
-   * Generate the internal graphqlFetch helper function.
-   */
-  private generateFetchHelper(): string {
-    const { indent, customFetchFn } = this.options;
-    const fetchFn = customFetchFn || 'fetch';
-    const lines: string[] = [];
-
-    lines.push(`/**`);
-    lines.push(` * Internal helper to execute GraphQL queries.`);
-    lines.push(` */`);
-    lines.push(`async function graphqlFetch<T>(`);
-    lines.push(`${indent}query: string,`);
-    lines.push(`${indent}variables?: Record<string, unknown>`);
-    lines.push(`): Promise<T> {`);
-    lines.push(
-      `${indent}const response = await ${fetchFn}(GRAPHQL_ENDPOINT, {`
-    );
-    lines.push(`${indent}${indent}method: 'POST',`);
-    lines.push(
-      `${indent}${indent}headers: { 'Content-Type': 'application/json' },`
-    );
-    lines.push(`${indent}${indent}body: JSON.stringify({ query, variables }),`);
-    lines.push(`${indent}});`);
-    lines.push('');
-    lines.push(`${indent}if (!response.ok) {`);
-    lines.push(
-      `${indent}${indent}throw new Error(\`GraphQL request failed: \${response.statusText}\`);`
-    );
-    lines.push(`${indent}}`);
-    lines.push('');
-    lines.push(
-      `${indent}const result = await response.json() as { data?: T; errors?: Array<{ message: string }> };`
-    );
-    lines.push('');
-    lines.push(`${indent}if (result.errors && result.errors.length > 0) {`);
-    lines.push(
-      `${indent}${indent}throw new Error(\`GraphQL error: \${result.errors[0]?.message}\`);`
-    );
-    lines.push(`${indent}}`);
-    lines.push('');
-    lines.push(`${indent}if (!result.data) {`);
-    lines.push(
-      `${indent}${indent}throw new Error('No data returned from GraphQL query');`
-    );
-    lines.push(`${indent}}`);
-    lines.push('');
-    lines.push(`${indent}return result.data;`);
-    lines.push('}');
-
-    return lines.join('\n');
   }
 }
 

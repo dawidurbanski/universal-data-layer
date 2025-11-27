@@ -29,6 +29,11 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
       '@core': resolve(__dirname, '../../packages/core/dist/src'),
       '/packages': resolve(__dirname, '../../packages'),
+      'universal-data-layer/client': resolve(
+        __dirname,
+        '../../packages/core/dist/client.js'
+      ),
+      'universal-data-layer': resolve(__dirname, '../../packages/core/dist'),
     },
   },
   server: {

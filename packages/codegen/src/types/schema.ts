@@ -107,15 +107,11 @@ export interface CodegenConfig {
 
   /**
    * Whether to generate fetch helper functions (getAll{Type}s, get{Type}ById, etc.).
+   * Fetch helpers use `graphqlFetch` from `universal-data-layer` which automatically
+   * uses the configured server endpoint.
    * @default false
    */
   helpers?: boolean;
-
-  /**
-   * GraphQL endpoint URL for fetch helpers.
-   * @default 'http://localhost:4000/graphql'
-   */
-  endpoint?: string;
 
   /**
    * Custom scalar type mappings.
@@ -125,10 +121,10 @@ export interface CodegenConfig {
   customScalars?: Record<string, string>;
 
   /**
-   * Whether generated types should extend the UDL Node interface.
+   * Whether to include the internal field with NodeInternal type in generated types.
    * @default true
    */
-  extendNode?: boolean;
+  includeInternal?: boolean;
 
   /**
    * Whether to include JSDoc comments in generated code.
@@ -150,9 +146,8 @@ export const DEFAULT_CODEGEN_CONFIG: Required<CodegenConfig> = {
   output: './generated',
   guards: false,
   helpers: false,
-  endpoint: 'http://localhost:4000/graphql',
   customScalars: {},
-  extendNode: true,
+  includeInternal: true,
   includeJsDoc: true,
   exportFormat: 'interface',
 };

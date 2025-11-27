@@ -22,6 +22,51 @@ type PluginSpecObject = {
 export type PluginSpec = string | PluginSpecObject;
 
 /**
+ * Configuration for automatic code generation
+ */
+export interface CodegenConfig {
+  /**
+   * Output directory for generated code.
+   * @default './generated'
+   */
+  output?: string;
+
+  /**
+   * Whether to generate type guard functions (is{Type}, assert{Type}).
+   * @default false
+   */
+  guards?: boolean;
+
+  /**
+   * Whether to generate fetch helper functions (getAll{Type}s, get{Type}ById, etc.).
+   * Fetch helpers use `graphqlFetch` from `universal-data-layer` which automatically
+   * uses the configured server endpoint.
+   * @default false
+   */
+  helpers?: boolean;
+
+  /**
+   * Whether to include JSDoc comments in generated code.
+   * @default true
+   */
+  includeJsDoc?: boolean;
+
+  /**
+   * Whether to include the internal field with NodeInternal type in generated types.
+   * When true, adds `import type { NodeInternal } from 'universal-data-layer/client'`.
+   * @default true
+   */
+  includeInternal?: boolean;
+
+  /**
+   * Specific node types to generate code for.
+   * If not specified, generates for all types in the store (or filtered by owners if available).
+   * @example ['Todo', 'User']
+   */
+  types?: string[];
+}
+
+/**
  * Core UDL configuration object
  */
 export interface UDLConfig {
@@ -43,6 +88,8 @@ export interface UDLConfig {
   plugins?: PluginSpec[];
   /** Default indexed fields for this plugin (for source plugins) */
   indexes?: string[];
+  /** Code generation configuration - when set, automatically generates types after sourceNodes */
+  codegen?: CodegenConfig;
 }
 
 /**

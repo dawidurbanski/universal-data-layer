@@ -15,10 +15,10 @@ import type {
  */
 export interface TypeScriptGeneratorOptions {
   /**
-   * Whether generated types should extend the UDL Node interface.
+   * Whether to include the internal field with NodeInternal type.
    * @default true
    */
-  extendNode?: boolean;
+  includeInternal?: boolean;
 
   /**
    * Export format for type definitions.
@@ -50,7 +50,7 @@ export interface TypeScriptGeneratorOptions {
  * Default generator options
  */
 const DEFAULT_OPTIONS: Required<TypeScriptGeneratorOptions> = {
-  extendNode: true,
+  includeInternal: true,
   exportFormat: 'interface',
   includeJsDoc: true,
   customScalars: {},
@@ -101,6 +101,7 @@ function fieldTypeToTypeScript(
  *   {
  *     name: 'Product',
  *     description: 'A product in the store',
+ *     owner: 'shopify-source',
  *     fields: [
  *       { name: 'name', type: 'string', required: true },
  *       { name: 'price', type: 'number', required: true },
@@ -110,12 +111,13 @@ function fieldTypeToTypeScript(
  *
  * const code = generator.generate(schemas);
  * // Produces:
- * // import type { Node } from 'universal-data-layer';
+ * // import type { NodeInternal } from 'universal-data-layer/client';
  * //
  * // /** A product in the store *\/
- * // export interface Product extends Node {
+ * // export interface Product {
  * //   name: string;
  * //   price: number;
+ * //   internal: NodeInternal<'Product', 'shopify-source'>;
  * // }
  * ```
  */
@@ -138,8 +140,8 @@ export class TypeScriptGenerator {
     // Add file header
     parts.push(this.generateHeader());
 
-    // Add imports if extending Node
-    if (this.options.extendNode) {
+    // Add imports if including internal field
+    if (this.options.includeInternal && schemas.length > 0) {
       parts.push(this.generateImports());
       parts.push('');
     }
@@ -165,7 +167,8 @@ export class TypeScriptGenerator {
    * @returns TypeScript code for this type
    */
   generateType(schema: ContentTypeDefinition): string {
-    const { exportFormat, extendNode, includeJsDoc, indent } = this.options;
+    const { exportFormat, includeInternal, includeJsDoc, indent } =
+      this.options;
     const lines: string[] = [];
 
     // Add JSDoc comment
@@ -175,17 +178,22 @@ export class TypeScriptGenerator {
 
     // Generate interface or type alias
     if (exportFormat === 'interface') {
-      const extendsClause = extendNode ? ' extends Node' : '';
-      lines.push(`export interface ${schema.name}${extendsClause} {`);
+      lines.push(`export interface ${schema.name} {`);
     } else {
-      const baseType = extendNode ? 'Node & ' : '';
-      lines.push(`export type ${schema.name} = ${baseType}{`);
+      lines.push(`export type ${schema.name} = {`);
     }
 
     // Generate fields
     for (const field of schema.fields) {
       const fieldLines = this.generateField(field, indent);
       lines.push(...fieldLines);
+    }
+
+    // Add internal field if enabled
+    if (includeInternal) {
+      const typeName = schema.name;
+      const owner = schema.owner || 'unknown';
+      lines.push(`${indent}internal: NodeInternal<'${typeName}', '${owner}'>;`);
     }
 
     lines.push('}');
@@ -299,8 +307,8 @@ export class TypeScriptGenerator {
    * Generate import statements.
    */
   private generateImports(): string {
-    if (this.options.extendNode) {
-      return "import type { Node } from 'universal-data-layer';";
+    if (this.options.includeInternal) {
+      return "import type { NodeInternal } from 'universal-data-layer/client';";
     }
     return '';
   }
