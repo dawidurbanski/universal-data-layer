@@ -58,35 +58,67 @@ export class NodeStore {
   }
 
   /**
+   * Get or create type index
+   */
+  private safeTypeIndex(nodeType: string): Set<string> {
+    let typeSet = this.typeIndex.get(nodeType);
+    if (!typeSet) {
+      typeSet = new Set();
+      this.typeIndex.set(nodeType, typeSet);
+    }
+    return typeSet;
+  }
+
+  /**
+   * Get or create registered index set
+   */
+  private safeRegisteredIndex(nodeType: string): Set<string> {
+    let indexSet = this.registeredIndexes.get(nodeType);
+    if (!indexSet) {
+      indexSet = new Set();
+      this.registeredIndexes.set(nodeType, indexSet);
+    }
+    return indexSet;
+  }
+
+  /**
+   * Get or create field index
+   */
+  private safeFieldIndex(
+    nodeType: string,
+    fieldName: string
+  ): Map<unknown, string> {
+    let typeFields = this.fieldIndexes.get(nodeType);
+    if (!typeFields) {
+      typeFields = new Map();
+      this.fieldIndexes.set(nodeType, typeFields);
+    }
+
+    let fieldIndex = typeFields.get(fieldName);
+    if (!fieldIndex) {
+      fieldIndex = new Map();
+      typeFields.set(fieldName, fieldIndex);
+    }
+
+    return fieldIndex;
+  }
+
+  /**
    * Register a field to be indexed for a specific node type
    * @param nodeType - The node type to index (e.g., 'Product')
    * @param fieldName - The field name to index (e.g., 'slug')
    */
   registerIndex(nodeType: string, fieldName: string): void {
-    if (!this.registeredIndexes.has(nodeType)) {
-      this.registeredIndexes.set(nodeType, new Set());
-    }
-    this.registeredIndexes.get(nodeType)!.add(fieldName);
-
-    // Initialize field index structure if needed
-    if (!this.fieldIndexes.has(nodeType)) {
-      this.fieldIndexes.set(nodeType, new Map());
-    }
-    if (!this.fieldIndexes.get(nodeType)!.has(fieldName)) {
-      this.fieldIndexes.get(nodeType)!.set(fieldName, new Map());
-    }
+    this.safeRegisteredIndex(nodeType).add(fieldName);
+    const fieldIndex = this.safeFieldIndex(nodeType, fieldName);
 
     // Index existing nodes of this type
-    const existingNodes = this.getByType(nodeType);
-    for (const node of existingNodes) {
+    for (const node of this.getByType(nodeType)) {
       const fieldValue = (node as unknown as Record<string, unknown>)[
         fieldName
       ];
-      if (fieldValue !== undefined && fieldValue !== null) {
-        this.fieldIndexes
-          .get(nodeType)!
-          .get(fieldName)!
-          .set(fieldValue, node.internal.id);
+      if (fieldValue != null) {
+        fieldIndex.set(fieldValue, node.internal.id);
       }
     }
   }
@@ -106,25 +138,21 @@ export class NodeStore {
     this.nodes.set(nodeId, node);
 
     // Update type index
-    if (!this.typeIndex.has(nodeType)) {
-      this.typeIndex.set(nodeType, new Set());
-    }
-    this.typeIndex.get(nodeType)!.add(nodeId);
+    this.safeTypeIndex(nodeType).add(nodeId);
 
     // Update field indexes
     const registeredFields = this.registeredIndexes.get(nodeType);
     if (registeredFields) {
       for (const fieldName of registeredFields) {
+        const fieldIndex = this.safeFieldIndex(nodeType, fieldName);
+
         // Remove old field value from index if node existed
         if (existingNode) {
           const oldFieldValue = (
             existingNode as unknown as Record<string, unknown>
           )[fieldName];
-          if (oldFieldValue !== undefined && oldFieldValue !== null) {
-            this.fieldIndexes
-              .get(nodeType)
-              ?.get(fieldName)
-              ?.delete(oldFieldValue);
+          if (oldFieldValue != null) {
+            fieldIndex.delete(oldFieldValue);
           }
         }
 
@@ -132,11 +160,8 @@ export class NodeStore {
         const newFieldValue = (node as unknown as Record<string, unknown>)[
           fieldName
         ];
-        if (newFieldValue !== undefined && newFieldValue !== null) {
-          this.fieldIndexes
-            .get(nodeType)!
-            .get(fieldName)!
-            .set(newFieldValue, nodeId);
+        if (newFieldValue != null) {
+          fieldIndex.set(newFieldValue, nodeId);
         }
       }
     }
