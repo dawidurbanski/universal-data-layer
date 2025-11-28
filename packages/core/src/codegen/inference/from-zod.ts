@@ -9,6 +9,16 @@ import type { z } from 'zod';
 import type { FieldDefinition, FieldType } from '../types/schema.js';
 
 /**
+ * Get the internal _def property from a Zod schema
+ * This is an internal Zod API but stable across versions
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getZodDef(schema: z.ZodTypeAny): any {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (schema as any)._def;
+}
+
+/**
  * Zod type names for internal type checking
  * Supports both Zod v3 (ZodString) and Zod v4 (string) naming conventions
  */
@@ -31,8 +41,7 @@ type ZodTypeName =
  * Supports both Zod v3 and v4 internal structures
  */
 function getZodTypeName(schema: z.ZodTypeAny): ZodTypeName | string {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const def = (schema as any)._def;
+  const def = getZodDef(schema);
   if (!def) return 'unknown';
 
   // Zod v4 uses _def.type as a string directly (e.g., "string", "enum")
@@ -56,8 +65,7 @@ function extractLiteralValues(
   schema: z.ZodTypeAny
 ): (string | number | boolean)[] | undefined {
   const typeName = getZodTypeName(schema);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const def = (schema as any)._def;
+  const def = getZodDef(schema);
 
   // Single literal
   if (typeName === 'literal') {
@@ -102,8 +110,7 @@ function extractLiteralValues(
     for (const option of options) {
       const optionTypeName = getZodTypeName(option);
       if (optionTypeName === 'literal') {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const optDef = (option as any)._def;
+        const optDef = getZodDef(option);
         // Zod v4 uses values array, v3 uses value
         const value = Array.isArray(optDef.values)
           ? optDef.values[0]
@@ -131,8 +138,7 @@ function extractLiteralValues(
  */
 function getBaseType(schema: z.ZodTypeAny): FieldType {
   const typeName = getZodTypeName(schema);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const def = (schema as any)._def;
+  const def = getZodDef(schema);
 
   switch (typeName) {
     case 'string':
@@ -196,8 +202,7 @@ function isOptional(schema: z.ZodTypeAny): boolean {
 function unwrapSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
   const typeName = getZodTypeName(schema);
   if (typeName === 'optional' || typeName === 'nullable') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const innerType = (schema as any)._def.innerType;
+    const innerType = getZodDef(schema).innerType;
     if (innerType) {
       return unwrapSchema(innerType);
     }
@@ -251,8 +256,7 @@ export function zodToFieldDefinition(
 
   // Handle array item type
   if (type === 'array') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const def = (unwrapped as any)._def;
+    const def = getZodDef(unwrapped);
     // Zod v4 uses element, v3 uses type
     const itemSchema = (def.element || def.type) as z.ZodTypeAny;
     if (itemSchema) {
@@ -262,8 +266,7 @@ export function zodToFieldDefinition(
 
   // Handle object fields
   if (type === 'object') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const def = (unwrapped as any)._def;
+    const def = getZodDef(unwrapped);
     // Zod v4 uses shape as object, v3 uses shape as function
     const shape: Record<string, z.ZodTypeAny> =
       typeof def.shape === 'function' ? def.shape() : def.shape;
