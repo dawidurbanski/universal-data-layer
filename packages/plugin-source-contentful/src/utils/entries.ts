@@ -1,5 +1,12 @@
 import type { Entry, EntrySkeletonType, UnresolvedLink } from 'contentful';
 import type { ResolvedContentfulPluginOptions } from '@/types/index.js';
+import {
+  createReference,
+  type ContentfulReference,
+  type RichTextDocument,
+  type RichTextNode,
+  type RichTextContent,
+} from './references.js';
 
 /**
  * Context passed to entry transformation functions.
@@ -107,51 +114,33 @@ function isResolvedAsset(
 
 /**
  * Transforms a linked entry or asset to a reference object.
- * Stores the node ID that can be used to resolve the reference.
+ * Uses contentfulId for resolution via the index, since the Sync API
+ * returns unresolved links without content type information.
  */
 function transformLink(
   value: unknown,
-  context: EntryTransformContext
-): { __nodeId: string; __type: 'Entry' | 'Asset' } | null {
-  const { createNodeId, options, contentTypeMap } = context;
-
+  _context: EntryTransformContext
+): ContentfulReference | null {
   // Handle unresolved links
   if (isUnresolvedLink(value)) {
     const linkType = value.sys.linkType;
     const linkedId = value.sys.id;
 
     if (linkType === 'Asset') {
-      return {
-        __nodeId: createNodeId(`${options.nodePrefix}Asset`, linkedId),
-        __type: 'Asset',
-      };
+      return createReference(linkedId, 'Asset');
     } else if (linkType === 'Entry') {
-      // For unresolved entries, we don't know the content type
-      // Use a generic prefix - will need to resolve at query time
-      return {
-        __nodeId: createNodeId(`${options.nodePrefix}Entry`, linkedId),
-        __type: 'Entry',
-      };
+      return createReference(linkedId, 'Entry');
     }
   }
 
   // Handle resolved entries
   if (isResolvedEntry(value)) {
-    const contentTypeId = value.sys.contentType.sys.id;
-    const nodeTypeName =
-      contentTypeMap.get(contentTypeId) ?? `${options.nodePrefix}Entry`;
-    return {
-      __nodeId: createNodeId(nodeTypeName, value.sys.id),
-      __type: 'Entry',
-    };
+    return createReference(value.sys.id, 'Entry');
   }
 
   // Handle resolved assets
   if (isResolvedAsset(value)) {
-    return {
-      __nodeId: createNodeId(`${options.nodePrefix}Asset`, value.sys.id),
-      __type: 'Asset',
-    };
+    return createReference(value.sys.id, 'Asset');
   }
 
   return null;
@@ -213,32 +202,13 @@ function transformFieldValue(
 }
 
 /**
- * Rich text document structure.
- */
-interface RichTextDocument {
-  nodeType: 'document';
-  content: RichTextNode[];
-  data: Record<string, unknown>;
-}
-
-interface RichTextNode {
-  nodeType: string;
-  content?: RichTextNode[];
-  data?: Record<string, unknown>;
-  value?: string;
-}
-
-/**
  * Transforms rich text content, extracting embedded entry/asset references.
  */
 function transformRichText(
   doc: RichTextDocument,
   context: EntryTransformContext
-): {
-  raw: RichTextDocument;
-  references: Array<{ __nodeId: string; __type: 'Entry' | 'Asset' }>;
-} {
-  const references: Array<{ __nodeId: string; __type: 'Entry' | 'Asset' }> = [];
+): RichTextContent {
+  const references: ContentfulReference[] = [];
 
   function extractReferences(node: RichTextNode): void {
     // Check for embedded entries/assets

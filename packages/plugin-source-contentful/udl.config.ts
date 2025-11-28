@@ -26,6 +26,14 @@ import {
   type AssetTransformContext,
 } from './src/utils/assets.js';
 import { performSync, getSyncStats } from './src/utils/sync.js';
+import {
+  ContentfulConfigError,
+  ContentfulSyncError,
+  wrapApiCall,
+} from './src/utils/errors.js';
+
+/** Plugin log prefix for consistent logging */
+const LOG_PREFIX = '[@udl/plugin-source-contentful]';
 
 /**
  * Plugin configuration
@@ -52,20 +60,16 @@ export function onLoad({
   options?: ContentfulPluginOptions;
 } = {}): void {
   if (!options?.spaceId) {
-    throw new Error(
-      '[@udl/plugin-source-contentful] Missing required option: spaceId'
-    );
+    throw new ContentfulConfigError('Missing required option: spaceId');
   }
 
   if (!options.accessToken) {
-    throw new Error(
-      '[@udl/plugin-source-contentful] Missing required option: accessToken'
-    );
+    throw new ContentfulConfigError('Missing required option: accessToken');
   }
 
   const resolved = resolveOptions(options);
   console.log(
-    `[@udl/plugin-source-contentful] Initialized for space "${resolved.spaceId}" (${resolved.environment})`
+    `${LOG_PREFIX} Initialized for space "${resolved.spaceId}" (${resolved.environment})`
   );
 }
 
@@ -80,30 +84,43 @@ export async function sourceNodes({
   options,
 }: SourceNodesContext<ContentfulPluginOptions>): Promise<void> {
   if (!options) {
-    throw new Error(
-      '[@udl/plugin-source-contentful] Plugin options are required'
-    );
+    throw new ContentfulConfigError('Plugin options are required');
   }
 
   const resolvedOptions = resolveOptions(options);
   const client = createContentfulClient(resolvedOptions);
 
   // Fetch content types for type name mapping
-  console.log('[@udl/plugin-source-contentful] Fetching content types...');
-  const contentTypes = await fetchContentTypes(client, resolvedOptions);
+  console.log(`${LOG_PREFIX} Fetching content types...`);
+  const contentTypes = await wrapApiCall(
+    () => fetchContentTypes(client, resolvedOptions),
+    'Failed to fetch content types'
+  );
   const contentTypeMap = createContentTypeMap(contentTypes, resolvedOptions);
 
-  console.log(
-    `[@udl/plugin-source-contentful] Found ${contentTypes.length} content types`
-  );
+  console.log(`${LOG_PREFIX} Found ${contentTypes.length} content types`);
+
+  // Log content type details for debugging
+  if (contentTypes.length > 0) {
+    const typeNames = contentTypes.map((ct) => ct.name).join(', ');
+    console.log(`${LOG_PREFIX} Content types: ${typeNames}`);
+  }
 
   // Perform sync (initial or delta based on stored token)
-  console.log('[@udl/plugin-source-contentful] Syncing content...');
-  const syncResult = await performSync(client, resolvedOptions);
+  console.log(`${LOG_PREFIX} Syncing content...`);
+  let syncResult;
+  try {
+    syncResult = await performSync(client, resolvedOptions);
+  } catch (error) {
+    throw new ContentfulSyncError(
+      `Sync failed: ${error instanceof Error ? error.message : String(error)}`,
+      true
+    );
+  }
   const stats = getSyncStats(syncResult);
 
   console.log(
-    `[@udl/plugin-source-contentful] Sync complete (${stats.isInitialSync ? 'initial' : 'delta'}): ` +
+    `${LOG_PREFIX} Sync complete (${stats.isInitialSync ? 'initial' : 'delta'}): ` +
       `${stats.entriesCount} entries, ${stats.assetsCount} assets, ` +
       `${stats.deletedEntriesCount} deleted entries, ${stats.deletedAssetsCount} deleted assets`
   );
@@ -122,16 +139,35 @@ export async function sourceNodes({
     options: resolvedOptions,
   };
 
+  // Track created nodes for summary
+  let createdEntriesCount = 0;
+  let createdAssetsCount = 0;
+  let deletedNodesCount = 0;
+
   // Process new/updated entries
   for (const entry of syncResult.entries) {
-    const transformed = transformEntry(entry, entryContext);
-    await actions.createNode(transformed);
+    try {
+      const transformed = transformEntry(entry, entryContext);
+      await actions.createNode(transformed);
+      createdEntriesCount++;
+    } catch (error) {
+      console.warn(
+        `${LOG_PREFIX} Warning: Failed to transform entry "${entry.sys.id}": ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   // Process new/updated assets
   for (const asset of syncResult.assets) {
-    const transformed = transformAsset(asset, assetContext);
-    await actions.createNode(transformed);
+    try {
+      const transformed = transformAsset(asset, assetContext);
+      await actions.createNode(transformed);
+      createdAssetsCount++;
+    } catch (error) {
+      console.warn(
+        `${LOG_PREFIX} Warning: Failed to transform asset "${asset.sys.id}": ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   // Process deleted entries
@@ -146,6 +182,7 @@ export async function sourceNodes({
         entryContext
       );
       await actions.deleteNode(nodeId);
+      deletedNodesCount++;
     }
   }
 
@@ -153,6 +190,7 @@ export async function sourceNodes({
   for (const deletedAsset of syncResult.deletedAssets) {
     const nodeId = getAssetNodeId(deletedAsset.sys.id, assetContext);
     await actions.deleteNode(nodeId);
+    deletedNodesCount++;
   }
 
   // Log summary
@@ -160,6 +198,12 @@ export async function sourceNodes({
   const entryTypeNames = [...contentTypeMap.values()];
 
   console.log(
-    `[@udl/plugin-source-contentful] Created node types: ${[assetTypeName, ...entryTypeNames].join(', ')}`
+    `${LOG_PREFIX} Created ${createdEntriesCount} entries and ${createdAssetsCount} assets`
+  );
+  if (deletedNodesCount > 0) {
+    console.log(`${LOG_PREFIX} Deleted ${deletedNodesCount} nodes`);
+  }
+  console.log(
+    `${LOG_PREFIX} Node types: ${[assetTypeName, ...entryTypeNames].join(', ')}`
   );
 }
