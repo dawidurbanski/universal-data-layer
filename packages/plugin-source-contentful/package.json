@@ -1,0 +1,47 @@
+{
+  "name": "@udl/plugin-source-contentful",
+  "version": "0.1.0",
+  "description": "Contentful source plugin for Universal Data Layer",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc && tsc-alias",
+    "dev": "tsc --watch",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest watch --passWithNoTests",
+    "lint": "npm run lint:formatting && npm run lint:quality && npm run lint:types",
+    "lint:formatting": "prettier --check . --ignore-path ../../.prettierignore",
+    "lint:quality": "eslint . --config ../../eslint.config.js",
+    "lint:types": "tsc --noEmit",
+    "fix": "npm run fix:formatting && npm run fix:quality",
+    "fix:formatting": "prettier --write . --ignore-path ../../.prettierignore",
+    "fix:quality": "eslint . --fix --config ../../eslint.config.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "author": "Dawid Urbanski <hi@dawidurbanski.com>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dependencies": {
+    "contentful": "^11.5.0"
+  },
+  "peerDependencies": {
+    "universal-data-layer": "^0.1.0"
+  },
+  "devDependencies": {
+    "universal-data-layer": "^0.1.0"
+  }
+}
