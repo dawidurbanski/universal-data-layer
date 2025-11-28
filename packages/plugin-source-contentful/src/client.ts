@@ -1,5 +1,6 @@
 import { createClient, type ContentfulClientApi } from 'contentful';
 import type { ContentfulPluginOptions } from './types/index.js';
+import { ContentfulConfigError } from './utils/errors.js';
 
 /**
  * The Contentful client type used throughout the plugin.
@@ -11,7 +12,7 @@ export type ContentfulClient = ContentfulClientApi<undefined>;
  *
  * @param options - Plugin options containing credentials and configuration
  * @returns A configured Contentful client
- * @throws Error if required options (spaceId, accessToken) are missing
+ * @throws ContentfulConfigError if required options (spaceId, accessToken) are missing
  *
  * @example
  * ```ts
@@ -34,15 +35,11 @@ export function createContentfulClient(
   const { spaceId, accessToken, host, environment } = options;
 
   if (!spaceId) {
-    throw new Error(
-      '[@udl/plugin-source-contentful] Missing required option: spaceId'
-    );
+    throw new ContentfulConfigError('Missing required option: spaceId');
   }
 
   if (!accessToken) {
-    throw new Error(
-      '[@udl/plugin-source-contentful] Missing required option: accessToken'
-    );
+    throw new ContentfulConfigError('Missing required option: accessToken');
   }
 
   return createClient({
