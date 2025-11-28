@@ -9,7 +9,8 @@ import type {
   ContentTypeDefinition,
   FieldDefinition,
 } from '@/codegen/types/schema.js';
-import { inferFieldDefinition, mergeFieldDefinitions } from './from-store.js';
+import { inferFieldDefinition } from './from-store.js';
+import { mergeFieldArrays } from './utils/index.js';
 
 /**
  * Options for inferring schema from a response
@@ -184,45 +185,6 @@ function inferFieldsFromObject(
   }
 
   return fields;
-}
-
-/**
- * Merge two field arrays, detecting optional fields
- */
-function mergeFieldArrays(
-  existing: FieldDefinition[],
-  incoming: FieldDefinition[]
-): FieldDefinition[] {
-  const fieldMap = new Map<string, FieldDefinition>();
-
-  // Add existing fields
-  for (const field of existing) {
-    fieldMap.set(field.name, field);
-  }
-
-  // Merge incoming fields
-  for (const field of incoming) {
-    const existingField = fieldMap.get(field.name);
-    if (existingField) {
-      fieldMap.set(field.name, mergeFieldDefinitions(existingField, field));
-    } else {
-      // New field not in all samples - mark as optional
-      fieldMap.set(field.name, { ...field, required: false });
-    }
-  }
-
-  // Mark fields not in incoming as optional
-  for (const field of existing) {
-    const inIncoming = incoming.some((f) => f.name === field.name);
-    if (!inIncoming) {
-      const current = fieldMap.get(field.name);
-      if (current) {
-        current.required = false;
-      }
-    }
-  }
-
-  return Array.from(fieldMap.values());
 }
 
 /**

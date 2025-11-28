@@ -11,10 +11,11 @@ export {
   inferSchemaFromStore,
   inferFieldType,
   inferFieldDefinition,
-  mergeFieldDefinitions,
   type InferFromStoreOptions,
   type NodeStoreLike,
 } from './from-store.js';
+
+export { mergeFieldArrays, mergeFieldDefinitions } from './utils/index.js';
 
 export {
   introspectGraphQLSchema,
