@@ -332,6 +332,112 @@ export interface LoadPluginsOptions {
 const MAX_PLUGIN_DEPTH = 10;
 
 /**
+ * Resolve a plugin specifier to an absolute path
+ */
+async function resolvePluginPath(pluginName: string): Promise<string> {
+  // Handle relative/absolute paths vs package names
+  if (pluginName.startsWith('.') || pluginName.startsWith('/')) {
+    return resolve(pluginName);
+  }
+
+  try {
+    const { fileURLToPath } = await import('node:url');
+    const packageJsonUrl = importMetaResolve(`${pluginName}/package.json`);
+    const packageJsonPath = fileURLToPath(packageJsonUrl);
+    const { dirname } = await import('node:path');
+    return dirname(packageJsonPath);
+  } catch (err) {
+    console.log(
+      `Could not resolve ${pluginName} via import.meta.resolve, falling back to node_modules:`,
+      err
+    );
+    return resolve(process.cwd(), 'node_modules', pluginName);
+  }
+}
+
+/**
+ * Find the config file path for a plugin
+ */
+function findConfigFilePath(pluginPath: string): string | null {
+  const tsConfigPath = join(pluginPath, 'udl.config.ts');
+  const jsConfigPath = join(pluginPath, 'udl.config.js');
+  const tsCompiledPath = join(pluginPath, 'dist', 'udl.config.js');
+
+  if (existsSync(tsCompiledPath)) return tsCompiledPath;
+  if (existsSync(tsConfigPath)) return tsConfigPath;
+  if (existsSync(jsConfigPath)) return jsConfigPath;
+  return null;
+}
+
+/**
+ * Load a plugin module from a config file path
+ */
+async function loadPluginModule(
+  configFilePath: string
+): Promise<UDLConfigFile> {
+  const fileUrl = pathToFileURL(resolve(configFilePath)).href;
+
+  if (configFilePath.endsWith('.ts')) {
+    const { register } = await import('tsx/esm/api');
+    const unregister = register();
+    try {
+      return await import(fileUrl);
+    } finally {
+      unregister();
+    }
+  }
+
+  return await import(fileUrl);
+}
+
+/**
+ * Register indexes for node types created by a plugin
+ */
+function registerPluginIndexes(
+  nodeStore: NodeStore,
+  pluginName: string,
+  indexes: string[]
+): void {
+  const nodeTypes = nodeStore.getTypes();
+  for (const nodeType of nodeTypes) {
+    const sampleNode = nodeStore.getByType(nodeType)[0];
+    if (sampleNode?.internal.owner === pluginName) {
+      for (const fieldName of indexes) {
+        nodeStore.registerIndex(nodeType, fieldName);
+      }
+    }
+  }
+}
+
+/**
+ * Resolve nested plugin paths relative to parent plugin directory
+ */
+function resolveNestedPluginPaths(
+  nestedPlugins: PluginSpec[],
+  parentPath: string
+): PluginSpec[] {
+  return nestedPlugins.map((nestedPlugin) => {
+    if (typeof nestedPlugin === 'string') {
+      if (nestedPlugin.startsWith('./') || nestedPlugin.startsWith('../')) {
+        return resolve(parentPath, nestedPlugin);
+      }
+      return nestedPlugin;
+    }
+
+    if (
+      nestedPlugin.name.startsWith('./') ||
+      nestedPlugin.name.startsWith('../')
+    ) {
+      return {
+        ...nestedPlugin,
+        name: resolve(parentPath, nestedPlugin.name),
+      };
+    }
+    return nestedPlugin;
+  });
+}
+
+/**
  * High-level: Loads and initializes plugins by executing their onLoad, sourceNodes, and registerTypes hooks
  * @param plugins - Array of plugin specifiers (package names, file paths, or plugin objects with name and options)
  * @param options - Configuration options including appConfig, store, and registerTypesContext
@@ -342,13 +448,9 @@ export async function loadPlugins(
   options?: LoadPluginsOptions
 ): Promise<LoadPluginsResult> {
   const { appConfig, store, registerTypesContext, _depth = 0 } = options ?? {};
-  // Use provided store or fall back to the default singleton
   const nodeStore = store ?? defaultStore;
-
-  // Collect codegen configs from plugins
   const codegenConfigs: PluginCodegenInfo[] = [];
 
-  // Check recursion depth
   if (_depth >= MAX_PLUGIN_DEPTH) {
     console.warn(
       `Maximum plugin recursion depth (${MAX_PLUGIN_DEPTH}) reached. Skipping nested plugins.`
@@ -358,192 +460,98 @@ export async function loadPlugins(
 
   for (const pluginSpec of plugins) {
     try {
-      // Handle both string and object plugin specs
       const pluginName =
         typeof pluginSpec === 'string' ? pluginSpec : pluginSpec.name;
       const pluginOptions =
         typeof pluginSpec === 'object' ? pluginSpec.options : undefined;
 
-      let pluginPath: string;
+      const pluginPath = await resolvePluginPath(pluginName);
+      const configFilePath = findConfigFilePath(pluginPath);
 
-      // Handle relative/absolute paths vs package names
-      if (pluginName.startsWith('.') || pluginName.startsWith('/')) {
-        pluginPath = resolve(pluginName);
-      } else {
-        try {
-          const { fileURLToPath } = await import('node:url');
-          const packageJsonUrl = importMetaResolve(
-            `${pluginName}/package.json`
-          );
-          const packageJsonPath = fileURLToPath(packageJsonUrl);
-          const { dirname } = await import('node:path');
-          pluginPath = dirname(packageJsonPath);
-        } catch (err) {
-          console.log(
-            `Could not resolve ${pluginName} via import.meta.resolve, falling back to node_modules:`,
-            err
-          );
-          pluginPath = resolve(process.cwd(), 'node_modules', pluginName);
+      if (!configFilePath) {
+        console.warn(
+          `Plugin ${pluginName} missing or failed to load config file`
+        );
+        continue;
+      }
+
+      // Build context for plugin hooks
+      const context: OnLoadContext = {
+        ...(pluginOptions !== undefined && { options: pluginOptions }),
+        ...(appConfig !== undefined && { config: appConfig }),
+      };
+
+      let pluginLoaded = false;
+      try {
+        const module = await loadPluginModule(configFilePath);
+        const actualPluginName = module.config?.name || basename(pluginPath);
+
+        // Execute onLoad hook
+        if (module.onLoad) {
+          await module.onLoad(context);
         }
-      }
 
-      // Check for config files in order of preference
-      const tsConfigPath = join(pluginPath, 'udl.config.ts');
-      const jsConfigPath = join(pluginPath, 'udl.config.js');
-      const tsCompiledPath = join(pluginPath, 'dist', 'udl.config.js');
+        // Execute sourceNodes hook and register indexes
+        if (module.sourceNodes && nodeStore) {
+          const pluginDefaultIndexes = module.config?.indexes || [];
+          const userIndexes =
+            (pluginOptions as { indexes?: string[] })?.indexes || [];
+          const allIndexes = [
+            ...new Set([...pluginDefaultIndexes, ...userIndexes]),
+          ];
 
-      // Build context for this plugin's onLoad
-      const context: OnLoadContext = {};
+          const actions = createNodeActions(nodeStore, actualPluginName);
+          await module.sourceNodes({
+            actions,
+            createNodeId,
+            createContentDigest,
+            options: context?.options,
+          });
 
-      // Add plugin options if they exist
-      if (pluginOptions !== undefined) {
-        context.options = pluginOptions;
-      }
-
-      // Add app config if provided
-      if (appConfig !== undefined) {
-        context.config = appConfig;
-      }
-
-      let plugin: UDLConfig | null = null;
-      let configFilePath: string | null = null;
-
-      // Determine which config file exists
-      if (existsSync(tsCompiledPath)) {
-        configFilePath = tsCompiledPath;
-      } else if (existsSync(tsConfigPath)) {
-        configFilePath = tsConfigPath;
-      } else if (existsSync(jsConfigPath)) {
-        configFilePath = jsConfigPath;
-      }
-
-      if (configFilePath) {
-        try {
-          // Load config file to get the plugin's name from config.name
-          const fileUrl = pathToFileURL(resolve(configFilePath)).href;
-
-          let module: UDLConfigFile;
-
-          if (configFilePath.endsWith('.ts')) {
-            const { register } = await import('tsx/esm/api');
-            const unregister = register();
-
-            try {
-              module = await import(fileUrl);
-            } finally {
-              unregister();
-            }
-          } else {
-            module = await import(fileUrl);
-          }
-
-          // Use the plugin's config.name if available, otherwise derive from path
-          const actualPluginName = module.config?.name || basename(pluginPath);
-
-          // Now execute hooks with the actual plugin name
-          if (module.onLoad) {
-            await module.onLoad(context);
-          }
-
-          // Register indexes before sourceNodes executes
-          if (module.sourceNodes && nodeStore) {
-            // Merge plugin default indexes with user-provided indexes
-            const pluginDefaultIndexes = module.config?.indexes || [];
-            const userIndexes =
-              (pluginOptions as { indexes?: string[] })?.indexes || [];
-            const allIndexes = [
-              ...new Set([...pluginDefaultIndexes, ...userIndexes]),
-            ];
-
-            const actions = createNodeActions(nodeStore, actualPluginName);
-
-            await module.sourceNodes({
-              actions,
-              createNodeId,
-              createContentDigest,
-              options: context?.options,
-            });
-
-            // After sourceNodes completes, register indexes for all node types created by this plugin
-            const nodeTypes = nodeStore.getTypes();
-            for (const nodeType of nodeTypes) {
-              const sampleNode = nodeStore.getByType(nodeType)[0];
-              if (sampleNode?.internal.owner === actualPluginName) {
-                for (const fieldName of allIndexes) {
-                  nodeStore.registerIndex(nodeType, fieldName);
-                }
-              }
-            }
-          }
-
-          // Execute registerTypes hook if context provided (for codegen integration)
-          if (module.registerTypes && registerTypesContext) {
-            // Create a plugin-specific context with options
-            const typesContext: RegisterTypesContext = {
-              ...registerTypesContext,
-              options: context?.options,
-            };
-            await module.registerTypes(typesContext);
-          }
-
-          plugin = module.config;
-
-          // Collect codegen config if the plugin has one
-          if (module.config?.codegen) {
-            codegenConfigs.push({
-              config: module.config.codegen,
-              pluginPath: pluginPath,
-              pluginName: actualPluginName,
-            });
-          }
-
-          // Handle nested plugins recursively
-          if (module.config?.plugins && module.config.plugins.length > 0) {
-            // Resolve nested plugin paths relative to this plugin's directory
-            const resolvedNestedPlugins = module.config.plugins.map(
-              (nestedPlugin) => {
-                if (typeof nestedPlugin === 'string') {
-                  if (
-                    nestedPlugin.startsWith('./') ||
-                    nestedPlugin.startsWith('../')
-                  ) {
-                    return resolve(pluginPath, nestedPlugin);
-                  }
-                  return nestedPlugin;
-                } else {
-                  if (
-                    nestedPlugin.name.startsWith('./') ||
-                    nestedPlugin.name.startsWith('../')
-                  ) {
-                    return {
-                      ...nestedPlugin,
-                      name: resolve(pluginPath, nestedPlugin.name),
-                    };
-                  }
-                  return nestedPlugin;
-                }
-              }
-            );
-
-            const nestedResult = await loadPlugins(resolvedNestedPlugins, {
-              appConfig: module.config,
-              store: nodeStore,
-              ...(registerTypesContext && { registerTypesContext }),
-              _depth: _depth + 1,
-            });
-
-            // Merge nested codegen configs
-            codegenConfigs.push(...nestedResult.codegenConfigs);
-          }
-        } catch (error) {
-          console.error(
-            `Failed to load config for plugin ${pluginName}:`,
-            error
-          );
+          registerPluginIndexes(nodeStore, actualPluginName, allIndexes);
         }
+
+        // Execute registerTypes hook
+        if (module.registerTypes && registerTypesContext) {
+          const typesContext: RegisterTypesContext = {
+            ...registerTypesContext,
+            options: context?.options,
+          };
+          await module.registerTypes(typesContext);
+        }
+
+        // Collect codegen config
+        if (module.config?.codegen) {
+          codegenConfigs.push({
+            config: module.config.codegen,
+            pluginPath,
+            pluginName: actualPluginName,
+          });
+        }
+
+        // Handle nested plugins recursively
+        if (module.config?.plugins && module.config.plugins.length > 0) {
+          const resolvedNestedPlugins = resolveNestedPluginPaths(
+            module.config.plugins,
+            pluginPath
+          );
+
+          const nestedResult = await loadPlugins(resolvedNestedPlugins, {
+            appConfig: module.config,
+            store: nodeStore,
+            ...(registerTypesContext && { registerTypesContext }),
+            _depth: _depth + 1,
+          });
+
+          codegenConfigs.push(...nestedResult.codegenConfigs);
+        }
+
+        pluginLoaded = true;
+      } catch (error) {
+        console.error(`Failed to load config for plugin ${pluginName}:`, error);
       }
 
-      if (!plugin) {
+      if (!pluginLoaded) {
         console.warn(
           `Plugin ${pluginName} missing or failed to load config file`
         );
