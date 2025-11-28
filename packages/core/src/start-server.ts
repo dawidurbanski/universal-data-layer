@@ -261,14 +261,28 @@ export async function startServer(options: StartServerOptions = {}) {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
 
-    // Watch the compiled dist directory since that's what gets loaded
-    // TypeScript watch mode compiles changes, then we reload the schema
-    const distDir = __dirname;
+    // Watch compiled source and manual tests
+    // - dist/src: compiled core code (tsc --watch compiles these)
+    // - tests/manual: source manual tests (loaded via tsx at runtime)
+    const distSrc = __dirname;
+    const manualTestsSrc = resolve(__dirname, '..', '..', 'tests', 'manual');
 
-    console.log('👀 Watching for file changes in dist...');
+    console.log('👀 Watching for file changes...');
 
-    const watcher = watch(distDir, {
-      ignored: /(^|[\\/])\../, // ignore dotfiles
+    const watcher = watch([distSrc, manualTestsSrc], {
+      ignored: (path: string) => {
+        // Ignore dotfiles
+        if (/(^|[\\/])\./.test(path)) return true;
+        // Ignore generated folders (codegen output)
+        if (path.includes('/generated/') || path.includes('\\generated\\')) {
+          return true;
+        }
+        // Ignore if path ends with /generated or \generated (the folder itself)
+        if (path.endsWith('/generated') || path.endsWith('\\generated')) {
+          return true;
+        }
+        return false;
+      },
       persistent: true,
       ignoreInitial: true,
       awaitWriteFinish: {
@@ -278,6 +292,46 @@ export async function startServer(options: StartServerOptions = {}) {
     });
 
     let debounceTimer: NodeJS.Timeout | null = null;
+    let pendingChangedPaths: Set<string> = new Set();
+
+    /**
+     * Find codegen configs affected by a changed file path.
+     * Returns only the configs whose basePath matches the changed file's feature directory.
+     * If no specific feature is detected, returns all configs (core code change).
+     */
+    function getAffectedCodegenConfigs(
+      changedPaths: Set<string>
+    ): FeatureCodegenInfo[] {
+      const affectedConfigs: FeatureCodegenInfo[] = [];
+      const matchedBasePaths = new Set<string>();
+
+      for (const changedPath of changedPaths) {
+        // Check if this is a manual test feature file
+        // Path pattern: .../tests/manual/features/{feature-name}/...
+        const featureMatch = changedPath.match(
+          /tests\/manual\/features\/([^/]+)/
+        );
+
+        if (featureMatch) {
+          const featureName = featureMatch[1];
+          // Find matching codegen config by feature name in basePath
+          for (const codegenInfo of codegenConfigs) {
+            if (
+              codegenInfo.basePath.includes(`/features/${featureName}`) &&
+              !matchedBasePaths.has(codegenInfo.basePath)
+            ) {
+              affectedConfigs.push(codegenInfo);
+              matchedBasePaths.add(codegenInfo.basePath);
+            }
+          }
+        } else {
+          // Core code change - affects all configs
+          return codegenConfigs;
+        }
+      }
+
+      return affectedConfigs.length > 0 ? affectedConfigs : codegenConfigs;
+    }
 
     watcher.on('change', (path) => {
       // Normalize path to always use forward slashes
@@ -292,14 +346,39 @@ export async function startServer(options: StartServerOptions = {}) {
         idx !== -1 ? normalizedPath.slice(idx) : normalizedPath;
       console.log(`📝 File changed: ${displayPath}`);
 
+      // Track changed paths for determining which codegen configs to run
+      pendingChangedPaths.add(normalizedPath);
+
       // Debounce rapid changes
       if (debounceTimer) {
         clearTimeout(debounceTimer);
       }
 
       debounceTimer = setTimeout(async () => {
+        const changedPaths = pendingChangedPaths;
+        pendingChangedPaths = new Set();
+
         try {
           await rebuildHandler();
+
+          // Only re-run codegen for affected configs
+          const affectedConfigs = getAffectedCodegenConfigs(changedPaths);
+          for (const {
+            config: codegenConfig,
+            basePath,
+            pluginNames,
+          } of affectedConfigs) {
+            try {
+              await runCodegen({
+                config: codegenConfig,
+                store: defaultStore,
+                basePath,
+                owners: pluginNames,
+              });
+            } catch (error) {
+              console.error(`❌ Codegen failed for ${basePath}:`, error);
+            }
+          }
         } catch (error) {
           console.error('❌ Failed to rebuild schema:', error);
         }
