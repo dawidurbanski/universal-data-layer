@@ -59,6 +59,8 @@ export interface TransformedAsset {
   /** Image dimensions (if applicable) */
   width: number | null;
   height: number | null;
+  /** Index signature for CreateNodeInput compatibility */
+  [key: string]: unknown;
 }
 
 /**

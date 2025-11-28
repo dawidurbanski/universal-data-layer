@@ -24,6 +24,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "udl.config.ts"],
   "exclude": ["dist", "node_modules", "bin", "coverage", "tests/manual"]
 }
