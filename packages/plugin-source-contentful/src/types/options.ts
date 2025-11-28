@@ -7,18 +7,25 @@ import type { ContentType } from 'contentful';
  */
 export interface SyncTokenStorage {
   /**
-   * Retrieve a stored sync token for a given space ID.
-   * @param spaceId - The Contentful space ID
+   * Retrieve a stored sync token for a given key.
+   * @param key - The storage key (typically spaceId:environment)
    * @returns The sync token if found, or null if not exists
    */
-  getSyncToken(spaceId: string): Promise<string | null>;
+  getSyncToken(key: string): Promise<string | null>;
 
   /**
-   * Store a sync token for a given space ID.
-   * @param spaceId - The Contentful space ID
+   * Store a sync token for a given key.
+   * @param key - The storage key (typically spaceId:environment)
    * @param token - The sync token to store
    */
-  setSyncToken(spaceId: string, token: string): Promise<void>;
+  setSyncToken(key: string, token: string): Promise<void>;
+
+  /**
+   * Clear a stored sync token (optional).
+   * If not implemented, setSyncToken with empty string will be used.
+   * @param key - The storage key
+   */
+  clearSyncToken?(key: string): Promise<void>;
 }
 
 /**
