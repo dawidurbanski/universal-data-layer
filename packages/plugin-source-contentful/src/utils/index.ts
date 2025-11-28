@@ -16,3 +16,10 @@ export {
   type EntryTransformContext,
   type TransformedEntry,
 } from './entries.js';
+
+export {
+  transformAsset,
+  getAssetNodeId,
+  type AssetTransformContext,
+  type TransformedAsset,
+} from './assets.js';
