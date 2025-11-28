@@ -23,3 +23,11 @@ export {
   type AssetTransformContext,
   type TransformedAsset,
 } from './assets.js';
+
+export {
+  performSync,
+  clearSyncToken,
+  getSyncStats,
+  FileSyncTokenStorage,
+  type SyncResult,
+} from './sync.js';

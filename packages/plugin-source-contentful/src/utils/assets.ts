@@ -115,7 +115,7 @@ function normalizeAssetUrl(url: string): string {
  * Gets asset fields handling both localized and non-localized responses.
  * The Contentful SDK can return fields in different formats depending on configuration.
  */
-function getAssetFields(asset: Asset<undefined>): AssetFields {
+function getAssetFields(asset: Asset): AssetFields {
   // With the default client configuration, fields should be directly accessible
   return asset.fields as AssetFields;
 }
@@ -128,7 +128,7 @@ function getAssetFields(asset: Asset<undefined>): AssetFields {
  * @returns Transformed asset ready for `actions.createNode()`
  */
 export function transformAsset(
-  asset: Asset<undefined>,
+  asset: Asset,
   context: AssetTransformContext
 ): TransformedAsset {
   const { createNodeId, createContentDigest, options } = context;
