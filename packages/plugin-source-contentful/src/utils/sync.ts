@@ -102,15 +102,19 @@ function createSyncTokenKey(options: ResolvedContentfulPluginOptions): string {
  * @param client - Contentful client instance
  * @param options - Resolved plugin options
  * @param tokenStorage - Storage for sync tokens (defaults to file-based)
+ * @param basePath - Base path for file-based token storage (defaults to process.cwd())
  * @returns Sync result with entries, assets, and deleted items
  */
 export async function performSync(
   client: ContentfulClient,
   options: ResolvedContentfulPluginOptions,
-  tokenStorage?: SyncTokenStorage
+  tokenStorage?: SyncTokenStorage,
+  basePath?: string
 ): Promise<SyncResult> {
   const storage =
-    tokenStorage ?? options.syncTokenStorage ?? new FileSyncTokenStorage();
+    tokenStorage ??
+    options.syncTokenStorage ??
+    new FileSyncTokenStorage(basePath);
   const tokenKey = createSyncTokenKey(options);
 
   // Check for existing sync token

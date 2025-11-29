@@ -165,9 +165,14 @@ async function loadManualTestConfigs(
               }
             });
 
+            // Respect the feature's cache setting (default to enabled)
+            const featureCacheEnabled = config.cache !== false;
+
             const pluginResult = await loadPlugins(resolvedPlugins, {
               appConfig: config,
               store: defaultStore,
+              cache: featureCacheEnabled,
+              cacheDir: featurePath,
             });
 
             // Add plugin codegen configs (from plugins themselves)
@@ -233,6 +238,9 @@ export async function startServer(options: StartServerOptions = {}) {
   // Track main app plugin owner names (basenames) for codegen filtering
   const mainAppPluginNames: string[] = [];
 
+  // Determine if caching is enabled (per-plugin caching is handled in loadPlugins)
+  const cacheEnabled = userConfig.cache !== false;
+
   // Load main app config plugins
   if (userConfig.plugins && userConfig.plugins.length > 0) {
     console.log('Loading plugins...');
@@ -247,6 +255,8 @@ export async function startServer(options: StartServerOptions = {}) {
     const pluginResult = await loadPlugins(userConfig.plugins, {
       appConfig: userConfig,
       store: defaultStore,
+      cache: cacheEnabled,
+      cacheDir: configDir,
     });
 
     // Add plugin codegen configs (from plugins themselves)
