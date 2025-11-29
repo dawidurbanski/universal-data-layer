@@ -53,4 +53,10 @@ export interface SourceNodesContext<T = Record<string, unknown>> {
   createContentDigest: (data: unknown) => string;
   /** Plugin-specific options passed from the config */
   options?: T;
+  /**
+   * Directory where cache files should be stored.
+   * Plugins can use this for storing their own cache data (e.g., sync tokens).
+   * This is the directory containing the udl.config.ts that loaded this plugin.
+   */
+  cacheDir?: string;
 }

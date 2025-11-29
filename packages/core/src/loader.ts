@@ -6,6 +6,8 @@ import { NodeStore } from '@/nodes/store.js';
 import { createNodeActions } from '@/nodes/actions/index.js';
 import { createNodeId, createContentDigest } from '@/nodes/utils/index.js';
 import { defaultStore } from '@/nodes/defaultStore.js';
+import { FileCacheStorage } from '@/cache/file-cache.js';
+import type { CacheStorage, CachedData } from '@/cache/types.js';
 
 export const pluginTypes = ['core', 'source', 'other'] as const;
 
@@ -90,6 +92,13 @@ export interface UDLConfig {
   indexes?: string[];
   /** Code generation configuration - when set, automatically generates types after sourceNodes */
   codegen?: CodegenConfig;
+  /**
+   * Cache storage for persisting nodes across server restarts.
+   * - `undefined` (default): Uses FileCacheStorage (stores in .udl-cache/nodes.json)
+   * - `false`: Disables caching entirely
+   * - Custom `CacheStorage`: Use a custom cache implementation (e.g., Redis, SQLite)
+   */
+  cache?: CacheStorage | false;
 }
 
 /**
@@ -326,6 +335,18 @@ export interface LoadPluginsOptions {
   registerTypesContext?: RegisterTypesContext;
   /** Current recursion depth (for preventing infinite loops) */
   _depth?: number;
+  /**
+   * Enable per-plugin caching. When true, each plugin loads/saves its nodes
+   * from the cacheDir directory. Set to false to disable caching entirely.
+   * @default true
+   */
+  cache?: boolean;
+  /**
+   * Directory where cache files should be stored.
+   * This should be the directory containing the udl.config.ts that specifies the plugins.
+   * Each plugin will store its cache in `cacheDir/.udl-cache/`.
+   */
+  cacheDir?: string;
 }
 
 /** Maximum recursion depth for nested plugins */
@@ -447,7 +468,14 @@ export async function loadPlugins(
   plugins: PluginSpec[] = [],
   options?: LoadPluginsOptions
 ): Promise<LoadPluginsResult> {
-  const { appConfig, store, registerTypesContext, _depth = 0 } = options ?? {};
+  const {
+    appConfig,
+    store,
+    registerTypesContext,
+    _depth = 0,
+    cache: cacheEnabled = true,
+    cacheDir,
+  } = options ?? {};
   const nodeStore = store ?? defaultStore;
   const codegenConfigs: PluginCodegenInfo[] = [];
 
@@ -500,15 +528,89 @@ export async function loadPlugins(
             ...new Set([...pluginDefaultIndexes, ...userIndexes]),
           ];
 
+          // Determine if caching is enabled for this plugin
+          const pluginCacheDisabled = module.config?.cache === false;
+          const shouldCache = cacheEnabled && !pluginCacheDisabled;
+
+          // Cache is stored in the config directory that specified the plugin,
+          // not in the plugin's own directory. This ensures that when a feature
+          // uses a plugin, the cache lives alongside the feature's config.
+          // For nested plugins, the cache is stored in the parent plugin's directory.
+          const cacheLocation = cacheDir ?? pluginPath;
+
+          // Load plugin's cached nodes before sourceNodes
+          let pluginCache: FileCacheStorage | null = null;
+          if (shouldCache) {
+            pluginCache = new FileCacheStorage(cacheLocation);
+            const cached = await pluginCache.load();
+            if (cached && cached.nodes.length > 0) {
+              console.log(
+                `📂 [${actualPluginName}] Loading ${cached.nodes.length} nodes from cache...`
+              );
+              // Only load nodes owned by this plugin
+              const pluginNodes = cached.nodes.filter(
+                (node) => node.internal.owner === actualPluginName
+              );
+              for (const node of pluginNodes) {
+                nodeStore.set(node);
+              }
+              // Restore indexes for this plugin
+              for (const [nodeType, fieldNames] of Object.entries(
+                cached.indexes
+              )) {
+                for (const fieldName of fieldNames) {
+                  nodeStore.registerIndex(nodeType, fieldName);
+                }
+              }
+            }
+          }
+
           const actions = createNodeActions(nodeStore, actualPluginName);
           await module.sourceNodes({
             actions,
             createNodeId,
             createContentDigest,
             options: context?.options,
+            cacheDir: cacheLocation,
           });
 
           registerPluginIndexes(nodeStore, actualPluginName, allIndexes);
+
+          // Save plugin's nodes after sourceNodes
+          if (shouldCache && pluginCache) {
+            // Get only nodes owned by this plugin
+            const allNodes = nodeStore.getAll();
+            const pluginNodes = allNodes.filter(
+              (node) => node.internal.owner === actualPluginName
+            );
+
+            // Get indexes for node types owned by this plugin
+            const pluginNodeTypes = new Set(
+              pluginNodes.map((n) => n.internal.type)
+            );
+            const indexes: Record<string, string[]> = {};
+            for (const nodeType of pluginNodeTypes) {
+              const registeredIndexes =
+                nodeStore.getRegisteredIndexes(nodeType);
+              if (registeredIndexes.length > 0) {
+                indexes[nodeType] = registeredIndexes;
+              }
+            }
+
+            const cacheData: CachedData = {
+              nodes: pluginNodes,
+              indexes,
+              meta: {
+                version: 1,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+              },
+            };
+            await pluginCache.save(cacheData);
+            console.log(
+              `💾 [${actualPluginName}] Cached ${pluginNodes.length} nodes to disk`
+            );
+          }
         }
 
         // Execute registerTypes hook
@@ -541,6 +643,9 @@ export async function loadPlugins(
             store: nodeStore,
             ...(registerTypesContext && { registerTypesContext }),
             _depth: _depth + 1,
+            cache: cacheEnabled,
+            // Nested plugins store their cache in the parent plugin's directory
+            cacheDir: pluginPath,
           });
 
           codegenConfigs.push(...nestedResult.codegenConfigs);

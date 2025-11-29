@@ -82,6 +82,7 @@ export async function sourceNodes({
   createNodeId,
   createContentDigest,
   options,
+  cacheDir,
 }: SourceNodesContext<ContentfulPluginOptions>): Promise<void> {
   if (!options) {
     throw new ContentfulConfigError('Plugin options are required');
@@ -107,10 +108,16 @@ export async function sourceNodes({
   }
 
   // Perform sync (initial or delta based on stored token)
+  // Pass cacheDir so sync token is stored alongside the node cache
   console.log(`${LOG_PREFIX} Syncing content...`);
   let syncResult;
   try {
-    syncResult = await performSync(client, resolvedOptions);
+    syncResult = await performSync(
+      client,
+      resolvedOptions,
+      undefined, // Use default token storage
+      cacheDir // Store tokens in the config's cache directory
+    );
   } catch (error) {
     throw new ContentfulSyncError(
       `Sync failed: ${error instanceof Error ? error.message : String(error)}`,

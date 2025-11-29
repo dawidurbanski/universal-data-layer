@@ -79,6 +79,14 @@ export {
 // Re-export config functions
 export { createConfig, getConfig, type Config } from './config.js';
 
+// Re-export cache utilities
+export {
+  FileCacheStorage,
+  type CacheStorage,
+  type CachedData,
+  type SerializedNode,
+} from './cache/index.js';
+
 // Re-export env utilities
 export { loadEnv, type LoadEnvOptions, type LoadEnvResult } from './env.js';
 

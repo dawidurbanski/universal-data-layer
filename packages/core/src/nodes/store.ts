@@ -365,4 +365,47 @@ export class NodeStore {
     this.registeredIndexes.clear();
     this.typeSchemas.clear();
   }
+
+  /**
+   * Export store data for caching/serialization.
+   * Returns all nodes and registered indexes in a JSON-serializable format.
+   *
+   * @returns Object containing nodes array and indexes map
+   */
+  toSerializable(): { nodes: Node[]; indexes: Record<string, string[]> } {
+    const indexes: Record<string, string[]> = {};
+    for (const [nodeType, fieldNames] of this.registeredIndexes) {
+      indexes[nodeType] = Array.from(fieldNames);
+    }
+    return {
+      nodes: this.getAll(),
+      indexes,
+    };
+  }
+
+  /**
+   * Import data from cache/serialized format into store.
+   * Clears existing data and loads the provided nodes and indexes.
+   *
+   * @param data - Object containing nodes array and indexes map
+   */
+  fromSerializable(data: {
+    nodes: Node[];
+    indexes: Record<string, string[]>;
+  }): void {
+    // Clear existing data
+    this.clear();
+
+    // Register indexes first (before adding nodes so they get indexed)
+    for (const [nodeType, fieldNames] of Object.entries(data.indexes)) {
+      for (const fieldName of fieldNames) {
+        this.safeRegisteredIndex(nodeType).add(fieldName);
+      }
+    }
+
+    // Add all nodes (this will automatically populate field indexes)
+    for (const node of data.nodes) {
+      this.set(node);
+    }
+  }
 }
