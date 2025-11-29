@@ -67,11 +67,13 @@ export interface ContentfulPluginOptions {
   nodePrefix?: string;
 
   /**
-   * Specific locales to fetch content for.
-   * If not specified, fetches content for all available locales.
-   * @example ['en-US', 'de-DE']
+   * The locale to use when extracting field values.
+   * Contentful returns localized fields as objects like {"en-US": "value"}.
+   * This option specifies which locale's value to extract.
+   * @default 'en-US'
+   * @example 'en-US'
    */
-  locales?: string[];
+  locale?: string;
 
   /**
    * Whether to download assets locally for static distribution.
@@ -117,6 +119,7 @@ export const DEFAULT_OPTIONS = {
   host: 'cdn.contentful.com',
   environment: 'master',
   nodePrefix: 'Contentful',
+  locale: 'en-US',
   useNameForId: true,
   downloadAssets: false,
   forceFullSync: false,
@@ -126,15 +129,9 @@ export const DEFAULT_OPTIONS = {
  * Resolved plugin options with all defaults applied.
  */
 export type ResolvedContentfulPluginOptions = Required<
-  Omit<
-    ContentfulPluginOptions,
-    'locales' | 'contentTypeFilter' | 'syncTokenStorage'
-  >
+  Omit<ContentfulPluginOptions, 'contentTypeFilter' | 'syncTokenStorage'>
 > &
-  Pick<
-    ContentfulPluginOptions,
-    'locales' | 'contentTypeFilter' | 'syncTokenStorage'
-  >;
+  Pick<ContentfulPluginOptions, 'contentTypeFilter' | 'syncTokenStorage'>;
 
 /**
  * Apply default values to plugin options.

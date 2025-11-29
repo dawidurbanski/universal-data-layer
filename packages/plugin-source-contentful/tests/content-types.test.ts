@@ -14,6 +14,7 @@ function createMockOptions(
   return {
     spaceId: 'test-space',
     accessToken: 'test-token',
+    locale: 'en-US',
     host: 'cdn.contentful.com',
     environment: 'master',
     nodePrefix: 'Contentful',

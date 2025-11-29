@@ -35,10 +35,10 @@ export default defineConfig({
 | ------------------- | ------------------------------ | ---------------------- | ---------------------------------------------------------- |
 | `spaceId`           | `string`                       | **required**           | Your Contentful space ID                                   |
 | `accessToken`       | `string`                       | **required**           | Contentful Delivery API access token                       |
+| `locale`            | `string`                       | `'en-US'`              | Locale to extract from field values                        |
 | `host`              | `string`                       | `'cdn.contentful.com'` | API host. Use `'preview.contentful.com'` for draft content |
 | `environment`       | `string`                       | `'master'`             | Contentful environment                                     |
 | `nodePrefix`        | `string`                       | `'Contentful'`         | Prefix for generated node type names                       |
-| `locales`           | `string[]`                     | all locales            | Specific locales to fetch                                  |
 | `downloadAssets`    | `boolean`                      | `false`                | Whether to download assets locally (not yet implemented)   |
 | `contentTypeFilter` | `(ct: ContentType) => boolean` | -                      | Filter which content types to source                       |
 | `useNameForId`      | `boolean`                      | `true`                 | Use content type name (vs ID) for node type names          |
@@ -73,6 +73,7 @@ Sync tokens are stored in `.udl-cache/contentful-sync-tokens.json` by default. Y
   options: {
     spaceId: '...',
     accessToken: '...',
+    locale: 'en-US',
     syncTokenStorage: {
       async getSyncToken(key) {
         // Return stored token or null
@@ -98,6 +99,7 @@ To fetch draft/unpublished content, use the Preview API:
   options: {
     spaceId: process.env.CONTENTFUL_SPACE_ID,
     accessToken: process.env.CONTENTFUL_PREVIEW_TOKEN,
+    locale: 'en-US',
     host: 'preview.contentful.com',
   },
 }
@@ -115,6 +117,7 @@ export default defineConfig({
       options: {
         spaceId: process.env.CMS_SPACE_ID,
         accessToken: process.env.CMS_ACCESS_TOKEN,
+        locale: 'en-US',
         nodePrefix: 'CMS',
       },
     },
@@ -123,6 +126,7 @@ export default defineConfig({
       options: {
         spaceId: process.env.CRM_SPACE_ID,
         accessToken: process.env.CRM_ACCESS_TOKEN,
+        locale: 'en-US',
         nodePrefix: 'CRM',
       },
     },
@@ -142,6 +146,7 @@ Filter which content types to source:
   options: {
     spaceId: '...',
     accessToken: '...',
+    locale: 'en-US',
     contentTypeFilter: (contentType) => {
       // Only source 'blogPost' and 'author' content types
       return ['blogPost', 'author'].includes(contentType.sys.id);
@@ -156,7 +161,7 @@ Linked entries and assets are stored as references with their Contentful ID:
 
 ```typescript
 {
-  __contentfulRef: true,
+  _contentfulRef: true,
   contentfulId: 'abc123',
   linkType: 'Entry' | 'Asset',
 }
@@ -172,8 +177,8 @@ Rich text fields are stored with the raw JSON structure and extracted references
 {
   raw: { /* Contentful rich text document */ },
   references: [
-    { __contentfulRef: true, contentfulId: '...', linkType: 'Entry' },
-    { __contentfulRef: true, contentfulId: '...', linkType: 'Asset' },
+    { _contentfulRef: true, contentfulId: '...', linkType: 'Entry' },
+    { _contentfulRef: true, contentfulId: '...', linkType: 'Asset' },
   ],
 }
 ```

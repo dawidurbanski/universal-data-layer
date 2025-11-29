@@ -114,12 +114,58 @@ function normalizeAssetUrl(url: string): string {
 }
 
 /**
+ * Checks if a value is a locale-keyed object.
+ * Contentful returns localized fields as objects like {"en-US": "value"}.
+ */
+function isLocaleKeyedObject(value: unknown, locale: string): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  return locale in value;
+}
+
+/**
+ * Extracts a locale-specific value from a potentially locale-keyed object.
+ * Returns the value as-is if it's not locale-keyed.
+ */
+function extractLocaleValue<T>(
+  value: T | Record<string, T>,
+  locale: string
+): T | null {
+  if (isLocaleKeyedObject(value, locale)) {
+    const localeValue = (value as Record<string, T>)[locale];
+    return localeValue !== undefined ? localeValue : null;
+  }
+  return value as T;
+}
+
+/**
  * Gets asset fields handling both localized and non-localized responses.
  * The Contentful SDK can return fields in different formats depending on configuration.
  */
-function getAssetFields(asset: Asset): AssetFields {
-  // With the default client configuration, fields should be directly accessible
-  return asset.fields as AssetFields;
+function getAssetFields(asset: Asset, locale: string): AssetFields {
+  const fields = asset.fields as Record<string, unknown>;
+
+  // Extract locale-specific values for each field
+  return {
+    title:
+      extractLocaleValue(
+        fields['title'] as string | Record<string, string>,
+        locale
+      ) ?? undefined,
+    description:
+      extractLocaleValue(
+        fields['description'] as string | Record<string, string>,
+        locale
+      ) ?? undefined,
+    file:
+      extractLocaleValue(
+        fields['file'] as
+          | AssetFields['file']
+          | Record<string, AssetFields['file']>,
+        locale
+      ) ?? undefined,
+  } as AssetFields;
 }
 
 /**
@@ -138,7 +184,7 @@ export function transformAsset(
   const nodeTypeName = getAssetNodeTypeName(options);
   const nodeId = createNodeId(nodeTypeName, asset.sys.id);
 
-  const fields = getAssetFields(asset);
+  const fields = getAssetFields(asset, options.locale);
   const file = fields.file;
 
   const sysData: TransformedAsset['sys'] = {

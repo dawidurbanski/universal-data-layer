@@ -54,6 +54,17 @@ export interface TransformedEntry {
 }
 
 /**
+ * Checks if a value is a locale-keyed object.
+ * Contentful returns localized fields as objects like {"en-US": "value"}.
+ */
+function isLocaleKeyedObject(value: unknown, locale: string): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  return locale in value;
+}
+
+/**
  * Checks if a value is an unresolved link.
  */
 function isUnresolvedLink(
@@ -156,6 +167,18 @@ function transformFieldValue(
   // Null or undefined
   if (value === null || value === undefined) {
     return value;
+  }
+
+  // Extract locale value if this is a locale-keyed object
+  if (isLocaleKeyedObject(value, context.options.locale)) {
+    const localeValue = (value as Record<string, unknown>)[
+      context.options.locale
+    ];
+    // Return null if locale doesn't exist
+    if (localeValue === undefined) {
+      return null;
+    }
+    return transformFieldValue(localeValue, context);
   }
 
   // Check for links first

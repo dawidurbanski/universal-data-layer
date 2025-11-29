@@ -11,6 +11,7 @@ import {
   type GraphQLFieldConfigMap,
   type GraphQLInputFieldConfigMap,
   GraphQLScalarType,
+  type GraphQLOutputType,
 } from 'graphql';
 import { defaultStore } from '@/nodes/defaultStore.js';
 import type { Node } from '@/nodes/types.js';
@@ -160,13 +161,77 @@ function filterNodes(
  */
 const typeCache = new Map<string, GraphQLObjectType>();
 const filterInputCache = new Map<string, GraphQLInputObjectType>();
+const nestedTypeCache = new Map<string, GraphQLObjectType>();
 
-type InferredGraphQLType = GraphQLScalarType | GraphQLList<InferredGraphQLType>;
+/**
+ * Generate a unique type name for a nested object based on its structure
+ */
+function generateNestedTypeName(
+  parentTypeName: string,
+  fieldName: string
+): string {
+  // Convert to PascalCase and create a unique name
+  const pascalFieldName =
+    fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+  return `${parentTypeName}${pascalFieldName}`;
+}
+
+/**
+ * Create a GraphQL object type for a nested object value
+ * Returns null if the object is empty (GraphQL requires at least one field)
+ */
+function createNestedObjectType(
+  typeName: string,
+  sampleValue: Record<string, unknown>
+): GraphQLObjectType | null {
+  // Check cache first
+  if (nestedTypeCache.has(typeName)) {
+    return nestedTypeCache.get(typeName)!;
+  }
+
+  // Build fields from the sample object
+  const fields: GraphQLFieldConfigMap<Record<string, unknown>, unknown> = {};
+
+  for (const [key, value] of Object.entries(sampleValue)) {
+    // Skip fields starting with __ (reserved by GraphQL)
+    if (key.startsWith('__')) {
+      continue;
+    }
+    const fieldType = inferGraphQLType(value, typeName, key);
+    // Skip fields that couldn't be typed (e.g., empty nested objects)
+    if (fieldType === null) {
+      continue;
+    }
+    fields[key] = {
+      type: fieldType,
+      resolve: (source) => source[key],
+    };
+  }
+
+  // GraphQL requires at least one field - return null if empty
+  if (Object.keys(fields).length === 0) {
+    return null;
+  }
+
+  const objectType = new GraphQLObjectType({
+    name: typeName,
+    fields,
+  });
+
+  nestedTypeCache.set(typeName, objectType);
+  return objectType;
+}
 
 /**
  * Infer GraphQL type from a JavaScript value
+ * Now supports nested objects by creating proper GraphQL object types
+ * Returns null if the type cannot be represented in GraphQL (e.g., empty objects)
  */
-function inferGraphQLType(value: unknown): InferredGraphQLType {
+function inferGraphQLType(
+  value: unknown,
+  parentTypeName?: string,
+  fieldName?: string
+): GraphQLOutputType | null {
   if (value === null || value === undefined) {
     return GraphQLString;
   }
@@ -187,11 +252,33 @@ function inferGraphQLType(value: unknown): InferredGraphQLType {
     if (value.length === 0) {
       return new GraphQLList(GraphQLString);
     }
-    const itemType = inferGraphQLType(value[0]);
+    const itemType = inferGraphQLType(
+      value[0],
+      parentTypeName,
+      fieldName ? `${fieldName}Item` : undefined
+    );
+    // If array items can't be typed, fall back to string
+    if (itemType === null) {
+      return new GraphQLList(GraphQLString);
+    }
     return new GraphQLList(itemType);
   }
 
-  // For objects, return String as fallback (will be JSON stringified)
+  // For objects, create a proper GraphQL object type
+  if (typeof value === 'object') {
+    const nestedTypeName =
+      parentTypeName && fieldName
+        ? generateNestedTypeName(parentTypeName, fieldName)
+        : `NestedObject${nestedTypeCache.size}`;
+
+    // createNestedObjectType returns null for empty objects
+    return createNestedObjectType(
+      nestedTypeName,
+      value as Record<string, unknown>
+    );
+  }
+
+  // Fallback for unknown types
   return GraphQLString;
 }
 
@@ -253,22 +340,16 @@ function createNodeType(
       };
     } else {
       const sampleValue = fieldSamples.get(fieldName);
-      const fieldType = inferGraphQLType(sampleValue);
+      const fieldType = inferGraphQLType(sampleValue, typeName, fieldName);
+
+      // Skip fields that can't be typed (e.g., empty objects)
+      if (fieldType === null) {
+        continue;
+      }
 
       fields[fieldName] = {
         type: fieldType,
-        resolve: (source) => {
-          const value = source[fieldName];
-          // Handle objects by stringifying them
-          if (
-            value !== null &&
-            typeof value === 'object' &&
-            !Array.isArray(value)
-          ) {
-            return JSON.stringify(value);
-          }
-          return value;
-        },
+        resolve: (source) => source[fieldName],
       };
     }
   }
@@ -301,13 +382,18 @@ function createFilterInputType(
     // Skip internal field - we don't filter on it directly
     if (fieldName === 'internal') continue;
 
-    const graphqlType = inferGraphQLType(sampleValue);
-
     // Only add scalar types that have filter inputs (not arrays or complex objects)
-    if (graphqlType instanceof GraphQLScalarType) {
-      const filterInputType = getFilterInputType(graphqlType);
-      if (filterInputType) {
-        filterFields[fieldName] = { type: filterInputType };
+    if (
+      typeof sampleValue === 'string' ||
+      typeof sampleValue === 'number' ||
+      typeof sampleValue === 'boolean'
+    ) {
+      const graphqlType = inferGraphQLType(sampleValue);
+      if (graphqlType instanceof GraphQLScalarType) {
+        const filterInputType = getFilterInputType(graphqlType);
+        if (filterInputType) {
+          filterFields[fieldName] = { type: filterInputType };
+        }
       }
     }
   }
@@ -334,6 +420,7 @@ export function buildSchema(): GraphQLSchema {
   // Clear type caches to allow for schema updates
   typeCache.clear();
   filterInputCache.clear();
+  nestedTypeCache.clear();
 
   // Get all node types from the store
   const nodeTypes = defaultStore.getTypes();
