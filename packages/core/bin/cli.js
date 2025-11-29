@@ -1,23 +1,9 @@
 #!/usr/bin/env node
 
 import { parseArgs } from 'node:util';
-import { config as loadEnv } from 'dotenv';
 import { startServer } from '../dist/src/start-server.js';
 
-// Load environment variables following NextJS convention
-// Order (lowest to highest priority):
-// 1. .env
-// 2. .env.$(NODE_ENV)
-// 3. .env.local (skipped when NODE_ENV=test)
-// 4. .env.$(NODE_ENV).local
-const nodeEnv = process.env.NODE_ENV || 'development';
-
-loadEnv({ path: '.env' });
-loadEnv({ path: `.env.${nodeEnv}` });
-if (nodeEnv !== 'test') {
-  loadEnv({ path: '.env.local' });
-}
-loadEnv({ path: `.env.${nodeEnv}.local` });
+// Note: .env loading is handled automatically by startServer via loadEnv()
 
 const { values } = parseArgs({
   options: {

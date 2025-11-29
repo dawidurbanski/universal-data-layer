@@ -6,6 +6,9 @@ dist
 coverage
 .nyc_output
 *.log
+.env
+.env.local
+.env.*.local
 
 # Manual test environment files
 **/tests/manual/.env
@@ -13,3 +16,6 @@ coverage
 
 # Codegen
 generated/
+
+# UDL
+.udl-cache/
