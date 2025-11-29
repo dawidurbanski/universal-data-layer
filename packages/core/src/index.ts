@@ -79,6 +79,9 @@ export {
 // Re-export config functions
 export { createConfig, getConfig, type Config } from './config.js';
 
+// Re-export env utilities
+export { loadEnv, type LoadEnvOptions, type LoadEnvResult } from './env.js';
+
 // Re-export schema builder
 export {
   s,

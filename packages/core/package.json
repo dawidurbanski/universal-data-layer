@@ -49,6 +49,7 @@
   ],
   "dependencies": {
     "chokidar": "^4.0.3",
+    "dotenv": "^17.2.3",
     "graphql": "^16.11.0",
     "graphql-http": "^1.22.4",
     "ruru": "^2.0.0-beta.30",

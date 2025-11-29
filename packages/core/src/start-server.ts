@@ -8,6 +8,7 @@ import { createConfig } from '@/config.js';
 import server from '@/server.js';
 import { rebuildHandler } from '@/handlers/graphql.js';
 import { runCodegen } from '@/codegen.js';
+import { loadEnv } from '@/env.js';
 import { watch } from 'chokidar';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -33,139 +34,182 @@ export interface StartServerOptions {
 /**
  * Discover and load configs from all manual test features
  * In dev mode, each feature directory is treated as its own app
+ * Scans both the core package and sibling plugin packages
  * @returns Array of codegen configs to run after schema is built
  */
 async function loadManualTestConfigs(
   rootDir: string
 ): Promise<FeatureCodegenInfo[]> {
-  const featuresDir = join(rootDir, 'tests', 'manual', 'features');
   const codegenConfigs: FeatureCodegenInfo[] = [];
 
-  if (!existsSync(featuresDir)) {
+  // Collect all feature directories to scan
+  const featuresDirs: string[] = [];
+
+  // Add core package features directory
+  const coreFeatures = join(rootDir, 'tests', 'manual', 'features');
+  if (existsSync(coreFeatures)) {
+    featuresDirs.push(coreFeatures);
+  }
+
+  // Scan sibling plugin packages for their manual test features
+  const packagesDir = dirname(rootDir); // Go up to packages/
+  if (existsSync(packagesDir)) {
+    try {
+      const packageDirs = readdirSync(packagesDir, { withFileTypes: true });
+      for (const pkg of packageDirs) {
+        if (!pkg.isDirectory()) continue;
+        if (pkg.name === basename(rootDir)) continue; // Skip the core package itself
+
+        const pluginFeaturesDir = join(
+          packagesDir,
+          pkg.name,
+          'tests',
+          'manual',
+          'features'
+        );
+        if (existsSync(pluginFeaturesDir)) {
+          featuresDirs.push(pluginFeaturesDir);
+        }
+      }
+    } catch {
+      // Ignore errors scanning packages directory
+    }
+  }
+
+  if (featuresDirs.length === 0) {
     return codegenConfigs;
   }
 
-  try {
-    const featureDirs = readdirSync(featuresDir, { withFileTypes: true });
+  for (const featuresDir of featuresDirs) {
+    try {
+      const featureDirs = readdirSync(featuresDir, { withFileTypes: true });
 
-    for (const featureDir of featureDirs) {
-      if (!featureDir.isDirectory()) continue;
+      for (const featureDir of featureDirs) {
+        if (!featureDir.isDirectory()) continue;
 
-      const featurePath = join(featuresDir, featureDir.name);
-      const tsConfigPath = join(featurePath, 'udl.config.ts');
-      const jsConfigPath = join(featurePath, 'udl.config.js');
+        const featurePath = join(featuresDir, featureDir.name);
+        const tsConfigPath = join(featurePath, 'udl.config.ts');
+        const jsConfigPath = join(featurePath, 'udl.config.js');
 
-      let configPath: string | null = null;
-      if (existsSync(tsConfigPath)) {
-        configPath = tsConfigPath;
-      } else if (existsSync(jsConfigPath)) {
-        configPath = jsConfigPath;
-      }
+        let configPath: string | null = null;
+        if (existsSync(tsConfigPath)) {
+          configPath = tsConfigPath;
+        } else if (existsSync(jsConfigPath)) {
+          configPath = jsConfigPath;
+        }
 
-      if (!configPath) continue;
+        if (!configPath) continue;
 
-      try {
-        console.log(`📦 Loading config from feature: ${featureDir.name}`);
+        try {
+          // Load .env files from the feature directory
+          loadEnv({ cwd: featurePath });
 
-        let config = null;
+          console.log(`📦 Loading config from feature: ${featureDir.name}`);
 
-        // Load TypeScript configs with tsx
-        if (configPath.endsWith('.ts')) {
-          const { register } = await import('tsx/esm/api');
-          const unregister = register();
+          let config = null;
 
-          try {
+          // Load TypeScript configs with tsx
+          if (configPath.endsWith('.ts')) {
+            const { register } = await import('tsx/esm/api');
+            const unregister = register();
+
+            try {
+              config = await loadConfigFile(resolve(configPath), {
+                context: { config: {} },
+                store: defaultStore,
+              });
+            } finally {
+              unregister();
+            }
+          } else {
+            // Load JavaScript configs directly
             config = await loadConfigFile(resolve(configPath), {
               context: { config: {} },
               store: defaultStore,
             });
-          } finally {
-            unregister();
           }
-        } else {
-          // Load JavaScript configs directly
-          config = await loadConfigFile(resolve(configPath), {
-            context: { config: {} },
-            store: defaultStore,
-          });
-        }
 
-        // Track plugin names (basenames) for filtering codegen
-        // Owner is set to basename in loader.ts, so we need to match that
-        const pluginOwnerNames: string[] = [];
+          // Track plugin names (basenames) for filtering codegen
+          // Owner is set to basename in loader.ts, so we need to match that
+          const pluginOwnerNames: string[] = [];
 
-        // Load plugins defined in this feature's config
-        if (config?.plugins && config.plugins.length > 0) {
-          // Resolve plugin paths relative to the feature directory
-          const resolvedPlugins = config.plugins.map((plugin) => {
-            if (typeof plugin === 'string') {
-              // If it's a relative path, resolve it relative to the feature dir
-              if (plugin.startsWith('./') || plugin.startsWith('../')) {
-                const resolvedPath = resolve(featurePath, plugin);
-                // Owner is basename of the path (e.g., 'todo-source' from './plugins/todo-source')
-                pluginOwnerNames.push(basename(resolvedPath));
-                return resolvedPath;
+          // Load plugins defined in this feature's config
+          if (config?.plugins && config.plugins.length > 0) {
+            // Resolve plugin paths relative to the feature directory
+            const resolvedPlugins = config.plugins.map((plugin) => {
+              if (typeof plugin === 'string') {
+                // If it's a relative path, resolve it relative to the feature dir
+                if (plugin.startsWith('./') || plugin.startsWith('../')) {
+                  const resolvedPath = resolve(featurePath, plugin);
+                  // Owner is basename of the path (e.g., 'todo-source' from './plugins/todo-source')
+                  pluginOwnerNames.push(basename(resolvedPath));
+                  return resolvedPath;
+                }
+                pluginOwnerNames.push(basename(plugin));
+                return plugin;
+              } else {
+                // Plugin object with name and options
+                if (
+                  plugin.name.startsWith('./') ||
+                  plugin.name.startsWith('../')
+                ) {
+                  const resolvedPath = resolve(featurePath, plugin.name);
+                  pluginOwnerNames.push(basename(resolvedPath));
+                  return {
+                    ...plugin,
+                    name: resolvedPath,
+                  };
+                }
+                pluginOwnerNames.push(basename(plugin.name));
+                return plugin;
               }
-              pluginOwnerNames.push(basename(plugin));
-              return plugin;
-            } else {
-              // Plugin object with name and options
-              if (
-                plugin.name.startsWith('./') ||
-                plugin.name.startsWith('../')
-              ) {
-                const resolvedPath = resolve(featurePath, plugin.name);
-                pluginOwnerNames.push(basename(resolvedPath));
-                return {
-                  ...plugin,
-                  name: resolvedPath,
-                };
-              }
-              pluginOwnerNames.push(basename(plugin.name));
-              return plugin;
+            });
+
+            const pluginResult = await loadPlugins(resolvedPlugins, {
+              appConfig: config,
+              store: defaultStore,
+            });
+
+            // Add plugin codegen configs (from plugins themselves)
+            for (const pluginCodegen of pluginResult.codegenConfigs) {
+              codegenConfigs.push({
+                config: pluginCodegen.config,
+                basePath: pluginCodegen.pluginPath,
+                pluginNames: [pluginCodegen.pluginName],
+              });
             }
-          });
+          }
 
-          const pluginResult = await loadPlugins(resolvedPlugins, {
-            appConfig: config,
-            store: defaultStore,
-          });
-
-          // Add plugin codegen configs (from plugins themselves)
-          for (const pluginCodegen of pluginResult.codegenConfigs) {
+          // Track codegen config if present (after plugins so we have their names)
+          // This is for feature-level codegen, which is separate from plugin-level codegen
+          if (config?.codegen) {
             codegenConfigs.push({
-              config: pluginCodegen.config,
-              basePath: pluginCodegen.pluginPath,
-              pluginNames: [pluginCodegen.pluginName],
+              config: config.codegen,
+              basePath: featurePath,
+              pluginNames: pluginOwnerNames,
             });
           }
+        } catch (error) {
+          console.warn(
+            `Failed to load config for feature ${featureDir.name}:`,
+            error
+          );
         }
-
-        // Track codegen config if present (after plugins so we have their names)
-        // This is for feature-level codegen, which is separate from plugin-level codegen
-        if (config?.codegen) {
-          codegenConfigs.push({
-            config: config.codegen,
-            basePath: featurePath,
-            pluginNames: pluginOwnerNames,
-          });
-        }
-      } catch (error) {
-        console.warn(
-          `Failed to load config for feature ${featureDir.name}:`,
-          error
-        );
       }
+    } catch (error) {
+      console.warn('Failed to scan manual test features:', error);
     }
-  } catch (error) {
-    console.warn('Failed to scan manual test features:', error);
   }
 
   return codegenConfigs;
 }
 
 export async function startServer(options: StartServerOptions = {}) {
-  const userConfig = await loadAppConfig(options.configPath || process.cwd());
+  // Load environment variables from .env files before loading config
+  const configDir = options.configPath || process.cwd();
+  loadEnv({ cwd: configDir });
+
+  const userConfig = await loadAppConfig(configDir);
 
   const port = options.port || userConfig.port || 4000;
   const host = userConfig.host || 'localhost';
