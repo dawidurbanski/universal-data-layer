@@ -11,6 +11,7 @@ describe('DEFAULT_OPTIONS', () => {
       host: 'cdn.contentful.com',
       environment: 'master',
       nodePrefix: 'Contentful',
+      locale: 'en-US',
       downloadAssets: false,
       useNameForId: true,
       forceFullSync: false,
@@ -30,6 +31,7 @@ describe('resolveOptions', () => {
     expect(resolved).toEqual({
       spaceId: 'my-space',
       accessToken: 'my-token',
+      locale: 'en-US',
       host: 'cdn.contentful.com',
       environment: 'master',
       nodePrefix: 'Contentful',
@@ -43,6 +45,7 @@ describe('resolveOptions', () => {
     const userOptions: ContentfulPluginOptions = {
       spaceId: 'my-space',
       accessToken: 'my-token',
+      locale: 'de-DE',
       host: 'preview.contentful.com',
       environment: 'staging',
       nodePrefix: 'CMS',
@@ -59,6 +62,7 @@ describe('resolveOptions', () => {
     expect(resolved.downloadAssets).toBe(true);
     expect(resolved.useNameForId).toBe(false);
     expect(resolved.forceFullSync).toBe(true);
+    expect(resolved.locale).toBe('de-DE');
   });
 
   it('preserves optional properties when provided', () => {
@@ -71,14 +75,14 @@ describe('resolveOptions', () => {
     const userOptions: ContentfulPluginOptions = {
       spaceId: 'my-space',
       accessToken: 'my-token',
-      locales: ['en-US', 'de-DE'],
+      locale: 'de-DE',
       contentTypeFilter,
       syncTokenStorage,
     };
 
     const resolved = resolveOptions(userOptions);
 
-    expect(resolved.locales).toEqual(['en-US', 'de-DE']);
+    expect(resolved.locale).toBe('de-DE');
     expect(resolved.contentTypeFilter).toBe(contentTypeFilter);
     expect(resolved.syncTokenStorage).toBe(syncTokenStorage);
   });
@@ -91,7 +95,6 @@ describe('resolveOptions', () => {
 
     const resolved = resolveOptions(userOptions);
 
-    expect('locales' in resolved).toBe(false);
     expect('contentTypeFilter' in resolved).toBe(false);
     expect('syncTokenStorage' in resolved).toBe(false);
   });

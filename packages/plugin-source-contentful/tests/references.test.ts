@@ -10,7 +10,7 @@ describe('createReference', () => {
     const ref = createReference('entry-123', 'Entry');
 
     expect(ref).toEqual({
-      __contentfulRef: true,
+      _contentfulRef: true,
       contentfulId: 'entry-123',
       linkType: 'Entry',
     });
@@ -20,7 +20,7 @@ describe('createReference', () => {
     const ref = createReference('asset-456', 'Asset');
 
     expect(ref).toEqual({
-      __contentfulRef: true,
+      _contentfulRef: true,
       contentfulId: 'asset-456',
       linkType: 'Asset',
     });
@@ -30,7 +30,7 @@ describe('createReference', () => {
 describe('isContentfulReference', () => {
   it('returns true for valid Entry reference', () => {
     const ref: ContentfulReference = {
-      __contentfulRef: true,
+      _contentfulRef: true,
       contentfulId: 'entry-123',
       linkType: 'Entry',
     };
@@ -40,7 +40,7 @@ describe('isContentfulReference', () => {
 
   it('returns true for valid Asset reference', () => {
     const ref: ContentfulReference = {
-      __contentfulRef: true,
+      _contentfulRef: true,
       contentfulId: 'asset-456',
       linkType: 'Asset',
     };
@@ -71,7 +71,7 @@ describe('isContentfulReference', () => {
   it('returns false for objects with wrong marker value', () => {
     expect(
       isContentfulReference({
-        __contentfulRef: false,
+        _contentfulRef: false,
         contentfulId: '123',
         linkType: 'Entry',
       })

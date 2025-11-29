@@ -12,10 +12,13 @@
  * References are resolved at query time using the `contentfulId` index.
  * This approach is used because the Sync API returns unresolved links
  * that don't include content type information for linked entries.
+ *
+ * Note: We use `_contentfulRef` (single underscore) instead of `__contentfulRef`
+ * because GraphQL reserves names starting with `__` for introspection.
  */
 export interface ContentfulReference {
   /** Marker to identify this object as a Contentful reference */
-  __contentfulRef: true;
+  _contentfulRef: true;
   /** The Contentful sys.id of the linked entry or asset */
   contentfulId: string;
   /** The type of linked content */
@@ -63,7 +66,7 @@ export function createReference(
   linkType: 'Entry' | 'Asset'
 ): ContentfulReference {
   return {
-    __contentfulRef: true,
+    _contentfulRef: true,
     contentfulId,
     linkType,
   };
@@ -81,7 +84,7 @@ export function isContentfulReference(
   return (
     typeof value === 'object' &&
     value !== null &&
-    '__contentfulRef' in value &&
-    (value as ContentfulReference).__contentfulRef === true
+    '_contentfulRef' in value &&
+    (value as ContentfulReference)._contentfulRef === true
   );
 }
