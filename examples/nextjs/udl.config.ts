@@ -14,6 +14,8 @@ export const { config } = defineConfig({
           spaceId: process.env['CONTENTFUL_SPACE_ID'] || 'mock-space',
           accessToken: process.env['CONTENTFUL_ACCESS_TOKEN'] || 'mock-token',
           environment: process.env['CONTENTFUL_ENVIRONMENT'] || 'master',
+          // Register slug as an index for O(1) lookups via contentfulProduct(slug: "...")
+          indexes: ['slug'],
         },
       },
     ],

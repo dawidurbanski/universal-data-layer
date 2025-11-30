@@ -1,7 +1,5 @@
-// Mock product data for demonstration
-// In a real app, you would fetch this from the UDL server:
-// import { udl, gql } from 'universal-data-layer';
-// const products = await udl.query(gql`{ allContentfulProduct { ... } }`);
+import { ProductCard } from './components/ProductCard';
+import { udl, gql } from './lib/udl';
 
 interface Product {
   name: string;
@@ -10,25 +8,28 @@ interface Product {
   price: number;
 }
 
-const mockProducts: Product[] = [
-  {
-    name: 'Classic T-Shirt',
-    slug: 'classic-t-shirt',
-    description:
-      'A comfortable cotton t-shirt perfect for everyday wear. Made from 100% organic cotton.',
-    price: 29.99,
-  },
-  {
-    name: 'Denim Jacket',
-    slug: 'denim-jacket',
-    description:
-      'A timeless denim jacket that never goes out of style. Features classic button closure and chest pockets.',
-    price: 89.99,
-  },
-];
+async function getProducts(): Promise<Product[]> {
+  try {
+    const products = await udl.query<Product[]>(gql`
+      {
+        allContentfulProducts {
+          name
+          slug
+          description
+          price
+        }
+      }
+    `);
+    return products;
+  } catch (error) {
+    console.error('Failed to fetch products from UDL:', error);
+    // Return empty array if UDL server is not running
+    return [];
+  }
+}
 
-export default function Home() {
-  const products = mockProducts;
+export default async function Home() {
+  const products = await getProducts();
 
   return (
     <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
@@ -40,45 +41,54 @@ export default function Home() {
 
       <section>
         <h2>Products</h2>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-            gap: '1.5rem',
-            marginTop: '1rem',
-          }}
-        >
-          {products.map((product) => (
-            <article
-              key={product.slug}
+        {products.length === 0 ? (
+          <div
+            style={{
+              padding: '2rem',
+              background: '#fff3cd',
+              border: '1px solid #ffc107',
+              borderRadius: '8px',
+              marginTop: '1rem',
+            }}
+          >
+            <p style={{ margin: 0, fontWeight: 500 }}>
+              No products found. Make sure the UDL server is running:
+            </p>
+            <pre
               style={{
-                border: '1px solid #e0e0e0',
-                borderRadius: '8px',
-                padding: '1.5rem',
+                background: '#f5f5f5',
+                padding: '0.5rem 1rem',
+                borderRadius: '4px',
+                marginTop: '0.5rem',
               }}
             >
-              <h3 style={{ margin: '0 0 0.5rem 0' }}>{product.name}</h3>
-              <p
-                style={{
-                  color: '#666',
-                  fontSize: '0.9rem',
-                  margin: '0 0 1rem 0',
-                }}
-              >
-                {product.description}
-              </p>
-              <p style={{ fontWeight: 'bold', fontSize: '1.25rem', margin: 0 }}>
-                ${product.price.toFixed(2)}
-              </p>
-            </article>
-          ))}
-        </div>
+              npm run udl:dev
+            </pre>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              gap: '1.5rem',
+              marginTop: '1rem',
+            }}
+          >
+            {products.map((product) => (
+              <ProductCard key={product.slug} product={product} />
+            ))}
+          </div>
+        )}
       </section>
 
       <section style={{ marginTop: '3rem' }}>
         <h2>How It Works</h2>
         <p>This example includes:</p>
         <ul style={{ lineHeight: 1.8 }}>
+          <li>
+            <strong>UDL Server</strong> - Runs the Universal Data Layer GraphQL
+            server (<code>npm run udl:dev</code>)
+          </li>
           <li>
             <strong>MSW Mock Server</strong> - Intercepts Contentful API calls
             and returns mock data (in <code>mocks/</code>)
@@ -88,10 +98,22 @@ export default function Home() {
             Contentful plugin (in <code>udl.config.ts</code>)
           </li>
           <li>
-            <strong>Mock Fixtures</strong> - Product and Variant content types
-            with sample data
+            <strong>GraphQL Queries</strong> - Next.js pages query the UDL
+            server using <code>udl.query()</code>
           </li>
         </ul>
+      </section>
+
+      <section style={{ marginTop: '2rem' }}>
+        <h2>Running the Example</h2>
+        <ol style={{ lineHeight: 2 }}>
+          <li>
+            Start the UDL server: <code>npm run udl:dev</code>
+          </li>
+          <li>
+            In another terminal, start Next.js: <code>npm run dev</code>
+          </li>
+        </ol>
       </section>
 
       <section style={{ marginTop: '2rem' }}>
@@ -104,11 +126,11 @@ export default function Home() {
             overflow: 'auto',
           }}
         >
-          {`import { udl, gql } from 'universal-data-layer';
+          {`import { udl, gql } from './lib/udl';
 
 const products = await udl.query(gql\`
   {
-    allContentfulProduct {
+    allContentfulProducts {
       name
       slug
       description

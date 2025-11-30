@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "udl": "NODE_ENV=production universal-data-layer"
   },
   "dependencies": {
     "next": "^15.1.0",
