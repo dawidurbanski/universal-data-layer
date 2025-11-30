@@ -13,7 +13,6 @@ import {
   inferSchemaFromStore,
   TypeScriptGenerator,
   TypeGuardGenerator,
-  FetchHelperGenerator,
 } from '@/codegen/index.js';
 
 /**
@@ -36,7 +35,6 @@ export interface RunCodegenOptions {
 interface GeneratedFiles {
   types: string;
   guards?: string;
-  helpers?: string;
 }
 
 /**
@@ -93,15 +91,6 @@ export async function runCodegen(options: RunCodegenOptions): Promise<void> {
     files.guards = guardGenerator.generate(schemas);
   }
 
-  // Generate fetch helpers if enabled
-  if (config.helpers) {
-    const helperGenerator = new FetchHelperGenerator({
-      includeJsDoc,
-      includeInternalFields: true,
-    });
-    files.helpers = helperGenerator.generate(schemas);
-  }
-
   // Write files to output directory
   await writeGeneratedFiles(outputDir, files, schemas);
 
@@ -124,7 +113,6 @@ async function writeGeneratedFiles(
   // Create subdirectories
   const typesDir = join(outputDir, 'types');
   const guardsDir = join(outputDir, 'guards');
-  const helpersDir = join(outputDir, 'helpers');
 
   if (!existsSync(typesDir)) {
     await mkdir(typesDir, { recursive: true });
@@ -139,14 +127,6 @@ async function writeGeneratedFiles(
       await mkdir(guardsDir, { recursive: true });
     }
     await writeFile(join(guardsDir, 'index.ts'), files.guards);
-  }
-
-  // Write helpers if generated
-  if (files.helpers) {
-    if (!existsSync(helpersDir)) {
-      await mkdir(helpersDir, { recursive: true });
-    }
-    await writeFile(join(helpersDir, 'index.ts'), files.helpers);
   }
 
   // Create main index.ts that re-exports everything
@@ -182,16 +162,6 @@ function generateIndexFile(
     lines.push('');
     lines.push(`// Type Guards`);
     lines.push(`export { ${guardNames} } from './guards/index.js';`);
-  }
-
-  // Re-export helpers if generated
-  if (files.helpers) {
-    const helperNames = schemas
-      .flatMap((s) => [`getAll${s.name}s`, `get${s.name}ById`])
-      .join(', ');
-    lines.push('');
-    lines.push(`// Fetch Helpers`);
-    lines.push(`export { ${helperNames} } from './helpers/index.js';`);
   }
 
   lines.push('');

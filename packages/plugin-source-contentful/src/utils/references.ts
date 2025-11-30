@@ -23,6 +23,13 @@ export interface ContentfulReference {
   contentfulId: string;
   /** The type of linked content */
   linkType: 'Entry' | 'Asset';
+  /**
+   * Possible node type names this reference can resolve to.
+   * Used by the schema to create union types for reference fields.
+   * For Assets, this will be the asset type name (e.g., "ContentfulAsset").
+   * For Entries, this will be the allowed content type names (e.g., ["ContentfulHeroBlock", "ContentfulTextBlock"]).
+   */
+  possibleTypes?: string[];
 }
 
 /**
@@ -59,17 +66,25 @@ export interface RichTextNode {
  *
  * @param contentfulId - The Contentful sys.id of the linked content
  * @param linkType - Whether this is an Entry or Asset link
+ * @param possibleTypes - Optional array of possible node type names this reference can resolve to
  * @returns A ContentfulReference object
  */
 export function createReference(
   contentfulId: string,
-  linkType: 'Entry' | 'Asset'
+  linkType: 'Entry' | 'Asset',
+  possibleTypes?: string[]
 ): ContentfulReference {
-  return {
+  const ref: ContentfulReference = {
     _contentfulRef: true,
     contentfulId,
     linkType,
   };
+
+  if (possibleTypes && possibleTypes.length > 0) {
+    ref.possibleTypes = possibleTypes;
+  }
+
+  return ref;
 }
 
 /**

@@ -40,14 +40,6 @@ export interface CodegenConfig {
   guards?: boolean;
 
   /**
-   * Whether to generate fetch helper functions (getAll{Type}s, get{Type}ById, etc.).
-   * Fetch helpers use `graphqlFetch` from `universal-data-layer` which automatically
-   * uses the configured server endpoint.
-   * @default false
-   */
-  helpers?: boolean;
-
-  /**
    * Whether to include JSDoc comments in generated code.
    * @default true
    */

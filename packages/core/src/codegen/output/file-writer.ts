@@ -127,7 +127,6 @@ const DEFAULT_OPTIONS: Required<FileWriterOptions> = {
  * writer.writeAll({
  *   types: { schemas, code: typesCode },
  *   guards: { schemas, code: guardsCode },
- *   helpers: { schemas, code: helpersCode },
  * });
  * ```
  */
@@ -166,26 +165,14 @@ export class FileWriter {
   }
 
   /**
-   * Write generated fetch helpers code to file(s).
-   *
-   * @param schemas - The schemas that were used to generate the code
-   * @param code - The generated TypeScript code
-   * @returns Write result with paths of written/skipped files
-   */
-  writeHelpers(schemas: ContentTypeDefinition[], code: string): WriteResult {
-    return this.write('helpers', schemas, code);
-  }
-
-  /**
    * Write all generated code at once.
    *
-   * @param files - Object containing types, guards, and helpers code
+   * @param files - Object containing types and guards code
    * @returns Combined write result
    */
   writeAll(files: {
     types?: { schemas: ContentTypeDefinition[]; code: string };
     guards?: { schemas: ContentTypeDefinition[]; code: string };
-    helpers?: { schemas: ContentTypeDefinition[]; code: string };
   }): WriteResult {
     const result: WriteResult = { written: [], skipped: [], deleted: [] };
 
@@ -207,15 +194,6 @@ export class FileWriter {
       result.skipped.push(...guardsResult.skipped);
     }
 
-    if (files.helpers) {
-      const helpersResult = this.writeHelpers(
-        files.helpers.schemas,
-        files.helpers.code
-      );
-      result.written.push(...helpersResult.written);
-      result.skipped.push(...helpersResult.skipped);
-    }
-
     // Generate root barrel file in multi-file mode
     if (this.options.mode === 'multi' && this.options.generateBarrel) {
       const barrelResult = this.writeRootBarrel(files);
@@ -229,15 +207,11 @@ export class FileWriter {
   /**
    * Clean generated files.
    *
-   * @param categories - Categories to clean ('types', 'guards', 'helpers')
+   * @param categories - Categories to clean ('types', 'guards')
    * @returns Write result with deleted files
    */
   clean(
-    categories: Array<'types' | 'guards' | 'helpers'> = [
-      'types',
-      'guards',
-      'helpers',
-    ]
+    categories: Array<'types' | 'guards'> = ['types', 'guards']
   ): WriteResult {
     const result: WriteResult = { written: [], skipped: [], deleted: [] };
     const { output, mode } = this.options;
@@ -278,7 +252,7 @@ export class FileWriter {
    * @returns Array of files that would be written
    */
   preview(
-    category: 'types' | 'guards' | 'helpers',
+    category: 'types' | 'guards',
     schemas: ContentTypeDefinition[],
     code: string
   ): GeneratedFile[] {
@@ -300,7 +274,7 @@ export class FileWriter {
    * Internal write method.
    */
   private write(
-    category: 'types' | 'guards' | 'helpers',
+    category: 'types' | 'guards',
     schemas: ContentTypeDefinition[],
     code: string
   ): WriteResult {
@@ -356,7 +330,7 @@ export class FileWriter {
    * Split generated code into separate files per type.
    */
   private splitIntoFiles(
-    category: 'types' | 'guards' | 'helpers',
+    category: 'types' | 'guards',
     schemas: ContentTypeDefinition[],
     code: string
   ): GeneratedFile[] {
@@ -396,7 +370,7 @@ export class FileWriter {
    * Extract code for a specific type from combined code.
    */
   private extractTypeCode(
-    category: 'types' | 'guards' | 'helpers',
+    category: 'types' | 'guards',
     typeName: string,
     code: string
   ): string {
@@ -414,10 +388,6 @@ export class FileWriter {
       guards: [
         new RegExp(`^export function (is|assert)${typeName}\\b`),
         new RegExp(`^/\\*\\*.*(Type guard|Assertion guard) for ${typeName}`),
-      ],
-      helpers: [
-        new RegExp(`^export async function (getAll|get)${typeName}`),
-        new RegExp(`^/\\*\\*.*Fetch.*${typeName}`),
       ],
     };
 
@@ -491,7 +461,7 @@ export class FileWriter {
    * Generate barrel file for a category.
    */
   private generateCategoryBarrel(
-    category: 'types' | 'guards' | 'helpers',
+    category: 'types' | 'guards',
     schemas: ContentTypeDefinition[]
   ): string {
     const lines: string[] = [
@@ -513,7 +483,6 @@ export class FileWriter {
   private writeRootBarrel(files: {
     types?: { schemas: ContentTypeDefinition[]; code: string };
     guards?: { schemas: ContentTypeDefinition[]; code: string };
-    helpers?: { schemas: ContentTypeDefinition[]; code: string };
   }): WriteResult {
     const result: WriteResult = { written: [], skipped: [], deleted: [] };
     const { output } = this.options;
@@ -524,9 +493,6 @@ export class FileWriter {
     }
     if (files.guards && files.guards.schemas.length > 0) {
       lines.push("export * from './guards/index.js';");
-    }
-    if (files.helpers && files.helpers.schemas.length > 0) {
-      lines.push("export * from './helpers/index.js';");
     }
 
     if (lines.length > 2) {
@@ -647,7 +613,7 @@ export class FileWriter {
  *
  * Convenience function that creates a writer and writes all files.
  *
- * @param files - Object containing types, guards, and helpers code
+ * @param files - Object containing types and guards code
  * @param options - Writer options
  * @returns Write result
  */
@@ -655,7 +621,6 @@ export function writeGeneratedFiles(
   files: {
     types?: { schemas: ContentTypeDefinition[]; code: string };
     guards?: { schemas: ContentTypeDefinition[]; code: string };
-    helpers?: { schemas: ContentTypeDefinition[]; code: string };
   },
   options: FileWriterOptions = {}
 ): WriteResult {

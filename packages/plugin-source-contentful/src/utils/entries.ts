@@ -7,6 +7,7 @@ import {
   type RichTextNode,
   type RichTextContent,
 } from './references.js';
+import type { FieldLinkMap } from './content-types.js';
 
 /**
  * Context passed to entry transformation functions.
@@ -20,6 +21,18 @@ export interface EntryTransformContext {
   options: ResolvedContentfulPluginOptions;
   /** Map of content type ID to node type name */
   contentTypeMap: Map<string, string>;
+  /** Map of field paths to link type information (optional for backward compatibility) */
+  fieldLinkMap?: FieldLinkMap;
+}
+
+/**
+ * Context for field-level transformation, including the current field path.
+ */
+interface FieldTransformContext extends EntryTransformContext {
+  /** Current content type ID */
+  contentTypeId: string;
+  /** Current field name */
+  fieldName: string;
 }
 
 /**
@@ -124,13 +137,36 @@ function isResolvedAsset(
 }
 
 /**
+ * Gets the possible types for a link field from the field link map.
+ */
+function getPossibleTypes(
+  context: FieldTransformContext,
+  linkType: 'Entry' | 'Asset'
+): string[] | undefined {
+  if (!context.fieldLinkMap) {
+    return undefined;
+  }
+
+  const fieldKey = `${context.contentTypeId}.${context.fieldName}`;
+  const linkInfo = context.fieldLinkMap.get(fieldKey);
+
+  if (linkInfo && linkInfo.linkType === linkType) {
+    return linkInfo.possibleTypes.length > 0
+      ? linkInfo.possibleTypes
+      : undefined;
+  }
+
+  return undefined;
+}
+
+/**
  * Transforms a linked entry or asset to a reference object.
  * Uses contentfulId for resolution via the index, since the Sync API
  * returns unresolved links without content type information.
  */
 function transformLink(
   value: unknown,
-  _context: EntryTransformContext
+  context: FieldTransformContext
 ): ContentfulReference | null {
   // Handle unresolved links
   if (isUnresolvedLink(value)) {
@@ -138,20 +174,24 @@ function transformLink(
     const linkedId = value.sys.id;
 
     if (linkType === 'Asset') {
-      return createReference(linkedId, 'Asset');
+      const possibleTypes = getPossibleTypes(context, 'Asset');
+      return createReference(linkedId, 'Asset', possibleTypes);
     } else if (linkType === 'Entry') {
-      return createReference(linkedId, 'Entry');
+      const possibleTypes = getPossibleTypes(context, 'Entry');
+      return createReference(linkedId, 'Entry', possibleTypes);
     }
   }
 
   // Handle resolved entries
   if (isResolvedEntry(value)) {
-    return createReference(value.sys.id, 'Entry');
+    const possibleTypes = getPossibleTypes(context, 'Entry');
+    return createReference(value.sys.id, 'Entry', possibleTypes);
   }
 
   // Handle resolved assets
   if (isResolvedAsset(value)) {
-    return createReference(value.sys.id, 'Asset');
+    const possibleTypes = getPossibleTypes(context, 'Asset');
+    return createReference(value.sys.id, 'Asset', possibleTypes);
   }
 
   return null;
@@ -162,7 +202,7 @@ function transformLink(
  */
 function transformFieldValue(
   value: unknown,
-  context: EntryTransformContext
+  context: FieldTransformContext
 ): unknown {
   // Null or undefined
   if (value === null || value === undefined) {
@@ -229,7 +269,7 @@ function transformFieldValue(
  */
 function transformRichText(
   doc: RichTextDocument,
-  context: EntryTransformContext
+  context: FieldTransformContext
 ): RichTextContent {
   const references: ContentfulReference[] = [];
 
@@ -301,10 +341,19 @@ export function transformEntry(
   // Create deterministic node ID
   const nodeId = createNodeId(nodeTypeName, entry.sys.id);
 
-  // Transform all fields
+  // Transform all fields with field-specific context
   const transformedFields: Record<string, unknown> = {};
   for (const [fieldName, fieldValue] of Object.entries(entry.fields)) {
-    transformedFields[fieldName] = transformFieldValue(fieldValue, context);
+    // Create field context with content type and field name for link type lookup
+    const fieldContext: FieldTransformContext = {
+      ...context,
+      contentTypeId,
+      fieldName,
+    };
+    transformedFields[fieldName] = transformFieldValue(
+      fieldValue,
+      fieldContext
+    );
   }
 
   const sysData: TransformedEntry['sys'] = {

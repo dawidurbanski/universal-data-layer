@@ -52,8 +52,12 @@
     "dotenv": "^17.2.3",
     "graphql": "^16.11.0",
     "graphql-http": "^1.22.4",
+    "pluralize": "^8.0.0",
     "ruru": "^2.0.0-beta.30",
     "tsx": "^4.19.2",
     "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/pluralize": "^0.0.33"
   }
 }

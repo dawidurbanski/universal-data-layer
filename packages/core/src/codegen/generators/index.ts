@@ -5,7 +5,6 @@
  * into various output formats:
  * - TypeScript interfaces/types
  * - Type guards (optional)
- * - Fetch helpers (optional)
  */
 
 export {
@@ -19,9 +18,3 @@ export {
   generateTypeGuards,
   type TypeGuardGeneratorOptions,
 } from './type-guards.js';
-
-export {
-  FetchHelperGenerator,
-  generateFetchHelpers,
-  type FetchHelperGeneratorOptions,
-} from './fetch-helpers.js';

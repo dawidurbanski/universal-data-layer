@@ -57,6 +57,8 @@ export default [
       '**/.turbo/**',
       '**/coverage/**',
       '**/docs/**',
+      '**/generated/**',
+      '**/.udl-cache/**',
     ],
   },
   {
