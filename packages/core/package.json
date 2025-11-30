@@ -58,6 +58,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@types/pluralize": "^0.0.33"
+    "@types/pluralize": "^0.0.33",
+    "msw": "^2.7.0"
   }
 }

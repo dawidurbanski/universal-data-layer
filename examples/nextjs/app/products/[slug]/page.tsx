@@ -75,72 +75,44 @@ export default async function ProductPage({ params }: PageProps) {
   }
 
   return (
-    <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
+    <main className="p-8 font-sans">
       <Link
         href="/"
-        style={{
-          color: '#0070f3',
-          textDecoration: 'none',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          marginBottom: '2rem',
-        }}
+        className="text-blue-500 no-underline inline-flex items-center gap-2 mb-8"
       >
         &larr; Back to Products
       </Link>
 
-      <div style={{ maxWidth: '800px' }}>
-        <h1 style={{ margin: '0 0 0.5rem 0' }}>{product.name}</h1>
-        <p
-          style={{
-            fontSize: '1.5rem',
-            fontWeight: 'bold',
-            margin: '0 0 1rem 0',
-          }}
-        >
+      <div className="max-w-3xl">
+        <h1 className="m-0 mb-2">{product.name}</h1>
+        <p className="text-2xl font-bold m-0 mb-4">
           ${product.price.toFixed(2)}
         </p>
-        <p style={{ color: '#666', lineHeight: 1.6, margin: '0 0 2rem 0' }}>
+        <p className="text-gray-500 leading-relaxed m-0 mb-8">
           {product.description}
         </p>
 
         <section>
-          <h2 style={{ margin: '0 0 1rem 0' }}>Variants</h2>
+          <h2 className="m-0 mb-4">Variants</h2>
           {product.variants && product.variants.length > 0 ? (
-            <div style={{ display: 'grid', gap: '1rem' }}>
+            <div className="grid gap-4">
               {product.variants.map((variant) => (
                 <div
                   key={variant.sku}
-                  style={{
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '8px',
-                    padding: '1rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
+                  className="border border-gray-200 rounded-lg p-4 flex justify-between items-center"
                 >
                   <div>
-                    <p style={{ margin: '0 0 0.25rem 0', fontWeight: 500 }}>
-                      {variant.name}
-                    </p>
-                    <p
-                      style={{ margin: 0, fontSize: '0.875rem', color: '#666' }}
-                    >
+                    <p className="m-0 mb-1 font-medium">{variant.name}</p>
+                    <p className="m-0 text-sm text-gray-500">
                       SKU: {variant.sku}
                     </p>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{ margin: '0 0 0.25rem 0', fontWeight: 'bold' }}>
+                  <div className="text-right">
+                    <p className="m-0 mb-1 font-bold">
                       ${variant.price.toFixed(2)}
                     </p>
                     <p
-                      style={{
-                        margin: 0,
-                        fontSize: '0.875rem',
-                        color: variant.inStock ? '#22c55e' : '#ef4444',
-                      }}
+                      className={`m-0 text-sm ${variant.inStock ? 'text-green-500' : 'text-red-500'}`}
                     >
                       {variant.inStock ? 'In Stock' : 'Out of Stock'}
                     </p>
@@ -149,20 +121,13 @@ export default async function ProductPage({ params }: PageProps) {
               ))}
             </div>
           ) : (
-            <p style={{ color: '#666' }}>No variants available.</p>
+            <p className="text-gray-500">No variants available.</p>
           )}
         </section>
 
-        <section style={{ marginTop: '3rem' }}>
+        <section className="mt-12">
           <h2>Example Query</h2>
-          <pre
-            style={{
-              background: '#f5f5f5',
-              padding: '1rem',
-              borderRadius: '8px',
-              overflow: 'auto',
-            }}
-          >
+          <pre className="bg-gray-100 p-4 rounded-lg overflow-auto">
             {`import { udl, gql } from './lib/udl';
 
 const product = await udl.query(gql\`

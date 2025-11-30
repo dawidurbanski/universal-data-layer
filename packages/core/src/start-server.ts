@@ -9,6 +9,7 @@ import server from '@/server.js';
 import { rebuildHandler } from '@/handlers/graphql.js';
 import { runCodegen } from '@/codegen.js';
 import { loadEnv } from '@/env.js';
+import { startMockServer } from '@/mocks/index.js';
 import { watch } from 'chokidar';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -210,6 +211,12 @@ async function loadManualTestConfigs(
 }
 
 export async function startServer(options: StartServerOptions = {}) {
+  // Start mock server FIRST (before any plugins make API calls)
+  // Only in dev mode - mocks are for internal development only
+  if (process.env['NODE_ENV'] !== 'production') {
+    await startMockServer();
+  }
+
   // Load environment variables from .env files before loading config
   const configDir = options.configPath || process.cwd();
   loadEnv({ cwd: configDir });

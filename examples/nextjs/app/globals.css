@@ -1,0 +1,58 @@
+@import 'tailwindcss';
+
+/* Restore default browser typography styles that Tailwind's Preflight removes */
+@layer base {
+  h1 {
+    font-size: 2em;
+    font-weight: bold;
+    margin-block: 0.67em;
+  }
+
+  h2 {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-block: 0.83em;
+  }
+
+  h3 {
+    font-size: 1.17em;
+    font-weight: bold;
+    margin-block: 1em;
+  }
+
+  p {
+    margin-block: 1em;
+  }
+
+  ul,
+  ol {
+    padding-left: 40px;
+    margin-block: 1em;
+  }
+
+  ul {
+    list-style-type: disc;
+  }
+
+  ol {
+    list-style-type: decimal;
+  }
+
+  li {
+    display: list-item;
+  }
+
+  pre {
+    font-family: monospace;
+    white-space: pre;
+    margin-block: 1em;
+  }
+
+  code {
+    font-family: monospace;
+  }
+
+  strong {
+    font-weight: bold;
+  }
+}

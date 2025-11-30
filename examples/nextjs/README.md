@@ -5,9 +5,8 @@ This example demonstrates how to use Universal Data Layer (UDL) with Next.js and
 ## What's Included
 
 - **UDL Configuration** (`udl.config.ts`) - Shows how to configure the Contentful plugin
-- **MSW Mock Server** (`mocks/`) - Mock Contentful API responses for development without real credentials
-- **Mock Fixtures** - Product and Variant content types with sample data
 - **GraphQL Queries** - Next.js pages query the UDL server using `udl.query()`
+- **Mock Data** - MSW intercepts Contentful API calls at the UDL server level, providing mock data without real credentials
 
 ## Quick Start
 
@@ -41,7 +40,7 @@ This example demonstrates how to use Universal Data Layer (UDL) with Next.js and
 ┌─────────────────┐      GraphQL      ┌─────────────────┐      Contentful API     ┌─────────────────┐
 │                 │    localhost:4000  │                 │   (intercepted by MSW)  │                 │
 │    Next.js      │  ───────────────▶  │   UDL Server    │  ───────────────────▶   │  Mock Fixtures  │
-│   (port 3000)   │                    │   (port 4000)   │                         │   (mocks/)      │
+│   (port 3000)   │                    │   (port 4000)   │                         │                 │
 │                 │                    │                 │                         │                 │
 └─────────────────┘                    └─────────────────┘                         └─────────────────┘
 ```
@@ -66,13 +65,7 @@ To connect to a real Contentful space:
    CONTENTFUL_SPACE_ID=your_space_id
    CONTENTFUL_ACCESS_TOKEN=your_delivery_api_access_token
    CONTENTFUL_ENVIRONMENT=master
-   ```
-
-3. Remove or comment out the mock server in `udl.config.ts`:
-
-   ```ts
-   // import { startMockServer } from './mocks/server.js';
-   // startMockServer();
+   USE_REAL_API=true  # Disable MSW mocks and use real Contentful
    ```
 
 ## Example Queries
@@ -122,9 +115,9 @@ const product = await udl.query(
 
 > Note: The `slug` argument is available because `indexes: ['slug']` is configured in `udl.config.ts`.
 
-## Mock Data Structure
+## Mock Data
 
-The mock fixtures include:
+Mock data is provided by the UDL server's MSW integration. The fixtures are defined in `@udl/plugin-source-contentful/mocks` and include:
 
 **Content Types:**
 
