@@ -1,8 +1,4 @@
 import { defineConfig } from 'universal-data-layer';
-import { startMockServer } from './mocks/server.js';
-
-// Start mock server to intercept Contentful API calls
-startMockServer();
 
 export const { config } = defineConfig({
   config: {

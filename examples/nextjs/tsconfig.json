@@ -19,7 +19,13 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@udl/plugin-source-contentful": [
+        "../../packages/plugin-source-contentful/dist"
+      ],
+      "@udl/plugin-source-contentful*": [
+        "../../packages/plugin-source-contentful/dist/*"
+      ]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

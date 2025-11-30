@@ -1,16 +1,10 @@
 import { ProductCard } from './components/ProductCard';
 import { udl, gql } from './lib/udl';
+import type { ContentfulProduct } from '@udl/plugin-source-contentful/generated';
 
-interface Product {
-  name: string;
-  slug: string;
-  description: string;
-  price: number;
-}
-
-async function getProducts(): Promise<Product[]> {
+async function getProducts(): Promise<ContentfulProduct[]> {
   try {
-    const products = await udl.query<Product[]>(gql`
+    return await udl.query<ContentfulProduct[]>(gql`
       {
         allContentfulProducts {
           name
@@ -20,7 +14,6 @@ async function getProducts(): Promise<Product[]> {
         }
       }
     `);
-    return products;
   } catch (error) {
     console.error('Failed to fetch products from UDL:', error);
     // Return empty array if UDL server is not running
@@ -32,9 +25,9 @@ export default async function Home() {
   const products = await getProducts();
 
   return (
-    <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
+    <main className="p-8 font-sans">
       <h1>UDL Next.js Example</h1>
-      <p style={{ color: '#666', marginBottom: '2rem' }}>
+      <p className="text-gray-500 mb-8">
         This example demonstrates how to use Universal Data Layer with Next.js
         and Contentful.
       </p>
@@ -42,38 +35,16 @@ export default async function Home() {
       <section>
         <h2>Products</h2>
         {products.length === 0 ? (
-          <div
-            style={{
-              padding: '2rem',
-              background: '#fff3cd',
-              border: '1px solid #ffc107',
-              borderRadius: '8px',
-              marginTop: '1rem',
-            }}
-          >
-            <p style={{ margin: 0, fontWeight: 500 }}>
+          <div className="p-8 bg-amber-100 border border-amber-400 rounded-lg mt-4">
+            <p className="m-0 font-medium">
               No products found. Make sure the UDL server is running:
             </p>
-            <pre
-              style={{
-                background: '#f5f5f5',
-                padding: '0.5rem 1rem',
-                borderRadius: '4px',
-                marginTop: '0.5rem',
-              }}
-            >
+            <pre className="bg-gray-100 px-4 py-2 rounded mt-2">
               npm run udl:dev
             </pre>
           </div>
         ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-              gap: '1.5rem',
-              marginTop: '1rem',
-            }}
-          >
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-6 mt-4">
             {products.map((product) => (
               <ProductCard key={product.slug} product={product} />
             ))}
@@ -81,10 +52,10 @@ export default async function Home() {
         )}
       </section>
 
-      <section style={{ marginTop: '3rem' }}>
+      <section className="mt-12">
         <h2>How It Works</h2>
         <p>This example includes:</p>
-        <ul style={{ lineHeight: 1.8 }}>
+        <ul className="leading-relaxed">
           <li>
             <strong>UDL Server</strong> - Runs the Universal Data Layer GraphQL
             server (<code>npm run udl:dev</code>)
@@ -104,9 +75,9 @@ export default async function Home() {
         </ul>
       </section>
 
-      <section style={{ marginTop: '2rem' }}>
+      <section className="mt-8">
         <h2>Running the Example</h2>
-        <ol style={{ lineHeight: 2 }}>
+        <ol className="leading-loose">
           <li>
             Start the UDL server: <code>npm run udl:dev</code>
           </li>
@@ -116,16 +87,9 @@ export default async function Home() {
         </ol>
       </section>
 
-      <section style={{ marginTop: '2rem' }}>
+      <section className="mt-8">
         <h2>Example Query</h2>
-        <pre
-          style={{
-            background: '#f5f5f5',
-            padding: '1rem',
-            borderRadius: '8px',
-            overflow: 'auto',
-          }}
-        >
+        <pre className="bg-gray-100 p-4 rounded-lg overflow-auto">
           {`import { udl, gql } from './lib/udl';
 
 const products = await udl.query(gql\`

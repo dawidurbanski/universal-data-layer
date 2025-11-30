@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { udl, gql } from 'universal-data-layer/client';
+import type { ContentfulProduct } from '@udl/plugin-source-contentful/generated';
 
 export default function ContentfulDemo() {
   const [loading, setLoading] = useState(false);
@@ -9,32 +10,13 @@ export default function ContentfulDemo() {
   useEffect(() => {
     async function fetchProduct() {
       setProduct(
-        await udl.query(gql`
+        await udl.query<ContentfulProduct[]>(gql`
           {
-            contentfulProduct(contentfulId: "2fFNhcf1NfcL0sEm70aidh") {
-              contentfulId
+            contentfulProduct(slug: "classic-t-shirt") {
               name
-              pageSections {
-                ... on ContentfulPageSectionsContent {
-                  contentfulId
-                  name
-                  header
-                  blocks {
-                    ... on ContentfulBlockCallToAction {
-                      contentfulId
-                      name
-                    }
-                    ... on ContentfulBlockContent {
-                      contentfulId
-                      name
-                    }
-                  }
-                }
-                ... on ContentfulPageSectionsProduct {
-                  contentfulId
-                  name
-                }
-              }
+              slug
+              description
+              price
             }
           }
         `)

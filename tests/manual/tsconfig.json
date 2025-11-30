@@ -20,7 +20,13 @@
       "@/*": ["./src/*"],
       "@core/*": ["../../packages/core/dist/src/*"],
       "universal-data-layer/client": ["../../packages/core/dist/client"],
-      "universal-data-layer": ["../../packages/core/dist"]
+      "universal-data-layer": ["../../packages/core/dist"],
+      "@udl/plugin-source-contentful": [
+        "../../packages/plugin-source-contentful/dist"
+      ],
+      "@udl/plugin-source-contentful*": [
+        "../../packages/plugin-source-contentful/dist/*"
+      ]
     }
   },
   "include": [
