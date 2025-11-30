@@ -20,7 +20,6 @@ describe('CLI', () => {
 
       expect(options.output).toBe('./generated');
       expect(options.guards).toBe(false);
-      expect(options.helpers).toBe(false);
       expect(options.watch).toBe(false);
       expect(options.clean).toBe(false);
       expect(options.dryRun).toBe(false);
@@ -91,18 +90,6 @@ describe('CLI', () => {
       expect(options.guards).toBe(true);
     });
 
-    it('should parse --helpers', () => {
-      const options = parseArgs(['--helpers']);
-
-      expect(options.helpers).toBe(true);
-    });
-
-    it('should parse -H shorthand', () => {
-      const options = parseArgs(['-H']);
-
-      expect(options.helpers).toBe(true);
-    });
-
     it('should parse --watch', () => {
       const options = parseArgs(['--watch']);
 
@@ -162,14 +149,12 @@ describe('CLI', () => {
         '-e',
         'http://localhost:4000/graphql',
         '--guards',
-        '--helpers',
         '-o',
         './output',
       ]);
 
       expect(options.endpoint).toBe('http://localhost:4000/graphql');
       expect(options.guards).toBe(true);
-      expect(options.helpers).toBe(true);
       expect(options.output).toBe('./output');
     });
   });
@@ -222,14 +207,12 @@ describe('CLI', () => {
       const fileConfig = {
         output: './custom-output',
         guards: true,
-        helpers: true,
       };
 
       const merged = mergeConfig(cliOptions, fileConfig);
 
       expect(merged.output).toBe('./custom-output');
       expect(merged.guards).toBe(true);
-      expect(merged.helpers).toBe(true);
     });
 
     it('should prefer CLI options over file config for output', () => {
@@ -252,17 +235,6 @@ describe('CLI', () => {
       const merged = mergeConfig(cliOptions, fileConfig);
 
       expect(merged.guards).toBe(true);
-    });
-
-    it('should merge helpers from file config', () => {
-      const cliOptions = parseArgs([]);
-      const fileConfig = {
-        helpers: true,
-      };
-
-      const merged = mergeConfig(cliOptions, fileConfig);
-
-      expect(merged.helpers).toBe(true);
     });
   });
 
@@ -302,23 +274,6 @@ describe('CLI', () => {
 
       expect(code.guards).toBeDefined();
       expect(code.guards).toContain('export function isProduct');
-    });
-
-    it('should not generate helpers by default', () => {
-      const options = parseArgs([]);
-
-      const code = generateCode(schemas, options);
-
-      expect(code.helpers).toBeUndefined();
-    });
-
-    it('should generate helpers when requested', () => {
-      const options = parseArgs(['--helpers']);
-
-      const code = generateCode(schemas, options);
-
-      expect(code.helpers).toBeDefined();
-      expect(code.helpers).toContain('getAllProducts');
     });
 
     it('should respect --no-jsdoc', () => {
@@ -463,28 +418,6 @@ describe('CLI', () => {
       writeCode(schemas, code, options);
 
       expect(existsSync(join(output, 'guards'))).toBe(true);
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should write helpers when provided', () => {
-      const output = join(tempDir, 'generated');
-      const schemas: ContentTypeDefinition[] = [
-        {
-          name: 'Product',
-          fields: [{ name: 'name', type: 'string', required: true }],
-        },
-      ];
-      const code = {
-        types: 'export interface Product { name: string; }',
-        helpers: 'export async function getAllProducts() { return []; }',
-      };
-      const options = parseArgs(['-o', output, '--helpers']);
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      writeCode(schemas, code, options);
-
-      expect(existsSync(join(output, 'helpers'))).toBe(true);
 
       consoleSpy.mockRestore();
     });

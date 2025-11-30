@@ -204,26 +204,6 @@ describe('FileWriter', () => {
     });
   });
 
-  describe('writeHelpers', () => {
-    it('should write helpers to file', () => {
-      const output = join(tempDir, 'helpers.ts');
-      const writer = new FileWriter({ output, mode: 'single' });
-      const schemas: ContentTypeDefinition[] = [
-        {
-          name: 'Product',
-          fields: [{ name: 'name', type: 'string', required: true }],
-        },
-      ];
-      const code =
-        'export async function getAllProducts(): Promise<Product[]> { return []; }';
-
-      const result = writer.writeHelpers(schemas, code);
-
-      expect(result.written).toContain(output);
-      expect(existsSync(output)).toBe(true);
-    });
-  });
-
   describe('writeAll', () => {
     it('should write all file types', () => {
       const output = join(tempDir, 'generated');
@@ -241,16 +221,11 @@ describe('FileWriter', () => {
           schemas,
           code: 'export function isProduct(value: unknown): value is Product { return true; }',
         },
-        helpers: {
-          schemas,
-          code: 'export async function getAllProducts(): Promise<Product[]> { return []; }',
-        },
       });
 
       expect(result.written.length).toBeGreaterThan(0);
       expect(existsSync(join(output, 'types'))).toBe(true);
       expect(existsSync(join(output, 'guards'))).toBe(true);
-      expect(existsSync(join(output, 'helpers'))).toBe(true);
     });
 
     it('should generate root barrel file in multi-file mode', () => {
@@ -311,12 +286,11 @@ describe('FileWriter', () => {
 
       writer.writeAll({
         types: { schemas, code: 'export interface Product { name: string; }' },
-        // No guards or helpers
+        // No guards
       });
 
       expect(existsSync(join(output, 'types'))).toBe(true);
       expect(existsSync(join(output, 'guards'))).toBe(false);
-      expect(existsSync(join(output, 'helpers'))).toBe(false);
     });
   });
 

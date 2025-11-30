@@ -128,7 +128,7 @@ With the server running, you can query directly with filter support:
 ```graphql
 # Get all todos
 {
-  allTodo {
+  allTodos {
     externalId
     userId
     title
@@ -138,7 +138,7 @@ With the server running, you can query directly with filter support:
 
 # Filter by user ID
 {
-  allTodo(filter: { userId: { eq: 1 } }) {
+  allTodos(filter: { userId: { eq: 1 } }) {
     title
     completed
   }
@@ -146,7 +146,7 @@ With the server running, you can query directly with filter support:
 
 # Filter by completion status
 {
-  allTodo(filter: { completed: { eq: true } }) {
+  allTodos(filter: { completed: { eq: true } }) {
     title
     userId
   }
@@ -154,7 +154,7 @@ With the server running, you can query directly with filter support:
 
 # Filter by title containing text
 {
-  allTodo(filter: { title: { contains: "laboriosam" } }) {
+  allTodos(filter: { title: { contains: "laboriosam" } }) {
     title
     userId
     completed

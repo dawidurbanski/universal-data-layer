@@ -2,8 +2,8 @@
 /**
  * UDL Codegen CLI
  *
- * Command-line interface for generating TypeScript types, type guards,
- * and fetch helpers from various sources.
+ * Command-line interface for generating TypeScript types and type guards
+ * from various sources.
  */
 
 import { existsSync, readFileSync } from 'fs';
@@ -13,7 +13,6 @@ import { watch as chokidarWatch } from 'chokidar';
 
 import { TypeScriptGenerator } from './generators/typescript.js';
 import { TypeGuardGenerator } from './generators/type-guards.js';
-import { FetchHelperGenerator } from './generators/fetch-helpers.js';
 import { FileWriter } from './output/file-writer.js';
 import { introspectGraphQLSchema } from './inference/from-graphql.js';
 import { inferSchemaFromJsonString } from './inference/from-response.js';
@@ -32,7 +31,6 @@ interface CliOptions {
   // Output options
   output: string;
   guards: boolean;
-  helpers: boolean;
 
   // Behavior options
   watch: boolean;
@@ -58,7 +56,6 @@ interface CliOptions {
 const DEFAULT_OPTIONS: CliOptions = {
   output: './generated',
   guards: false,
-  helpers: false,
   watch: false,
   clean: false,
   dryRun: false,
@@ -120,11 +117,6 @@ export function parseArgs(args: string[]): CliOptions {
       case '--guards':
       case '-g':
         options.guards = true;
-        break;
-
-      case '--helpers':
-      case '-H':
-        options.helpers = true;
         break;
 
       // Behavior options
@@ -200,7 +192,6 @@ Source Options:
 Output Options:
   -o, --output <path>       Output directory or file (default: ./generated)
   -g, --guards              Generate type guard functions
-  -H, --helpers             Generate fetch helper functions
 
 Behavior Options:
   -w, --watch               Watch for changes and regenerate
@@ -223,8 +214,8 @@ Examples:
   # Generate types from GraphQL endpoint
   udl-codegen --endpoint http://localhost:4000/graphql
 
-  # Generate types with guards and helpers
-  udl-codegen -e http://localhost:4000/graphql --guards --helpers
+  # Generate types with guards
+  udl-codegen -e http://localhost:4000/graphql --guards
 
   # Generate from JSON response file
   udl-codegen --from-response ./samples/product.json --type Product
@@ -312,7 +303,6 @@ export function mergeConfig(
         ? cliOptions.output
         : (fileConfig.output ?? cliOptions.output),
     guards: cliOptions.guards || fileConfig.guards || false,
-    helpers: cliOptions.helpers || fileConfig.helpers || false,
     includeInternal: fileConfig.includeInternal ?? cliOptions.includeInternal,
     includeJsDoc: fileConfig.includeJsDoc ?? cliOptions.includeJsDoc,
     exportFormat: fileConfig.exportFormat ?? cliOptions.exportFormat,
@@ -345,7 +335,6 @@ export function generateCode(
 ): {
   types: string;
   guards?: string;
-  helpers?: string;
 } {
   // Generate types
   const tsGenerator = new TypeScriptGenerator({
@@ -364,23 +353,11 @@ export function generateCode(
     guards = guardsGenerator.generate(schemas);
   }
 
-  // Generate helpers if requested
-  let helpers: string | undefined;
-  if (options.helpers) {
-    const helpersGenerator = new FetchHelperGenerator({
-      includeJsDoc: options.includeJsDoc,
-    });
-    helpers = helpersGenerator.generate(schemas);
-  }
-
-  const result: { types: string; guards?: string; helpers?: string } = {
+  const result: { types: string; guards?: string } = {
     types,
   };
   if (guards) {
     result.guards = guards;
-  }
-  if (helpers) {
-    result.helpers = helpers;
   }
   return result;
 }
@@ -390,7 +367,7 @@ export function generateCode(
  */
 export function writeCode(
   schemas: ContentTypeDefinition[],
-  code: { types: string; guards?: string; helpers?: string },
+  code: { types: string; guards?: string },
   options: CliOptions
 ): void {
   const writer = new FileWriter({ output: options.output });
@@ -401,10 +378,6 @@ export function writeCode(
 
   if (code.guards) {
     files.guards = { schemas, code: code.guards };
-  }
-
-  if (code.helpers) {
-    files.helpers = { schemas, code: code.helpers };
   }
 
   const result = writer.writeAll(files);
@@ -477,11 +450,6 @@ export async function runGenerate(options: CliOptions): Promise<void> {
     if (code.guards) {
       console.log('\n--- Guards ---');
       console.log(code.guards);
-    }
-
-    if (code.helpers) {
-      console.log('\n--- Helpers ---');
-      console.log(code.helpers);
     }
 
     console.log('\n(dry-run mode - no files written)');

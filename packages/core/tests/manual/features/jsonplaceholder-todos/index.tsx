@@ -1,11 +1,6 @@
 import { useState } from 'react';
-import {
-  getAllTodos,
-  isTodo,
-  type Todo,
-} from './plugins/todo-source/generated';
-
-const GRAPHQL_ENDPOINT = 'http://localhost:4000/graphql';
+import { udl, gql } from 'universal-data-layer/client';
+import { isTodo, type Todo } from './plugins/todo-source/generated';
 
 type QueryType = 'all' | 'byUserId' | 'completed' | 'incomplete';
 
@@ -17,46 +12,67 @@ export default function JSONPlaceholderTodos() {
   const [userId, setUserId] = useState<number>(1);
   const [validationResults, setValidationResults] = useState<string[]>([]);
 
-  const fetchTodosByUserId = async (uid: number): Promise<Todo[]> => {
-    const response = await fetch(GRAPHQL_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: `query($userId: Int!) {
-          allTodo(filter: { userId: { eq: $userId } }) {
+  const fetchTodosByUserId = async (userId: number): Promise<Todo[]> => {
+    return udl.query(
+      gql`
+        query ($userId: Int!) {
+          allTodos(filter: { userId: { eq: $userId } }) {
             externalId
             userId
             title
             completed
-            internal { id type owner contentDigest }
+            internal {
+              id
+              type
+              owner
+              contentDigest
+            }
           }
-        }`,
-        variables: { userId: uid },
-      }),
-    });
-    const json = await response.json();
-    return json.data?.allTodo ?? [];
+        }
+      `,
+      { variables: { userId } }
+    );
   };
 
   const fetchTodosByCompleted = async (completed: boolean): Promise<Todo[]> => {
-    const response = await fetch(GRAPHQL_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: `query($completed: Boolean!) {
-          allTodo(filter: { completed: { eq: $completed } }) {
+    return udl.query(
+      gql`
+        query ($completed: Boolean!) {
+          allTodos(filter: { completed: { eq: $completed } }) {
             externalId
             userId
             title
             completed
-            internal { id type owner contentDigest }
+            internal {
+              id
+              type
+              owner
+              contentDigest
+            }
           }
-        }`,
-        variables: { completed },
-      }),
-    });
-    const json = await response.json();
-    return json.data?.allTodo ?? [];
+        }
+      `,
+      { variables: { completed } }
+    );
+  };
+
+  const getAllTodos = async (): Promise<Todo[]> => {
+    return udl.query(gql`
+      {
+        allTodos {
+          externalId
+          userId
+          title
+          completed
+          internal {
+            id
+            type
+            owner
+            contentDigest
+          }
+        }
+      }
+    `);
   };
 
   const fetchTodos = async () => {

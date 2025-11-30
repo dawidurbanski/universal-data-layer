@@ -3,7 +3,30 @@
  *
  * This module exports only browser-compatible utilities.
  * Use this in client-side code instead of the main entry point.
+ *
+ * @example
+ * ```ts
+ * import { udl, gql } from 'universal-data-layer/client';
+ *
+ * const product = await udl.query(gql`{
+ *   contentfulProduct(contentfulId: "abc123") {
+ *     name
+ *   }
+ * }`);
+ * ```
  */
+
+// Export query utilities
+export {
+  udl,
+  query,
+  gql,
+  createQuery,
+  type QueryOptions,
+} from './src/query.js';
+
+// Export client utilities
+export { resolveRefs, type NormalizedResponse } from './src/client/index.js';
 
 // Export GraphQL fetch utility for generated helpers
 export {

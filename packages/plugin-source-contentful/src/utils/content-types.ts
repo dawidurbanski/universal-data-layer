@@ -176,6 +176,9 @@ function mapFieldType(field: ContentTypeField): SimplifiedFieldType {
 function extractLinkContentTypes(
   field: ContentTypeField
 ): string[] | undefined {
+  if (!field.validations) {
+    return undefined;
+  }
   for (const validation of field.validations) {
     if (validation.linkContentType && validation.linkContentType.length > 0) {
       return validation.linkContentType;
@@ -215,13 +218,15 @@ export function parseField(field: ContentTypeField): ParsedField {
       parsed.arrayLinkType = field.items.linkType as 'Entry' | 'Asset';
 
       // Extract content type restrictions from items validations
-      for (const validation of field.items.validations) {
-        if (
-          validation.linkContentType &&
-          validation.linkContentType.length > 0
-        ) {
-          parsed.arrayLinkContentTypes = validation.linkContentType;
-          break;
+      if (field.items.validations) {
+        for (const validation of field.items.validations) {
+          if (
+            validation.linkContentType &&
+            validation.linkContentType.length > 0
+          ) {
+            parsed.arrayLinkContentTypes = validation.linkContentType;
+            break;
+          }
         }
       }
     } else if (field.items.type === 'Symbol') {
@@ -264,6 +269,97 @@ export function createContentTypeMap(
       contentType.sys.id,
       contentTypeToNodeTypeName(contentType, options)
     );
+  }
+
+  return map;
+}
+
+/**
+ * Information about a link field including its allowed types.
+ */
+export interface LinkFieldInfo {
+  /** The type of link (Entry or Asset) */
+  linkType: 'Entry' | 'Asset';
+  /** Possible node type names this link can resolve to */
+  possibleTypes: string[];
+}
+
+/**
+ * Map from "contentTypeId.fieldId" to link field information.
+ * Used to know what types each reference field can link to.
+ */
+export type FieldLinkMap = Map<string, LinkFieldInfo>;
+
+/**
+ * Creates a mapping from field paths to their link type information.
+ * This enables the schema to create union types for reference fields.
+ *
+ * @param contentTypes - Array of content types
+ * @param options - Resolved plugin options
+ * @returns Map of "contentTypeId.fieldId" to link field info
+ *
+ * @example
+ * ```ts
+ * // For a "page" content type with a "sections" field linking to heroBlock and textBlock:
+ * // Returns: Map { "page.sections" => { linkType: "Entry", possibleTypes: ["ContentfulHeroBlock", "ContentfulTextBlock"] } }
+ * ```
+ */
+export function createFieldLinkMap(
+  contentTypes: ContentType[],
+  options: ResolvedContentfulPluginOptions
+): FieldLinkMap {
+  const map: FieldLinkMap = new Map();
+  const contentTypeMap = createContentTypeMap(contentTypes, options);
+  const assetTypeName = getAssetNodeTypeName(options);
+
+  for (const contentType of contentTypes) {
+    const parsedFields = parseContentTypeFields(contentType);
+
+    for (const field of parsedFields) {
+      const fieldKey = `${contentType.sys.id}.${field.id}`;
+
+      // Handle single Link fields
+      if (field.type === 'link' && field.linkType) {
+        if (field.linkType === 'Asset') {
+          map.set(fieldKey, {
+            linkType: 'Asset',
+            possibleTypes: [assetTypeName],
+          });
+        } else if (field.linkType === 'Entry') {
+          const possibleTypes = field.linkContentTypes
+            ? field.linkContentTypes
+                .map((ctId) => contentTypeMap.get(ctId))
+                .filter((name): name is string => name !== undefined)
+            : []; // Empty means any entry type
+
+          map.set(fieldKey, {
+            linkType: 'Entry',
+            possibleTypes,
+          });
+        }
+      }
+
+      // Handle Array of Links
+      if (field.type === 'array' && field.arrayItemType === 'link') {
+        if (field.arrayLinkType === 'Asset') {
+          map.set(fieldKey, {
+            linkType: 'Asset',
+            possibleTypes: [assetTypeName],
+          });
+        } else if (field.arrayLinkType === 'Entry') {
+          const possibleTypes = field.arrayLinkContentTypes
+            ? field.arrayLinkContentTypes
+                .map((ctId) => contentTypeMap.get(ctId))
+                .filter((name): name is string => name !== undefined)
+            : []; // Empty means any entry type
+
+          map.set(fieldKey, {
+            linkType: 'Entry',
+            possibleTypes,
+          });
+        }
+      }
+    }
   }
 
   return map;

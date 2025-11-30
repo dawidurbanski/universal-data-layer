@@ -1,8 +1,8 @@
 /**
  * Codegen - Type generation utilities for Universal Data Layer
  *
- * This module provides tools to generate TypeScript types, type guards,
- * and fetch helpers from UDL node stores, GraphQL schemas, or REST API responses.
+ * This module provides tools to generate TypeScript types and type guards
+ * from UDL node stores, GraphQL schemas, or REST API responses.
  *
  * @example
  * ```ts
@@ -70,9 +70,6 @@ export {
   TypeGuardGenerator,
   generateTypeGuards,
   type TypeGuardGeneratorOptions,
-  FetchHelperGenerator,
-  generateFetchHelpers,
-  type FetchHelperGeneratorOptions,
 } from './generators/index.js';
 
 // Output

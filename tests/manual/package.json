@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "fix": "prettier --write .",
+    "fix": "prettier --write . --ignore-path ../../.prettierignore",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

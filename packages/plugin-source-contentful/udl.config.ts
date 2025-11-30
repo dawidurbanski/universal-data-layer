@@ -13,6 +13,7 @@ import { resolveOptions } from './src/types/index.js';
 import {
   fetchContentTypes,
   createContentTypeMap,
+  createFieldLinkMap,
   getAssetNodeTypeName,
 } from './src/utils/content-types.js';
 import {
@@ -45,7 +46,6 @@ export const config = {
   codegen: {
     output: './generated',
     guards: true,
-    helpers: true,
     includeInternal: true,
   },
 };
@@ -98,6 +98,7 @@ export async function sourceNodes({
     'Failed to fetch content types'
   );
   const contentTypeMap = createContentTypeMap(contentTypes, resolvedOptions);
+  const fieldLinkMap = createFieldLinkMap(contentTypes, resolvedOptions);
 
   console.log(`${LOG_PREFIX} Found ${contentTypes.length} content types`);
 
@@ -138,6 +139,7 @@ export async function sourceNodes({
     createContentDigest,
     options: resolvedOptions,
     contentTypeMap,
+    fieldLinkMap,
   };
 
   const assetContext: AssetTransformContext = {

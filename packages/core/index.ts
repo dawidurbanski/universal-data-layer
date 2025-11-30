@@ -31,6 +31,18 @@ export {
   type GraphQLResponse,
 } from './src/graphql-fetch.js';
 
+// Export query utilities
+export {
+  udl,
+  query,
+  gql,
+  createQuery,
+  type QueryOptions,
+} from './src/query.js';
+
+// Export client utilities
+export { resolveRefs, type NormalizedResponse } from './src/client/index.js';
+
 // Export schema builder for type hints at createNode call sites
 export {
   s,

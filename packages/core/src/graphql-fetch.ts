@@ -36,10 +36,10 @@ export interface GraphQLResponse<T> {
  *
  * @example
  * ```ts
- * const data = await graphqlFetch<{ allTodo: Todo[] }>(
- *   `{ allTodo { id title completed } }`
+ * const data = await graphqlFetch<{ allTodos: Todo[] }>(
+ *   `{ allTodos { id title completed } }`
  * );
- * console.log(data.allTodo);
+ * console.log(data.allTodos);
  * ```
  */
 export async function graphqlFetch<T>(

@@ -64,9 +64,6 @@ export {
   TypeGuardGenerator,
   generateTypeGuards,
   type TypeGuardGeneratorOptions,
-  FetchHelperGenerator,
-  generateFetchHelpers,
-  type FetchHelperGeneratorOptions,
   // Output
   FileWriter,
   writeGeneratedFiles,
@@ -105,6 +102,21 @@ export {
   type GraphQLError,
   type GraphQLResponse,
 } from './graphql-fetch.js';
+
+// Re-export query utilities
+export { udl, query, gql, createQuery, type QueryOptions } from './query.js';
+
+// Re-export client utilities
+export { resolveRefs, type NormalizedResponse } from './client/index.js';
+
+// Re-export normalization utilities
+export {
+  normalizeResponse,
+  normalizeGraphQLResult,
+  defaultGetEntityKey,
+  type NormalizeOptions,
+  type NormalizedResponse as NormalizedGraphQLResponse,
+} from './normalization/index.js';
 
 // Export the default server for programmatic usage
 export { default } from './server.js';
