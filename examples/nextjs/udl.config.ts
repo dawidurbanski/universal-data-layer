@@ -1,4 +1,8 @@
 import { defineConfig } from 'universal-data-layer';
+import { startMockServer } from './mocks/server.js';
+
+// Start mock server to intercept Contentful API calls
+startMockServer();
 
 export const { config } = defineConfig({
   config: {
@@ -6,8 +10,9 @@ export const { config } = defineConfig({
       {
         name: '@udl/plugin-source-contentful',
         options: {
-          spaceId: process.env['CONTENTFUL_SPACE_ID'] || '',
-          accessToken: process.env['CONTENTFUL_ACCESS_TOKEN'] || '',
+          // These can be any values - MSW intercepts all Contentful API calls
+          spaceId: process.env['CONTENTFUL_SPACE_ID'] || 'mock-space',
+          accessToken: process.env['CONTENTFUL_ACCESS_TOKEN'] || 'mock-token',
           environment: process.env['CONTENTFUL_ENVIRONMENT'] || 'master',
         },
       },
