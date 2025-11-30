@@ -1,0 +1,146 @@
+{
+  "sys": {
+    "type": "Array"
+  },
+  "total": 2,
+  "skip": 0,
+  "limit": 100,
+  "items": [
+    {
+      "sys": {
+        "space": {
+          "sys": {
+            "type": "Link",
+            "linkType": "Space",
+            "id": "mock-space"
+          }
+        },
+        "id": "product",
+        "type": "ContentType",
+        "createdAt": "2024-01-01T00:00:00.000Z",
+        "updatedAt": "2024-01-01T00:00:00.000Z",
+        "environment": {
+          "sys": {
+            "id": "master",
+            "type": "Link",
+            "linkType": "Environment"
+          }
+        },
+        "revision": 1
+      },
+      "displayField": "name",
+      "name": "Product",
+      "description": "A product in the store",
+      "fields": [
+        {
+          "id": "name",
+          "name": "Name",
+          "type": "Symbol",
+          "localized": false,
+          "required": true
+        },
+        {
+          "id": "slug",
+          "name": "Slug",
+          "type": "Symbol",
+          "localized": false,
+          "required": true
+        },
+        {
+          "id": "description",
+          "name": "Description",
+          "type": "Text",
+          "localized": false,
+          "required": false
+        },
+        {
+          "id": "price",
+          "name": "Price",
+          "type": "Number",
+          "localized": false,
+          "required": true
+        },
+        {
+          "id": "image",
+          "name": "Image",
+          "type": "Link",
+          "linkType": "Asset",
+          "localized": false,
+          "required": false
+        },
+        {
+          "id": "variants",
+          "name": "Variants",
+          "type": "Array",
+          "items": {
+            "type": "Link",
+            "linkType": "Entry",
+            "validations": [
+              {
+                "linkContentType": ["variant"]
+              }
+            ]
+          },
+          "localized": false,
+          "required": false
+        }
+      ]
+    },
+    {
+      "sys": {
+        "space": {
+          "sys": {
+            "type": "Link",
+            "linkType": "Space",
+            "id": "mock-space"
+          }
+        },
+        "id": "variant",
+        "type": "ContentType",
+        "createdAt": "2024-01-01T00:00:00.000Z",
+        "updatedAt": "2024-01-01T00:00:00.000Z",
+        "environment": {
+          "sys": {
+            "id": "master",
+            "type": "Link",
+            "linkType": "Environment"
+          }
+        },
+        "revision": 1
+      },
+      "displayField": "name",
+      "name": "Variant",
+      "description": "A product variant",
+      "fields": [
+        {
+          "id": "name",
+          "name": "Name",
+          "type": "Symbol",
+          "localized": false,
+          "required": true
+        },
+        {
+          "id": "sku",
+          "name": "SKU",
+          "type": "Symbol",
+          "localized": false,
+          "required": true
+        },
+        {
+          "id": "price",
+          "name": "Price",
+          "type": "Number",
+          "localized": false,
+          "required": true
+        },
+        {
+          "id": "inStock",
+          "name": "In Stock",
+          "type": "Boolean",
+          "localized": false,
+          "required": false
+        }
+      ]
+    }
+  ]
+}

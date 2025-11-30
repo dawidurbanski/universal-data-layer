@@ -1,0 +1,92 @@
+[
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-1",
+      "type": "Asset",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Classic T-Shirt Image"
+      },
+      "description": {
+        "en-US": "Product image for the Classic T-Shirt"
+      },
+      "file": {
+        "en-US": {
+          "url": "//images.ctfassets.net/mock-space/asset-1/tshirt.jpg",
+          "details": {
+            "size": 102400,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "tshirt.jpg",
+          "contentType": "image/jpeg"
+        }
+      }
+    }
+  },
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-2",
+      "type": "Asset",
+      "createdAt": "2024-01-02T00:00:00.000Z",
+      "updatedAt": "2024-01-02T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Denim Jacket Image"
+      },
+      "description": {
+        "en-US": "Product image for the Denim Jacket"
+      },
+      "file": {
+        "en-US": {
+          "url": "//images.ctfassets.net/mock-space/asset-2/jacket.jpg",
+          "details": {
+            "size": 153600,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "jacket.jpg",
+          "contentType": "image/jpeg"
+        }
+      }
+    }
+  }
+]
