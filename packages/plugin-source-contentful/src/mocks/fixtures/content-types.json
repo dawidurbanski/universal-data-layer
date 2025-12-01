@@ -139,6 +139,25 @@
           "type": "Boolean",
           "localized": false,
           "required": false
+        },
+        {
+          "id": "mainImage",
+          "name": "Main Image",
+          "type": "Link",
+          "linkType": "Asset",
+          "localized": false,
+          "required": false
+        },
+        {
+          "id": "images",
+          "name": "Images",
+          "type": "Array",
+          "items": {
+            "type": "Link",
+            "linkType": "Asset"
+          },
+          "localized": false,
+          "required": false
         }
       ]
     }

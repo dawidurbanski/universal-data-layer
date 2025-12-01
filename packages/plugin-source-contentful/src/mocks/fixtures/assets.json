@@ -8,7 +8,7 @@
           "id": "mock-space"
         }
       },
-      "id": "asset-1",
+      "id": "asset-classic-t-shirt-variant-1-1",
       "type": "Asset",
       "createdAt": "2024-01-01T00:00:00.000Z",
       "updatedAt": "2024-01-01T00:00:00.000Z",
@@ -23,22 +23,202 @@
     },
     "fields": {
       "title": {
-        "en-US": "Classic T-Shirt Image"
+        "en-US": "Classic T-Shirt Variant 1 - Main Image"
       },
       "description": {
-        "en-US": "Product image for the Classic T-Shirt"
+        "en-US": "Main product image for Classic T-Shirt variant 1"
       },
       "file": {
         "en-US": {
-          "url": "//images.ctfassets.net/mock-space/asset-1/tshirt.jpg",
+          "url": "/assets/demo/classic-t-shirt-variant-1-1.webp",
           "details": {
-            "size": 102400,
+            "size": 7650,
             "image": {
               "width": 800,
               "height": 800
             }
           },
-          "fileName": "tshirt.jpg",
+          "fileName": "classic-t-shirt-variant-1-1.webp",
+          "contentType": "image/webp"
+        }
+      }
+    }
+  },
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-classic-t-shirt-variant-1-2",
+      "type": "Asset",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Classic T-Shirt Variant 1 - Image 2"
+      },
+      "description": {
+        "en-US": "Additional product image for Classic T-Shirt variant 1"
+      },
+      "file": {
+        "en-US": {
+          "url": "/assets/demo/classic-t-shirt-variant-1-2.webp",
+          "details": {
+            "size": 8462,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "classic-t-shirt-variant-1-2.webp",
+          "contentType": "image/webp"
+        }
+      }
+    }
+  },
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-classic-t-shirt-variant-1-3",
+      "type": "Asset",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Classic T-Shirt Variant 1 - Image 3"
+      },
+      "description": {
+        "en-US": "Additional product image for Classic T-Shirt variant 1"
+      },
+      "file": {
+        "en-US": {
+          "url": "/assets/demo/classic-t-shirt-variant-1-3.webp",
+          "details": {
+            "size": 33402,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "classic-t-shirt-variant-1-3.webp",
+          "contentType": "image/webp"
+        }
+      }
+    }
+  },
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-classic-t-shirt-variant-1-4",
+      "type": "Asset",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Classic T-Shirt Variant 1 - Image 4"
+      },
+      "description": {
+        "en-US": "Additional product image for Classic T-Shirt variant 1"
+      },
+      "file": {
+        "en-US": {
+          "url": "/assets/demo/classic-t-shirt-variant-1-4.webp",
+          "details": {
+            "size": 15170,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "classic-t-shirt-variant-1-4.webp",
+          "contentType": "image/webp"
+        }
+      }
+    }
+  },
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-classic-t-shirt-variant-2-1",
+      "type": "Asset",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Classic T-Shirt Variant 2 - Main Image"
+      },
+      "description": {
+        "en-US": "Main product image for Classic T-Shirt variant 2"
+      },
+      "file": {
+        "en-US": {
+          "url": "/assets/demo/classic-t-shirt-variant-2-1.jpeg",
+          "details": {
+            "size": 35820,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "classic-t-shirt-variant-2-1.jpeg",
           "contentType": "image/jpeg"
         }
       }
@@ -53,7 +233,142 @@
           "id": "mock-space"
         }
       },
-      "id": "asset-2",
+      "id": "asset-classic-t-shirt-variant-2-2",
+      "type": "Asset",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Classic T-Shirt Variant 2 - Image 2"
+      },
+      "description": {
+        "en-US": "Additional product image for Classic T-Shirt variant 2"
+      },
+      "file": {
+        "en-US": {
+          "url": "/assets/demo/classic-t-shirt-variant-2-2.jpeg",
+          "details": {
+            "size": 70615,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "classic-t-shirt-variant-2-2.jpeg",
+          "contentType": "image/jpeg"
+        }
+      }
+    }
+  },
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-classic-t-shirt-variant-2-3",
+      "type": "Asset",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Classic T-Shirt Variant 2 - Image 3"
+      },
+      "description": {
+        "en-US": "Additional product image for Classic T-Shirt variant 2"
+      },
+      "file": {
+        "en-US": {
+          "url": "/assets/demo/classic-t-shirt-variant-2-3.jpeg",
+          "details": {
+            "size": 81619,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "classic-t-shirt-variant-2-3.jpeg",
+          "contentType": "image/jpeg"
+        }
+      }
+    }
+  },
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-classic-t-shirt-variant-2-4",
+      "type": "Asset",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Classic T-Shirt Variant 2 - Image 4"
+      },
+      "description": {
+        "en-US": "Additional product image for Classic T-Shirt variant 2"
+      },
+      "file": {
+        "en-US": {
+          "url": "/assets/demo/classic-t-shirt-variant-2-4.jpeg",
+          "details": {
+            "size": 50066,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "classic-t-shirt-variant-2-4.jpeg",
+          "contentType": "image/jpeg"
+        }
+      }
+    }
+  },
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-denim-jacket-variant-3-1",
       "type": "Asset",
       "createdAt": "2024-01-02T00:00:00.000Z",
       "updatedAt": "2024-01-02T00:00:00.000Z",
@@ -68,22 +383,337 @@
     },
     "fields": {
       "title": {
-        "en-US": "Denim Jacket Image"
+        "en-US": "Denim Jacket Variant 3 - Main Image"
       },
       "description": {
-        "en-US": "Product image for the Denim Jacket"
+        "en-US": "Main product image for Denim Jacket variant 3"
       },
       "file": {
         "en-US": {
-          "url": "//images.ctfassets.net/mock-space/asset-2/jacket.jpg",
+          "url": "/assets/demo/denim-jacket-variant-3-1.jpeg",
           "details": {
-            "size": 153600,
+            "size": 167278,
             "image": {
               "width": 800,
               "height": 800
             }
           },
-          "fileName": "jacket.jpg",
+          "fileName": "denim-jacket-variant-3-1.jpeg",
+          "contentType": "image/jpeg"
+        }
+      }
+    }
+  },
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-denim-jacket-variant-3-2",
+      "type": "Asset",
+      "createdAt": "2024-01-02T00:00:00.000Z",
+      "updatedAt": "2024-01-02T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Denim Jacket Variant 3 - Image 2"
+      },
+      "description": {
+        "en-US": "Additional product image for Denim Jacket variant 3"
+      },
+      "file": {
+        "en-US": {
+          "url": "/assets/demo/denim-jacket-variant-3-2.jpeg",
+          "details": {
+            "size": 195744,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "denim-jacket-variant-3-2.jpeg",
+          "contentType": "image/jpeg"
+        }
+      }
+    }
+  },
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-denim-jacket-variant-3-3",
+      "type": "Asset",
+      "createdAt": "2024-01-02T00:00:00.000Z",
+      "updatedAt": "2024-01-02T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Denim Jacket Variant 3 - Image 3"
+      },
+      "description": {
+        "en-US": "Additional product image for Denim Jacket variant 3"
+      },
+      "file": {
+        "en-US": {
+          "url": "/assets/demo/denim-jacket-variant-3-3.jpeg",
+          "details": {
+            "size": 127027,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "denim-jacket-variant-3-3.jpeg",
+          "contentType": "image/jpeg"
+        }
+      }
+    }
+  },
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-denim-jacket-variant-3-4",
+      "type": "Asset",
+      "createdAt": "2024-01-02T00:00:00.000Z",
+      "updatedAt": "2024-01-02T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Denim Jacket Variant 3 - Image 4"
+      },
+      "description": {
+        "en-US": "Additional product image for Denim Jacket variant 3"
+      },
+      "file": {
+        "en-US": {
+          "url": "/assets/demo/denim-jacket-variant-3-4.jpeg",
+          "details": {
+            "size": 188199,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "denim-jacket-variant-3-4.jpeg",
+          "contentType": "image/jpeg"
+        }
+      }
+    }
+  },
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-denim-jacket-variant-4-1",
+      "type": "Asset",
+      "createdAt": "2024-01-02T00:00:00.000Z",
+      "updatedAt": "2024-01-02T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Denim Jacket Variant 4 - Main Image"
+      },
+      "description": {
+        "en-US": "Main product image for Denim Jacket variant 4"
+      },
+      "file": {
+        "en-US": {
+          "url": "/assets/demo/denim-jacket-variant-4-1.jpeg",
+          "details": {
+            "size": 167278,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "denim-jacket-variant-4-1.jpeg",
+          "contentType": "image/jpeg"
+        }
+      }
+    }
+  },
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-denim-jacket-variant-4-2",
+      "type": "Asset",
+      "createdAt": "2024-01-02T00:00:00.000Z",
+      "updatedAt": "2024-01-02T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Denim Jacket Variant 4 - Image 2"
+      },
+      "description": {
+        "en-US": "Additional product image for Denim Jacket variant 4"
+      },
+      "file": {
+        "en-US": {
+          "url": "/assets/demo/denim-jacket-variant-4-2.jpeg",
+          "details": {
+            "size": 195744,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "denim-jacket-variant-4-2.jpeg",
+          "contentType": "image/jpeg"
+        }
+      }
+    }
+  },
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-denim-jacket-variant-4-3",
+      "type": "Asset",
+      "createdAt": "2024-01-02T00:00:00.000Z",
+      "updatedAt": "2024-01-02T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Denim Jacket Variant 4 - Image 3"
+      },
+      "description": {
+        "en-US": "Additional product image for Denim Jacket variant 4"
+      },
+      "file": {
+        "en-US": {
+          "url": "/assets/demo/denim-jacket-variant-4-3.jpeg",
+          "details": {
+            "size": 127027,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "denim-jacket-variant-4-3.jpeg",
+          "contentType": "image/jpeg"
+        }
+      }
+    }
+  },
+  {
+    "sys": {
+      "space": {
+        "sys": {
+          "type": "Link",
+          "linkType": "Space",
+          "id": "mock-space"
+        }
+      },
+      "id": "asset-denim-jacket-variant-4-4",
+      "type": "Asset",
+      "createdAt": "2024-01-02T00:00:00.000Z",
+      "updatedAt": "2024-01-02T00:00:00.000Z",
+      "environment": {
+        "sys": {
+          "id": "master",
+          "type": "Link",
+          "linkType": "Environment"
+        }
+      },
+      "revision": 1
+    },
+    "fields": {
+      "title": {
+        "en-US": "Denim Jacket Variant 4 - Image 4"
+      },
+      "description": {
+        "en-US": "Additional product image for Denim Jacket variant 4"
+      },
+      "file": {
+        "en-US": {
+          "url": "/assets/demo/denim-jacket-variant-4-4.jpeg",
+          "details": {
+            "size": 188199,
+            "image": {
+              "width": 800,
+              "height": 800
+            }
+          },
+          "fileName": "denim-jacket-variant-4-4.jpeg",
           "contentType": "image/jpeg"
         }
       }

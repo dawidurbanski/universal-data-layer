@@ -1,6 +1,6 @@
 import { ProductCard } from './components/ProductCard';
-import { udl, gql } from './lib/udl';
-import type { ContentfulProduct } from '@udl/plugin-source-contentful/generated';
+import { udl, gql } from 'universal-data-layer/client';
+import { ContentfulProduct } from '@udl/plugin-source-contentful/generated';
 
 async function getProducts(): Promise<ContentfulProduct[]> {
   try {
@@ -11,6 +11,13 @@ async function getProducts(): Promise<ContentfulProduct[]> {
           slug
           description
           price
+          image {
+            ... on ContentfulAsset {
+              file {
+                url
+              }
+            }
+          }
         }
       }
     `);
@@ -25,7 +32,7 @@ export default async function Home() {
   const products = await getProducts();
 
   return (
-    <main className="p-8 font-sans">
+    <main className="p-8 font-sans max-w-4xl mx-auto">
       <h1>UDL Next.js Example</h1>
       <p className="text-gray-500 mb-8">
         This example demonstrates how to use Universal Data Layer with Next.js
