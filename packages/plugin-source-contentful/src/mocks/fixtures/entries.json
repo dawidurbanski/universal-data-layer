@@ -46,7 +46,7 @@
           "sys": {
             "type": "Link",
             "linkType": "Asset",
-            "id": "asset-1"
+            "id": "asset-classic-t-shirt-variant-1-1"
           }
         }
       },
@@ -117,7 +117,7 @@
           "sys": {
             "type": "Link",
             "linkType": "Asset",
-            "id": "asset-2"
+            "id": "asset-denim-jacket-variant-3-1"
           }
         }
       },
@@ -182,6 +182,40 @@
       },
       "inStock": {
         "en-US": true
+      },
+      "mainImage": {
+        "en-US": {
+          "sys": {
+            "type": "Link",
+            "linkType": "Asset",
+            "id": "asset-classic-t-shirt-variant-1-1"
+          }
+        }
+      },
+      "images": {
+        "en-US": [
+          {
+            "sys": {
+              "type": "Link",
+              "linkType": "Asset",
+              "id": "asset-classic-t-shirt-variant-1-2"
+            }
+          },
+          {
+            "sys": {
+              "type": "Link",
+              "linkType": "Asset",
+              "id": "asset-classic-t-shirt-variant-1-3"
+            }
+          },
+          {
+            "sys": {
+              "type": "Link",
+              "linkType": "Asset",
+              "id": "asset-classic-t-shirt-variant-1-4"
+            }
+          }
+        ]
       }
     }
   },
@@ -226,6 +260,40 @@
       },
       "inStock": {
         "en-US": true
+      },
+      "mainImage": {
+        "en-US": {
+          "sys": {
+            "type": "Link",
+            "linkType": "Asset",
+            "id": "asset-classic-t-shirt-variant-2-1"
+          }
+        }
+      },
+      "images": {
+        "en-US": [
+          {
+            "sys": {
+              "type": "Link",
+              "linkType": "Asset",
+              "id": "asset-classic-t-shirt-variant-2-2"
+            }
+          },
+          {
+            "sys": {
+              "type": "Link",
+              "linkType": "Asset",
+              "id": "asset-classic-t-shirt-variant-2-3"
+            }
+          },
+          {
+            "sys": {
+              "type": "Link",
+              "linkType": "Asset",
+              "id": "asset-classic-t-shirt-variant-2-4"
+            }
+          }
+        ]
       }
     }
   },
@@ -270,6 +338,40 @@
       },
       "inStock": {
         "en-US": true
+      },
+      "mainImage": {
+        "en-US": {
+          "sys": {
+            "type": "Link",
+            "linkType": "Asset",
+            "id": "asset-denim-jacket-variant-3-1"
+          }
+        }
+      },
+      "images": {
+        "en-US": [
+          {
+            "sys": {
+              "type": "Link",
+              "linkType": "Asset",
+              "id": "asset-denim-jacket-variant-3-2"
+            }
+          },
+          {
+            "sys": {
+              "type": "Link",
+              "linkType": "Asset",
+              "id": "asset-denim-jacket-variant-3-3"
+            }
+          },
+          {
+            "sys": {
+              "type": "Link",
+              "linkType": "Asset",
+              "id": "asset-denim-jacket-variant-3-4"
+            }
+          }
+        ]
       }
     }
   },
@@ -314,6 +416,40 @@
       },
       "inStock": {
         "en-US": false
+      },
+      "mainImage": {
+        "en-US": {
+          "sys": {
+            "type": "Link",
+            "linkType": "Asset",
+            "id": "asset-denim-jacket-variant-4-1"
+          }
+        }
+      },
+      "images": {
+        "en-US": [
+          {
+            "sys": {
+              "type": "Link",
+              "linkType": "Asset",
+              "id": "asset-denim-jacket-variant-4-2"
+            }
+          },
+          {
+            "sys": {
+              "type": "Link",
+              "linkType": "Asset",
+              "id": "asset-denim-jacket-variant-4-3"
+            }
+          },
+          {
+            "sys": {
+              "type": "Link",
+              "linkType": "Asset",
+              "id": "asset-denim-jacket-variant-4-4"
+            }
+          }
+        ]
       }
     }
   }

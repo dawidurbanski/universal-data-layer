@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "udl": "NODE_ENV=production universal-data-layer"
+    "udl": "universal-data-layer"
   },
   "dependencies": {
     "@udl/plugin-source-contentful": "*",
@@ -19,6 +19,7 @@
     "universal-data-layer": "*"
   },
   "devDependencies": {
+    "@next/eslint-plugin-next": "^16.0.6",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",

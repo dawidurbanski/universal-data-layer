@@ -32,7 +32,6 @@ export async function query<T = unknown>(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query: queryString, variables }),
-    cache: 'no-store', // Disable Next.js caching for fresh data
   });
 
   if (!response.ok) {
