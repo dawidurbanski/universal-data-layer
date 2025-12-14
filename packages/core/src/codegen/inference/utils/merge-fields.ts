@@ -28,6 +28,8 @@ export function mergeFieldDefinitions(
     type: a.type,
     required: a.required && b.required,
     ...(description !== undefined && { description }),
+    // Preserve referenceType for reference fields
+    ...(a.referenceType !== undefined && { referenceType: a.referenceType }),
   };
 
   // Handle type conflicts
@@ -35,11 +37,22 @@ export function mergeFieldDefinitions(
     // Prefer non-null/non-unknown types
     if (a.type === 'null' || a.type === 'unknown') {
       merged.type = b.type;
+      // Also copy referenceType from b if switching to its type
+      if (b.referenceType !== undefined) {
+        merged.referenceType = b.referenceType;
+      }
     } else if (b.type === 'null' || b.type === 'unknown') {
       merged.type = a.type;
+      // referenceType already copied from a
     } else {
       // Types genuinely differ - fall back to unknown
       merged.type = 'unknown';
+      delete merged.referenceType; // Clear referenceType if falling back to unknown
+    }
+  } else if (a.type === 'reference') {
+    // Both are references - prefer a's referenceType, but use b's if a doesn't have one
+    if (a.referenceType === undefined && b.referenceType !== undefined) {
+      merged.referenceType = b.referenceType;
     }
   }
 

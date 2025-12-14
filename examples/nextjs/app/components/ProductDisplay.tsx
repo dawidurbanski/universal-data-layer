@@ -11,7 +11,7 @@ import {
 function getVariantImages(variant: ContentfulVariant): string[] {
   const images: string[] = [];
 
-  if (variant.mainImage?.file?.url) {
+  if (variant.mainImage.file.url) {
     images.push(variant.mainImage.file.url);
   }
   for (const img of variant.images || []) {
@@ -24,7 +24,10 @@ function getVariantImages(variant: ContentfulVariant): string[] {
 }
 
 interface ProductDisplayProps {
-  product: ContentfulProduct;
+  product: Pick<
+    ContentfulProduct,
+    'name' | 'description' | 'price' | 'variants'
+  >;
 }
 
 export function ProductDisplay({ product }: ProductDisplayProps) {

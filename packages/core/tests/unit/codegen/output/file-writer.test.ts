@@ -249,7 +249,7 @@ describe('FileWriter', () => {
       const barrelPath = join(output, 'index.ts');
       expect(existsSync(barrelPath)).toBe(true);
       const content = readFileSync(barrelPath, 'utf-8');
-      expect(content).toContain("export * from './types/index.js'");
+      expect(content).toContain("export * from './types/index'");
     });
 
     it('should skip barrel file when disabled', () => {

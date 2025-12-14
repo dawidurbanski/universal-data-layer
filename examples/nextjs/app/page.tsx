@@ -1,35 +1,30 @@
 import { ProductCard } from './components/ProductCard';
-import { udl, gql } from 'universal-data-layer/client';
-import { ContentfulProduct } from '@udl/plugin-source-contentful/generated';
-
-async function getProducts(): Promise<ContentfulProduct[]> {
-  try {
-    return await udl.query<ContentfulProduct[]>(gql`
-      {
-        allContentfulProducts {
-          name
-          slug
-          description
-          price
-          image {
-            ... on ContentfulAsset {
-              file {
-                url
-              }
-            }
-          }
-        }
-      }
-    `);
-  } catch (error) {
-    console.error('Failed to fetch products from UDL:', error);
-    // Return empty array if UDL server is not running
-    return [];
-  }
-}
+import { udl } from 'universal-data-layer/client';
+import { GetAllProducts } from '@/generated/queries';
 
 export default async function Home() {
-  const products = await getProducts();
+  const [error, products] = await udl.query(GetAllProducts);
+  console.log('Fetched products:', products);
+
+  if (error) {
+    console.log(error);
+    throw new Error(`Failed to fetch products: ${error.message}`);
+  }
+
+  if (!products || products.length === 0) {
+    return (
+      <main className="p-8 font-sans max-w-4xl mx-auto">
+        <div className="p-8 bg-amber-100 border border-amber-400 rounded-lg mt-4">
+          <p className="m-0 font-medium">
+            No products found. Make sure the UDL server is running:
+          </p>
+          <pre className="bg-gray-100 px-4 py-2 rounded mt-2">
+            npm run udl:dev
+          </pre>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="p-8 font-sans max-w-4xl mx-auto">
@@ -41,22 +36,11 @@ export default async function Home() {
 
       <section>
         <h2>Products</h2>
-        {products.length === 0 ? (
-          <div className="p-8 bg-amber-100 border border-amber-400 rounded-lg mt-4">
-            <p className="m-0 font-medium">
-              No products found. Make sure the UDL server is running:
-            </p>
-            <pre className="bg-gray-100 px-4 py-2 rounded mt-2">
-              npm run udl:dev
-            </pre>
-          </div>
-        ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-6 mt-4">
-            {products.map((product) => (
-              <ProductCard key={product.slug} product={product} />
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-6 mt-4">
+          {products.map((product) => (
+            <ProductCard key={product.slug} product={product} />
+          ))}
+        </div>
       </section>
 
       <section className="mt-12">

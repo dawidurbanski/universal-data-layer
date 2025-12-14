@@ -15,5 +15,10 @@ export const { config } = defineConfig({
         },
       },
     ],
+    // Enable codegen with TypedDocumentNode query generation extension
+    codegen: {
+      output: './generated',
+      extensions: ['@udl/codegen-typed-queries'],
+    },
   },
 });

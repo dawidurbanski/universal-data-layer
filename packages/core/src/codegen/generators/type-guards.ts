@@ -147,7 +147,7 @@ export class TypeGuardGenerator {
    */
   private generateTypeImports(schemas: ContentTypeDefinition[]): string {
     const typeNames = schemas.map((s) => s.name).join(', ');
-    return `import type { ${typeNames} } from '../types/index.js';`;
+    return `import type { ${typeNames} } from '../types/index';`;
   }
 
   /**

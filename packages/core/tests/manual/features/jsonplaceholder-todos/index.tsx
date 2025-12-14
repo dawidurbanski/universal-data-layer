@@ -13,7 +13,7 @@ export default function JSONPlaceholderTodos() {
   const [validationResults, setValidationResults] = useState<string[]>([]);
 
   const fetchTodosByUserId = async (userId: number): Promise<Todo[]> => {
-    return udl.query(
+    const [error, data] = await udl.query<Todo[]>(
       gql`
         query ($userId: Int!) {
           allTodos(filter: { userId: { eq: $userId } }) {
@@ -32,10 +32,12 @@ export default function JSONPlaceholderTodos() {
       `,
       { variables: { userId } }
     );
+    if (error) throw new Error(error.message);
+    return data;
   };
 
   const fetchTodosByCompleted = async (completed: boolean): Promise<Todo[]> => {
-    return udl.query(
+    const [error, data] = await udl.query<Todo[]>(
       gql`
         query ($completed: Boolean!) {
           allTodos(filter: { completed: { eq: $completed } }) {
@@ -54,10 +56,12 @@ export default function JSONPlaceholderTodos() {
       `,
       { variables: { completed } }
     );
+    if (error) throw new Error(error.message);
+    return data;
   };
 
   const getAllTodos = async (): Promise<Todo[]> => {
-    return udl.query(gql`
+    const [error, data] = await udl.query<Todo[]>(gql`
       {
         allTodos {
           externalId
@@ -73,6 +77,8 @@ export default function JSONPlaceholderTodos() {
         }
       }
     `);
+    if (error) throw new Error(error.message);
+    return data;
   };
 
   const fetchTodos = async () => {

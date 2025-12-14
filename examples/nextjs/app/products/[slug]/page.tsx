@@ -2,72 +2,22 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { udl, gql } from 'universal-data-layer/client';
 import { ProductDisplay } from '../../components/ProductDisplay';
-import { ContentfulProduct } from '@udl/plugin-source-contentful/generated';
-
-async function getProduct(slug: string): Promise<ContentfulProduct | null> {
-  try {
-    const product = await udl.query<ContentfulProduct | null>(
-      gql`
-        query GetProduct($slug: String!) {
-          contentfulProduct(slug: $slug) {
-            name
-            slug
-            description
-            price
-            image {
-              ... on ContentfulAsset {
-                file {
-                  url
-                }
-              }
-            }
-            variants {
-              ... on ContentfulVariant {
-                name
-                sku
-                price
-                inStock
-                mainImage {
-                  ... on ContentfulAsset {
-                    file {
-                      url
-                    }
-                  }
-                }
-                images {
-                  ... on ContentfulAsset {
-                    file {
-                      url
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      `,
-      { variables: { slug } }
-    );
-    return product;
-  } catch (error) {
-    console.error('Failed to fetch product from UDL:', error);
-    return null;
-  }
-}
+import { GetProductBySlug } from '@/generated';
 
 async function getAllProducts(): Promise<Array<{ slug: string }>> {
-  try {
-    const products = await udl.query<Array<{ slug: string }>>(gql`
-      {
-        allContentfulProducts {
-          slug
-        }
+  const [error, products] = await udl.query<Array<{ slug: string }>>(gql`
+    {
+      allContentfulProducts {
+        slug
       }
-    `);
-    return products;
-  } catch {
+    }
+  `);
+
+  if (error) {
     return [];
   }
+
+  return products;
 }
 
 interface PageProps {
@@ -76,7 +26,14 @@ interface PageProps {
 
 export default async function ProductPage({ params }: PageProps) {
   const { slug } = await params;
-  const product = await getProduct(slug);
+  const [error, product] = await udl.query(GetProductBySlug, {
+    variables: { slug },
+  });
+
+  if (error) {
+    console.error('Failed to fetch product from UDL:', error);
+    throw new Error('Failed to load product.');
+  }
 
   if (!product) {
     notFound();

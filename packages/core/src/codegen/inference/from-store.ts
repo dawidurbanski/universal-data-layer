@@ -13,6 +13,7 @@ import type {
 import type { z } from 'zod';
 import { applySchemaOverrides } from './from-zod.js';
 import { mergeFieldArrays, mergeFieldDefinitions } from './utils/index.js';
+import { defaultRegistry } from '@/references/index.js';
 
 /**
  * Minimal interface for a UDL Node.
@@ -101,6 +102,30 @@ export function inferFieldDefinition(
   name: string,
   value: unknown
 ): FieldDefinition {
+  // Check for references using the registry (before generic object handling)
+  const resolver = defaultRegistry.identifyReference(value);
+  if (resolver) {
+    const possibleTypes = defaultRegistry.getPossibleTypes(value);
+    // Get reference type from possibleTypes if available
+    let referenceType: string | undefined;
+    if (possibleTypes.length > 0) {
+      // If multiple possible types, create a union type
+      referenceType = possibleTypes.join(' | ');
+    }
+
+    const field: FieldDefinition = {
+      name,
+      type: 'reference',
+      required: true,
+    };
+
+    if (referenceType) {
+      field.referenceType = referenceType;
+    }
+
+    return field;
+  }
+
   const type = inferFieldType(value);
 
   const field: FieldDefinition = {
