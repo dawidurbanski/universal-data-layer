@@ -68,7 +68,7 @@ describe('query utilities', () => {
   });
 
   describe('query', () => {
-    it('should execute a query and return data', async () => {
+    it('should execute a query and return [null, data] tuple on success', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () =>
@@ -79,7 +79,7 @@ describe('query utilities', () => {
           }),
       });
 
-      const result = await query(gql`
+      const [error, result] = await query(gql`
         {
           allProducts {
             name
@@ -87,7 +87,8 @@ describe('query utilities', () => {
         }
       `);
 
-      // Should unwrap allProducts to return just the array
+      // Should return null error and unwrapped data
+      expect(error).toBeNull();
       expect(result).toEqual([{ name: 'Product 1' }, { name: 'Product 2' }]);
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
@@ -130,7 +131,7 @@ describe('query utilities', () => {
           }),
       });
 
-      const result = await query<{ name: string; price: number }>(gql`
+      const [error, result] = await query<{ name: string; price: number }>(gql`
         {
           contentfulProduct(contentfulId: "abc123") {
             name
@@ -140,6 +141,7 @@ describe('query utilities', () => {
       `);
 
       // Should unwrap the contentfulProduct key
+      expect(error).toBeNull();
       expect(result).toEqual({
         name: 'Test Product',
         price: 99.99,
@@ -160,7 +162,7 @@ describe('query utilities', () => {
           }),
       });
 
-      const result = await query(gql`
+      const [error, result] = await query(gql`
         {
           allContentfulProducts {
             name
@@ -169,6 +171,7 @@ describe('query utilities', () => {
       `);
 
       // Should unwrap allContentfulProducts to return just the array
+      expect(error).toBeNull();
       expect(result).toEqual([{ name: 'Product 1' }, { name: 'Product 2' }]);
     });
 
@@ -192,7 +195,7 @@ describe('query utilities', () => {
           }),
       });
 
-      const result = await query<{
+      const [error, result] = await query<{
         name: string;
         variant: { name: string; color: string };
       }>(gql`
@@ -208,6 +211,7 @@ describe('query utilities', () => {
       `);
 
       // Should resolve refs
+      expect(error).toBeNull();
       expect(result).toEqual({
         name: 'Test',
         variant: {
@@ -243,24 +247,30 @@ describe('query utilities', () => {
       expect(body.variables).toEqual({ id: 'abc123' });
     });
 
-    it('should throw on HTTP errors', async () => {
+    it('should return [error, null] on HTTP errors', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
+        status: 500,
         statusText: 'Internal Server Error',
       });
 
-      await expect(
-        query(gql`
-          {
-            product {
-              name
-            }
+      const [error, data] = await query(gql`
+        {
+          product {
+            name
           }
-        `)
-      ).rejects.toThrow('GraphQL request failed: Internal Server Error');
+        }
+      `);
+
+      expect(data).toBeNull();
+      expect(error).toEqual({
+        message: 'GraphQL request failed: Internal Server Error',
+        type: 'network',
+        status: 500,
+      });
     });
 
-    it('should throw on GraphQL errors', async () => {
+    it('should return [error, null] on GraphQL errors', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () =>
@@ -269,15 +279,20 @@ describe('query utilities', () => {
           }),
       });
 
-      await expect(
-        query(gql`
-          {
-            product {
-              name
-            }
+      const [error, data] = await query(gql`
+        {
+          product {
+            name
           }
-        `)
-      ).rejects.toThrow('GraphQL error: Field not found');
+        }
+      `);
+
+      expect(data).toBeNull();
+      expect(error).toEqual({
+        message: 'GraphQL error: Field not found',
+        type: 'graphql',
+        graphqlErrors: [{ message: 'Field not found' }],
+      });
     });
 
     it('should accept string queries', async () => {
@@ -289,8 +304,11 @@ describe('query utilities', () => {
           }),
       });
 
-      const result = await query<{ name: string }>('{ product { name } }');
+      const [error, result] = await query<{ name: string }>(
+        '{ product { name } }'
+      );
 
+      expect(error).toBeNull();
       expect(result).toEqual({ name: 'Test' });
     });
 

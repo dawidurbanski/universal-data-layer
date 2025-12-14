@@ -8,11 +8,16 @@
  * ```ts
  * import { udl, gql } from 'universal-data-layer/client';
  *
- * const product = await udl.query(gql`{
+ * const [error, product] = await udl.query(gql`{
  *   contentfulProduct(contentfulId: "abc123") {
  *     name
  *   }
  * }`);
+ *
+ * if (error) {
+ *   console.error('Failed:', error.message);
+ *   return;
+ * }
  * ```
  */
 
@@ -23,6 +28,8 @@ export {
   gql,
   createQuery,
   type QueryOptions,
+  type QueryError,
+  type QueryResultTuple,
 } from './src/query.js';
 
 // Export client utilities
