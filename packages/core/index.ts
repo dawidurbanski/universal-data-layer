@@ -51,3 +51,25 @@ export {
   type SchemaBuilder,
   z,
 } from './src/schema-builder.js';
+
+// Export codegen extension types for extension packages
+export type {
+  CodegenExtension,
+  CodegenExtensionContext,
+  CodegenExtensionResult,
+  CodegenExtensionSpec,
+} from './src/codegen/types/extension.js';
+
+// Export reference registry types for plugins
+export type {
+  ReferenceResolverConfig,
+  ReferenceResolutionContext,
+  EntityKeyConfig,
+} from './src/references/types.js';
+
+export {
+  ReferenceRegistry,
+  defaultRegistry,
+  setDefaultRegistry,
+  createRegistry,
+} from './src/references/index.js';

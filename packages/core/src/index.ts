@@ -38,6 +38,12 @@ export {
   type ContentTypeDefinition,
   DEFAULT_CODEGEN_CONFIG,
   resolveCodegenConfig,
+  // Extension types
+  type CodegenExtension,
+  type CodegenExtensionContext,
+  type CodegenExtensionResult,
+  type CodegenExtensionSpec,
+  loadExtensions,
   // Registry
   SchemaRegistry,
   defaultRegistry,

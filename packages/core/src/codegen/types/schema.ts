@@ -98,6 +98,8 @@ export interface ContentTypeDefinition {
   owner?: string;
 }
 
+import type { CodegenExtensionSpec } from './extension.js';
+
 /**
  * Configuration for the code generation system
  */
@@ -148,12 +150,40 @@ export interface CodegenConfig {
    * @default 'interface'
    */
   exportFormat?: 'interface' | 'type';
+
+  /**
+   * Codegen extensions to run after built-in generators.
+   * Can be extension objects or package names (will be dynamically imported).
+   *
+   * @example
+   * ```typescript
+   * extensions: ['@udl/codegen-typed-queries']
+   * ```
+   *
+   * @example
+   * ```typescript
+   * extensions: [
+   *   {
+   *     name: 'my-extension',
+   *     outputDir: 'custom',
+   *     async generate(context) {
+   *       return { code: '// Generated code' };
+   *     },
+   *   },
+   * ]
+   * ```
+   */
+  extensions?: CodegenExtensionSpec[];
 }
 
 /**
  * Default configuration values
  */
-export const DEFAULT_CODEGEN_CONFIG: Required<CodegenConfig> = {
+export const DEFAULT_CODEGEN_CONFIG: Required<
+  Omit<CodegenConfig, 'extensions'>
+> & {
+  extensions: CodegenExtensionSpec[];
+} = {
   output: './generated',
   guards: false,
   helpers: false,
@@ -161,6 +191,16 @@ export const DEFAULT_CODEGEN_CONFIG: Required<CodegenConfig> = {
   includeInternal: true,
   includeJsDoc: true,
   exportFormat: 'interface',
+  extensions: [],
+};
+
+/**
+ * Resolved codegen config type with all required fields
+ */
+export type ResolvedCodegenConfig = Required<
+  Omit<CodegenConfig, 'extensions'>
+> & {
+  extensions: CodegenExtensionSpec[];
 };
 
 /**
@@ -168,7 +208,7 @@ export const DEFAULT_CODEGEN_CONFIG: Required<CodegenConfig> = {
  */
 export function resolveCodegenConfig(
   config?: CodegenConfig
-): Required<CodegenConfig> {
+): ResolvedCodegenConfig {
   return {
     ...DEFAULT_CODEGEN_CONFIG,
     ...config,
@@ -176,5 +216,6 @@ export function resolveCodegenConfig(
       ...DEFAULT_CODEGEN_CONFIG.customScalars,
       ...config?.customScalars,
     },
+    extensions: config?.extensions ?? [],
   };
 }

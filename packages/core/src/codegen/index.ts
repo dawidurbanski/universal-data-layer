@@ -30,9 +30,19 @@ export type {
   FieldDefinition,
   ContentTypeDefinition,
   CodegenConfig,
+  ResolvedCodegenConfig,
+  // Extension types
+  CodegenExtension,
+  CodegenExtensionContext,
+  CodegenExtensionResult,
+  CodegenExtensionSpec,
 } from './types/index.js';
 
-export { DEFAULT_CODEGEN_CONFIG, resolveCodegenConfig } from './types/index.js';
+export {
+  DEFAULT_CODEGEN_CONFIG,
+  resolveCodegenConfig,
+  loadExtensions,
+} from './types/index.js';
 
 // Registry
 export {
