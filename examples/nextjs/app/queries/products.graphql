@@ -1,0 +1,55 @@
+query GetAllProducts {
+  allContentfulProducts {
+    name
+    slug
+    price
+    description
+    image {
+      ... on ContentfulAsset {
+        file {
+          url
+        }
+      }
+    }
+  }
+}
+
+query GetProductBySlug($slug: String!) {
+  contentfulProduct(slug: $slug) {
+    name
+    slug
+    price
+    description
+    image {
+      ... on ContentfulAsset {
+        title
+        file {
+          url
+        }
+      }
+    }
+    variants {
+      ... on ContentfulVariant {
+        name
+        sku
+        price
+        inStock
+        mainImage {
+          ... on ContentfulAsset {
+            file {
+              url
+            }
+          }
+        }
+        images {
+          ... on ContentfulAsset {
+            title
+            file {
+              url
+            }
+          }
+        }
+      }
+    }
+  }
+}

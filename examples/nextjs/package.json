@@ -12,6 +12,7 @@
     "udl": "universal-data-layer"
   },
   "dependencies": {
+    "@udl/codegen-typed-queries": "*",
     "@udl/plugin-source-contentful": "*",
     "next": "^15.1.0",
     "react": "^19.0.0",

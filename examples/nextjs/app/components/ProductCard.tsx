@@ -1,8 +1,21 @@
-import { ContentfulProduct } from '@udl/plugin-source-contentful/generated';
 import Image from 'next/image';
 import Link from 'next/link';
 
-export function ProductCard({ product }: { product: ContentfulProduct }) {
+interface ProductCardProps {
+  product: {
+    name: string;
+    slug: string;
+    description: string;
+    price: number;
+    image: {
+      file: {
+        url: string;
+      };
+    };
+  };
+}
+
+export function ProductCard({ product }: ProductCardProps) {
   return (
     <Link
       href={`/products/${product.slug}`}
@@ -10,10 +23,7 @@ export function ProductCard({ product }: { product: ContentfulProduct }) {
     >
       <article className="border border-gray-200 rounded-lg cursor-pointer transition-shadow duration-200 hover:shadow-lg">
         <Image
-          src={
-            (product.image as unknown as { file: { url: string } }).file?.url ||
-            ''
-          }
+          src={product.image.file.url}
           alt={product.name}
           width={300}
           height={400}

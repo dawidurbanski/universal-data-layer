@@ -471,7 +471,7 @@ export class FileWriter {
 
     for (const schema of schemas) {
       const fileName = this.toKebabCase(schema.name);
-      lines.push(`export * from './${fileName}.js';`);
+      lines.push(`export * from './${fileName}';`);
     }
 
     return lines.join('\n') + '\n';
@@ -489,10 +489,10 @@ export class FileWriter {
     const lines: string[] = [this.generateHeaderComment('root barrel'), ''];
 
     if (files.types && files.types.schemas.length > 0) {
-      lines.push("export * from './types/index.js';");
+      lines.push("export * from './types/index';");
     }
     if (files.guards && files.guards.schemas.length > 0) {
-      lines.push("export * from './guards/index.js';");
+      lines.push("export * from './guards/index';");
     }
 
     if (lines.length > 2) {

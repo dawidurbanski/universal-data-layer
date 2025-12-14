@@ -23,7 +23,10 @@
       "@udl/plugin-source-contentful": [
         "../../packages/plugin-source-contentful/dist"
       ],
-      "@udl/plugin-source-contentful*": [
+      "@udl/plugin-source-contentful/generated": [
+        "../../packages/plugin-source-contentful/generated"
+      ],
+      "@udl/plugin-source-contentful/*": [
         "../../packages/plugin-source-contentful/dist/*"
       ]
     }

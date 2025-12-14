@@ -48,6 +48,9 @@ export default [
         { argsIgnorePattern: '^_' },
       ],
       'react/react-in-jsx-scope': 'off',
+      // Disable base rule for TypeScript - use TS version that understands function overloads
+      'no-redeclare': 'off',
+      '@typescript-eslint/no-redeclare': 'error',
     },
   },
   {
@@ -59,6 +62,7 @@ export default [
       '**/docs/**',
       '**/generated/**',
       '**/.udl-cache/**',
+      '**/.next/**',
     ],
   },
   {
