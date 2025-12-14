@@ -8,6 +8,11 @@ import { createNodeId, createContentDigest } from '@/nodes/utils/index.js';
 import { defaultStore } from '@/nodes/defaultStore.js';
 import { FileCacheStorage } from '@/cache/file-cache.js';
 import type { CacheStorage, CachedData } from '@/cache/types.js';
+import { defaultRegistry } from '@/references/index.js';
+import type {
+  ReferenceResolverConfig,
+  EntityKeyConfig,
+} from '@/references/types.js';
 
 export const pluginTypes = ['core', 'source', 'other'] as const;
 
@@ -25,6 +30,9 @@ export type PluginSpec = string | PluginSpecObject;
 
 /**
  * Configuration for automatic code generation
+ *
+ * Note: The full CodegenConfig is defined in codegen/types/schema.ts.
+ * This is kept for backward compatibility.
  */
 export interface CodegenConfig {
   /**
@@ -58,6 +66,16 @@ export interface CodegenConfig {
    * @example ['Todo', 'User']
    */
   types?: string[];
+
+  /**
+   * Codegen extensions to run after built-in generators.
+   * Can be extension objects or package names (will be dynamically imported).
+   * @example ['@udl/codegen-typed-queries']
+   */
+  extensions?: (
+    | import('@/codegen/types/extension.js').CodegenExtension
+    | string
+  )[];
 }
 
 /**
@@ -139,6 +157,16 @@ export interface UDLConfigFile {
   registerTypes?: <T = Record<string, unknown>>(
     context?: RegisterTypesContext<T>
   ) => void | Promise<void>;
+  /**
+   * Optional reference resolver configuration.
+   * Defines how references from this plugin are identified and resolved.
+   */
+  referenceResolver?: ReferenceResolverConfig;
+  /**
+   * Optional entity key configuration for normalization.
+   * Defines how to extract unique entity keys from this plugin's nodes.
+   */
+  entityKeyConfig?: EntityKeyConfig;
 }
 
 /**
@@ -505,6 +533,23 @@ export async function loadPlugins(
       try {
         const module = await loadPluginModule(configFilePath);
         const actualPluginName = module.config?.name || basename(pluginPath);
+
+        // Register reference resolver if provided
+        if (module.referenceResolver) {
+          defaultRegistry.registerResolver(module.referenceResolver);
+          // Also set the store on the registry if not already set
+          if (!defaultRegistry.getStore()) {
+            defaultRegistry.setStore(nodeStore);
+          }
+        }
+
+        // Register entity key config if provided
+        if (module.entityKeyConfig) {
+          defaultRegistry.registerEntityKeyConfig(
+            actualPluginName,
+            module.entityKeyConfig
+          );
+        }
 
         // Execute onLoad hook
         if (module.onLoad) {
