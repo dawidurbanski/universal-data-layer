@@ -6,7 +6,7 @@ import {
 } from '@/loader.js';
 import { createConfig } from '@/config.js';
 import server from '@/server.js';
-import { rebuildHandler } from '@/handlers/graphql.js';
+import { rebuildHandler, getCurrentSchema } from '@/handlers/graphql.js';
 import { runCodegen } from '@/codegen.js';
 import { loadEnv } from '@/env.js';
 import { startMockServer } from '@/mocks/index.js';
@@ -251,12 +251,16 @@ export async function startServer(options: StartServerOptions = {}) {
   // Load main app config plugins
   if (userConfig.plugins && userConfig.plugins.length > 0) {
     console.log('Loading plugins...');
-    // Track plugin names before loading (use basename to match owner in nodes)
+    // Track plugin names before loading
+    // Note: The actual owner name is determined by the plugin's config.name or basename
+    // For npm packages like '@udl/plugin-source-contentful', the plugin's config.name is used
     for (const plugin of userConfig.plugins) {
       if (typeof plugin === 'string') {
-        mainAppPluginNames.push(basename(plugin));
+        // For package names, use the full name (not basename)
+        // The plugin will use its config.name if available, or basename of resolved path
+        mainAppPluginNames.push(plugin);
       } else {
-        mainAppPluginNames.push(basename(plugin.name));
+        mainAppPluginNames.push(plugin.name);
       }
     }
     const pluginResult = await loadPlugins(userConfig.plugins, {
@@ -299,6 +303,9 @@ export async function startServer(options: StartServerOptions = {}) {
   console.log('🔨 Building GraphQL schema from sourced nodes...');
   await rebuildHandler();
 
+  // Get the current schema for query generation
+  const schema = getCurrentSchema();
+
   // Run codegen for all configs that have it enabled
   for (const {
     config: codegenConfig,
@@ -311,6 +318,7 @@ export async function startServer(options: StartServerOptions = {}) {
         store: defaultStore,
         basePath,
         owners: pluginNames,
+        schema,
       });
     } catch (error) {
       console.error(`❌ Codegen failed for ${basePath}:`, error);
@@ -328,9 +336,24 @@ export async function startServer(options: StartServerOptions = {}) {
     const distSrc = __dirname;
     const manualTestsSrc = resolve(__dirname, '..', '..', 'tests', 'manual');
 
-    console.log('👀 Watching for file changes...');
+    // Collect paths to watch for .graphql files
+    // Include all basePaths from codegen configs that have extensions
+    const graphqlWatchPaths: string[] = [];
+    for (const codegenInfo of codegenConfigs) {
+      if (codegenInfo.config.extensions?.length) {
+        graphqlWatchPaths.push(codegenInfo.basePath);
+      }
+    }
 
-    const watcher = watch([distSrc, manualTestsSrc], {
+    console.log('👀 Watching for file changes...');
+    if (graphqlWatchPaths.length > 0) {
+      console.log(
+        '👀 Watching for .graphql file changes in:',
+        graphqlWatchPaths
+      );
+    }
+
+    const watcher = watch([distSrc, manualTestsSrc, ...graphqlWatchPaths], {
       ignored: (path: string) => {
         // Ignore dotfiles
         if (/(^|[\\/])\./.test(path)) return true;
@@ -420,10 +443,29 @@ export async function startServer(options: StartServerOptions = {}) {
         pendingChangedPaths = new Set();
 
         try {
-          await rebuildHandler();
+          // Check if only .graphql files changed (no schema rebuild needed)
+          const onlyGraphqlChanges = [...changedPaths].every(
+            (p) => p.endsWith('.graphql') || p.endsWith('.gql')
+          );
 
-          // Only re-run codegen for affected configs
-          const affectedConfigs = getAffectedCodegenConfigs(changedPaths);
+          // Only rebuild schema if non-graphql files changed
+          if (!onlyGraphqlChanges) {
+            await rebuildHandler();
+          }
+
+          // Get the current schema for query generation
+          const currentSchema = getCurrentSchema();
+
+          // Find affected codegen configs
+          // For .graphql changes, find configs whose basePath contains the changed file
+          const affectedConfigs = onlyGraphqlChanges
+            ? codegenConfigs.filter((codegenInfo) => {
+                return [...changedPaths].some((changedPath) =>
+                  changedPath.startsWith(codegenInfo.basePath)
+                );
+              })
+            : getAffectedCodegenConfigs(changedPaths);
+
           for (const {
             config: codegenConfig,
             basePath,
@@ -435,6 +477,7 @@ export async function startServer(options: StartServerOptions = {}) {
                 store: defaultStore,
                 basePath,
                 owners: pluginNames,
+                schema: currentSchema,
               });
             } catch (error) {
               console.error(`❌ Codegen failed for ${basePath}:`, error);

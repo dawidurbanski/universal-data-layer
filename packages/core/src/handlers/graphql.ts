@@ -45,6 +45,14 @@ export async function rebuildHandler(): Promise<void> {
 }
 
 /**
+ * Get the current GraphQL schema
+ * Used by codegen to generate TypedDocumentNode queries
+ */
+export function getCurrentSchema(): GraphQLSchema {
+  return currentSchema;
+}
+
+/**
  * Set whether to normalize responses
  */
 export function setNormalizeResponses(value: boolean): void {
