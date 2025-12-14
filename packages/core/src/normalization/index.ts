@@ -5,6 +5,8 @@
  * enabling deduplication of repeated data in responses.
  */
 
+import { defaultRegistry } from '@/references/index.js';
+
 /**
  * A normalized GraphQL response with entities extracted
  */
@@ -30,28 +32,24 @@ export interface NormalizeOptions {
 
 /**
  * Default entity key extractor.
- * Uses __typename and contentfulId to create unique keys.
- * Falls back to internal.type if __typename is not present.
+ * Uses the reference registry to extract entity keys from plugin-specific ID fields.
+ * Falls back to internal.type:internal.id if no registry config matches.
  */
 export function defaultGetEntityKey(obj: unknown): string | null {
+  // First try the registry's entity key extraction
+  const registryKey = defaultRegistry.getEntityKey(obj);
+  if (registryKey) {
+    return registryKey;
+  }
+
+  // Fallback to internal.id if available
   if (typeof obj !== 'object' || obj === null) return null;
 
   const record = obj as Record<string, unknown>;
+  const internal = record['internal'] as Record<string, unknown> | undefined;
 
-  // Try __typename first (auto-injected by server)
-  let type = record['__typename'] as string | undefined;
-
-  // Fall back to internal.type for backwards compatibility
-  if (!type) {
-    const internal = record['internal'] as Record<string, unknown> | undefined;
-    type = internal?.['type'] as string | undefined;
-  }
-
-  const contentfulId = record['contentfulId'] as string | undefined;
-
-  // Only create entity key if we have both type and contentfulId
-  if (type && contentfulId) {
-    return `${type}:${contentfulId}`;
+  if (internal?.['type'] && internal?.['id']) {
+    return `${internal['type']}:${internal['id']}`;
   }
 
   return null;
@@ -75,8 +73,8 @@ export function defaultGetEntityKey(obj: unknown): string | null {
  * const data = {
  *   product: {
  *     variants: [
- *       { name: "Red", swatch: { internal: { type: "Swatch" }, contentfulId: "s1", color: "#ff0000" } },
- *       { name: "Blue", swatch: { internal: { type: "Swatch" }, contentfulId: "s2", color: "#0000ff" } },
+ *       { name: "Red", swatch: { internal: { type: "Swatch", id: "s1" }, color: "#ff0000" } },
+ *       { name: "Blue", swatch: { internal: { type: "Swatch", id: "s2" }, color: "#0000ff" } },
  *       // ... more variants, many sharing the same swatches
  *     ]
  *   }
@@ -85,7 +83,7 @@ export function defaultGetEntityKey(obj: unknown): string | null {
  * // Output: swatches deduplicated in $entities
  * const { data: normalized, $entities } = normalizeResponse(data);
  * // normalized.product.variants[0].swatch = { $ref: "Swatch:s1" }
- * // $entities["Swatch:s1"] = { internal: {...}, contentfulId: "s1", color: "#ff0000" }
+ * // $entities["Swatch:s1"] = { internal: {...}, color: "#ff0000" }
  * ```
  */
 export function normalizeResponse<T>(

@@ -1,9 +1,22 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
   normalizeResponse,
   normalizeGraphQLResult,
   defaultGetEntityKey,
 } from '@/normalization/index.js';
+import { defaultRegistry } from '@/references/index.js';
+
+// Register entity key config for test data that uses contentfulId
+beforeAll(() => {
+  defaultRegistry.registerEntityKeyConfig('test-contentful', {
+    idField: 'contentfulId',
+    priority: 10,
+  });
+});
+
+afterAll(() => {
+  defaultRegistry.clear();
+});
 
 describe('defaultGetEntityKey', () => {
   it('returns null for non-objects', () => {

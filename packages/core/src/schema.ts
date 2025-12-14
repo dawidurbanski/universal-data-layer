@@ -17,28 +17,8 @@ import {
 import pluralize from 'pluralize';
 import { defaultStore } from '@/nodes/defaultStore.js';
 import type { Node } from '@/nodes/types.js';
-
-/**
- * Interface for Contentful-style reference objects
- */
-interface ContentfulReference {
-  _contentfulRef: true;
-  contentfulId: string;
-  linkType: 'Entry' | 'Asset';
-  possibleTypes?: string[];
-}
-
-/**
- * Check if a value is a Contentful reference
- */
-function isContentfulReference(value: unknown): value is ContentfulReference {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    '_contentfulRef' in value &&
-    (value as ContentfulReference)._contentfulRef === true
-  );
-}
+import { defaultRegistry } from '@/references/index.js';
+import type { ReferenceResolverConfig } from '@/references/types.js';
 
 /**
  * Cache for union types to avoid recreating them
@@ -199,46 +179,16 @@ const nestedTypeCache = new Map<string, GraphQLObjectType>();
 
 /**
  * Resolve a reference to its actual node.
- * Used by reference field resolvers.
+ * Uses the reference registry to handle any registered reference type.
  */
 function resolveReference(
-  ref: ContentfulReference,
+  ref: unknown,
   context: { resolutionDepth?: number }
 ): Node | null {
-  const depth = context.resolutionDepth ?? 0;
-  if (depth >= MAX_REFERENCE_DEPTH) {
-    return null;
-  }
-
-  // Try each possible type to find the node
-  if (ref.possibleTypes && ref.possibleTypes.length > 0) {
-    for (const typeName of ref.possibleTypes) {
-      const node = defaultStore.getByField(
-        typeName,
-        'contentfulId',
-        ref.contentfulId
-      );
-      if (node) {
-        return node;
-      }
-    }
-  }
-
-  // Fallback: search all types if no possibleTypes specified
-  // This is less efficient but ensures backward compatibility
-  const allTypes = defaultStore.getTypes();
-  for (const typeName of allTypes) {
-    const node = defaultStore.getByField(
-      typeName,
-      'contentfulId',
-      ref.contentfulId
-    );
-    if (node) {
-      return node;
-    }
-  }
-
-  return null;
+  return defaultRegistry.resolveReference(ref, {
+    resolutionDepth: context.resolutionDepth ?? 0,
+    maxDepth: MAX_REFERENCE_DEPTH,
+  });
 }
 
 /**
@@ -344,10 +294,8 @@ function createNestedObjectType(
 /**
  * Check if a value is an array of references
  */
-function isReferenceArray(value: unknown): value is ContentfulReference[] {
-  return (
-    Array.isArray(value) && value.length > 0 && isContentfulReference(value[0])
-  );
+function isReferenceArray(value: unknown): boolean {
+  return defaultRegistry.isReferenceArray(value);
 }
 
 /**
@@ -357,7 +305,7 @@ interface ReferenceFieldInfo {
   fieldName: string;
   isArray: boolean;
   possibleTypes: string[];
-  sampleRef: ContentfulReference;
+  resolver: ReferenceResolverConfig;
 }
 
 /**
@@ -392,7 +340,7 @@ function inferGraphQLType(
       return new GraphQLList(GraphQLString);
     }
     // Skip reference arrays - they're handled separately
-    if (isContentfulReference(value[0])) {
+    if (defaultRegistry.isReference(value[0])) {
       return null;
     }
     const itemType = inferGraphQLType(
@@ -410,7 +358,7 @@ function inferGraphQLType(
   // For objects, check if it's a reference first
   if (typeof value === 'object') {
     // Skip references - they're handled separately
-    if (isContentfulReference(value)) {
+    if (defaultRegistry.isReference(value)) {
       return null;
     }
 
@@ -456,21 +404,23 @@ function collectReferenceFields(
   const refs: ReferenceFieldInfo[] = [];
 
   for (const [fieldName, value] of fieldSamples) {
-    if (isContentfulReference(value)) {
+    const resolver = defaultRegistry.identifyReference(value);
+    if (resolver) {
       refs.push({
         fieldName,
         isArray: false,
-        possibleTypes: value.possibleTypes ?? [],
-        sampleRef: value,
+        possibleTypes: defaultRegistry.getPossibleTypes(value),
+        resolver,
       });
-    } else if (isReferenceArray(value)) {
+    } else if (isReferenceArray(value) && Array.isArray(value)) {
       const firstRef = value[0];
-      if (firstRef) {
+      const arrayResolver = defaultRegistry.identifyReference(firstRef);
+      if (arrayResolver) {
         refs.push({
           fieldName,
           isArray: true,
-          possibleTypes: firstRef.possibleTypes ?? [],
-          sampleRef: firstRef,
+          possibleTypes: defaultRegistry.getPossibleTypes(firstRef),
+          resolver: arrayResolver,
         });
       }
     }
@@ -526,7 +476,7 @@ function createNodeType(
       for (const [fieldName, sampleValue] of fieldSamples) {
         // Skip reference fields - handled separately below
         if (
-          isContentfulReference(sampleValue) ||
+          defaultRegistry.isReference(sampleValue) ||
           isReferenceArray(sampleValue)
         ) {
           continue;
@@ -581,7 +531,7 @@ function createNodeType(
               };
 
               return refs
-                .filter(isContentfulReference)
+                .filter((ref) => defaultRegistry.isReference(ref))
                 .map((ref) => resolveReference(ref, childContext))
                 .filter((node): node is Node => node !== null);
             },
@@ -596,7 +546,7 @@ function createNodeType(
               context: unknown
             ) => {
               const ref = source[fieldName];
-              if (!isContentfulReference(ref)) return null;
+              if (!defaultRegistry.isReference(ref)) return null;
 
               // Extract resolution depth from context if available
               const ctx = (context ?? {}) as { resolutionDepth?: number };
