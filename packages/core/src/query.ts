@@ -87,7 +87,7 @@ export type QueryResult<T> = T;
  * ```ts
  * const query = gql`
  *   query GetProduct($id: String!) {
- *     contentfulProduct(contentfulId: $id) {
+ *     product(id: $id) {
  *       name
  *       price
  *     }
@@ -128,7 +128,7 @@ export function gql(
  * ```ts
  * // Simple query
  * const [error, product] = await query(gql`{
- *   contentfulProduct(contentfulId: "abc123") {
+ *   product(id: "abc123") {
  *     name
  *     price
  *   }
@@ -143,7 +143,7 @@ export function gql(
  * // With variables
  * const [error, product] = await query(
  *   gql`query GetProduct($id: String!) {
- *     contentfulProduct(contentfulId: $id) {
+ *     product(id: $id) {
  *       name
  *     }
  *   }`,
@@ -152,7 +152,7 @@ export function gql(
  *
  * // All items query (returns array)
  * const [error, products] = await query(gql`{
- *   allContentfulProducts {
+ *   allProducts {
  *     name
  *   }
  * }`);
@@ -266,8 +266,8 @@ export async function query<T = unknown>(
     }
 
     // Unwrap queries by extracting the root field value
-    // For single item queries: { contentfulProduct: {...} } -> {...}
-    // For collection queries: { allContentfulProducts: [...] } -> [...]
+    // For single item queries: { product: {...} } -> {...}
+    // For collection queries: { allProducts: [...] } -> [...]
     if (rootField && typeof data === 'object' && data !== null) {
       const dataRecord = data as Record<string, unknown>;
       if (rootField in dataRecord) {
@@ -317,16 +317,15 @@ export function createQuery(endpoint: string) {
  * import { udl, gql } from 'universal-data-layer';
  *
  * const [error, product] = await udl.query(gql`{
- *   contentfulProduct(contentfulId: "abc123") {
+ *   product(id: "abc123") {
  *     name
- *     pageSections {
- *       ... on ContentfulPageSectionsContent {
- *         header
- *         blocks {
- *           ... on ContentfulBlockCallToAction {
- *             name
- *           }
- *         }
+ *     sections {
+ *       ... on HeroSection {
+ *         title
+ *         image { url }
+ *       }
+ *       ... on TextSection {
+ *         content
  *       }
  *     }
  *   }
