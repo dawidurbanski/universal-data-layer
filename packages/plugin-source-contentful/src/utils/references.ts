@@ -81,7 +81,8 @@ export function createReference(
   };
 
   if (possibleTypes && possibleTypes.length > 0) {
-    ref.possibleTypes = possibleTypes;
+    // Clone array to avoid shared references (which cause serialization issues)
+    ref.possibleTypes = [...possibleTypes];
   }
 
   return ref;

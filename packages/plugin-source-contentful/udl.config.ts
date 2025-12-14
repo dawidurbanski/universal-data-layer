@@ -6,7 +6,11 @@
  * Sync API for efficient updates.
  */
 
-import type { SourceNodesContext } from 'universal-data-layer';
+import type {
+  SourceNodesContext,
+  ReferenceResolverConfig,
+  EntityKeyConfig,
+} from 'universal-data-layer';
 import { createContentfulClient } from './src/client.js';
 import type { ContentfulPluginOptions } from './src/types/index.js';
 import { resolveOptions } from './src/types/index.js';
@@ -32,6 +36,10 @@ import {
   ContentfulSyncError,
   wrapApiCall,
 } from './src/utils/errors.js';
+import {
+  isContentfulReference,
+  type ContentfulReference,
+} from './src/utils/references.js';
 
 /** Plugin log prefix for consistent logging */
 const LOG_PREFIX = '[@udl/plugin-source-contentful]';
@@ -216,3 +224,30 @@ export async function sourceNodes({
     `${LOG_PREFIX} Node types: ${[assetTypeName, ...entryTypeNames].join(', ')}`
   );
 }
+
+/**
+ * Reference resolver configuration for Contentful references.
+ * Tells the core how to identify and resolve references from Contentful.
+ */
+export const referenceResolver: ReferenceResolverConfig = {
+  id: '@udl/plugin-source-contentful',
+  markerField: '_contentfulRef',
+  lookupField: 'contentfulId',
+  isReference: isContentfulReference,
+  getLookupValue: (ref: unknown): unknown => {
+    return (ref as ContentfulReference).contentfulId;
+  },
+  getPossibleTypes: (ref: unknown): string[] => {
+    return (ref as ContentfulReference).possibleTypes ?? [];
+  },
+  priority: 10,
+};
+
+/**
+ * Entity key configuration for normalization.
+ * Uses contentfulId as the unique identifier for Contentful nodes.
+ */
+export const entityKeyConfig: EntityKeyConfig = {
+  idField: 'contentfulId',
+  priority: 10,
+};

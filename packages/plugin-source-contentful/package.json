@@ -10,6 +10,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./generated": {
+      "types": "./generated/index.ts",
+      "import": "./generated/index.js"
+    },
     "./mocks": {
       "types": "./dist/src/mocks/index.d.ts",
       "import": "./dist/src/mocks/index.js"
