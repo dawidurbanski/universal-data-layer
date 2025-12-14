@@ -9,7 +9,7 @@
  * import { udl, gql } from 'universal-data-layer/client';
  *
  * const [error, product] = await udl.query(gql`{
- *   contentfulProduct(contentfulId: "abc123") {
+ *   product(id: "abc123") {
  *     name
  *   }
  * }`);
