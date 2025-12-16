@@ -10,164 +10,19 @@
  * - Manual codegen without running the dev server
  */
 
-import {
-  loadAppConfig,
-  loadPlugins,
-  loadConfigFile,
-  type CodegenConfig,
-} from '@/loader.js';
+import { loadAppConfig, loadPlugins } from '@/loader.js';
 import { rebuildHandler } from '@/handlers/graphql.js';
 import { runCodegen } from '@/codegen.js';
 import { fileURLToPath } from 'node:url';
-import { basename, dirname, join, resolve } from 'node:path';
-import { existsSync, readdirSync } from 'node:fs';
+import { basename, dirname, resolve } from 'node:path';
 import { defaultStore } from '@/nodes/defaultStore.js';
 import { startMockServer, stopMockServer } from '@/mocks/index.js';
-
-/**
- * Track codegen configs from loaded features for automatic generation
- */
-interface FeatureCodegenInfo {
-  config: CodegenConfig;
-  basePath: string;
-  /** Plugin names (resolved paths) that this feature loaded */
-  pluginNames: string[];
-}
+import { loadManualTestConfigs, type FeatureCodegenInfo } from '@/features.js';
 
 export interface RunCodegenOnlyOptions {
   configPath?: string;
   /** Include manual test features (default: true in non-production) */
   includeManualTests?: boolean;
-}
-
-/**
- * Discover and load configs from all manual test features
- */
-async function loadManualTestConfigs(
-  rootDir: string
-): Promise<FeatureCodegenInfo[]> {
-  const featuresDir = join(rootDir, 'tests', 'manual', 'features');
-  const codegenConfigs: FeatureCodegenInfo[] = [];
-
-  if (!existsSync(featuresDir)) {
-    return codegenConfigs;
-  }
-
-  try {
-    const featureDirs = readdirSync(featuresDir, { withFileTypes: true });
-
-    for (const featureDir of featureDirs) {
-      if (!featureDir.isDirectory()) continue;
-
-      const featurePath = join(featuresDir, featureDir.name);
-      const tsConfigPath = join(featurePath, 'udl.config.ts');
-      const jsConfigPath = join(featurePath, 'udl.config.js');
-
-      let configPath: string | null = null;
-      if (existsSync(tsConfigPath)) {
-        configPath = tsConfigPath;
-      } else if (existsSync(jsConfigPath)) {
-        configPath = jsConfigPath;
-      }
-
-      if (!configPath) continue;
-
-      try {
-        console.log(`📦 Loading config from feature: ${featureDir.name}`);
-
-        // Set mock credentials for plugins that require them
-        // (MSW will intercept actual API calls, so these just need to pass validation)
-        if (!process.env['CONTENTFUL_SPACE_ID']) {
-          process.env['CONTENTFUL_SPACE_ID'] = 'mock-space-id';
-        }
-        if (!process.env['CONTENTFUL_ACCESS_TOKEN']) {
-          process.env['CONTENTFUL_ACCESS_TOKEN'] = 'mock-access-token';
-        }
-
-        let config = null;
-
-        // Load TypeScript configs with tsx
-        if (configPath.endsWith('.ts')) {
-          const { register } = await import('tsx/esm/api');
-          const unregister = register();
-
-          try {
-            config = await loadConfigFile(resolve(configPath), {
-              context: { config: {} },
-              store: defaultStore,
-            });
-          } finally {
-            unregister();
-          }
-        } else {
-          config = await loadConfigFile(resolve(configPath), {
-            context: { config: {} },
-            store: defaultStore,
-          });
-        }
-
-        const pluginOwnerNames: string[] = [];
-
-        if (config?.plugins && config.plugins.length > 0) {
-          const resolvedPlugins = config.plugins.map((plugin) => {
-            if (typeof plugin === 'string') {
-              if (plugin.startsWith('./') || plugin.startsWith('../')) {
-                const resolvedPath = resolve(featurePath, plugin);
-                pluginOwnerNames.push(basename(resolvedPath));
-                return resolvedPath;
-              }
-              pluginOwnerNames.push(basename(plugin));
-              return plugin;
-            } else {
-              if (
-                plugin.name.startsWith('./') ||
-                plugin.name.startsWith('../')
-              ) {
-                const resolvedPath = resolve(featurePath, plugin.name);
-                pluginOwnerNames.push(basename(resolvedPath));
-                return {
-                  ...plugin,
-                  name: resolvedPath,
-                };
-              }
-              pluginOwnerNames.push(basename(plugin.name));
-              return plugin;
-            }
-          });
-
-          const pluginResult = await loadPlugins(resolvedPlugins, {
-            appConfig: config,
-            store: defaultStore,
-          });
-
-          for (const pluginCodegen of pluginResult.codegenConfigs) {
-            codegenConfigs.push({
-              config: pluginCodegen.config,
-              basePath: pluginCodegen.pluginPath,
-              pluginNames: [pluginCodegen.pluginName],
-            });
-          }
-        }
-
-        if (config?.codegen) {
-          codegenConfigs.push({
-            config: config.codegen,
-            basePath: featurePath,
-            pluginNames: pluginOwnerNames,
-          });
-        }
-      } catch (error) {
-        console.warn(
-          `Failed to load config for feature ${featureDir.name}:`,
-          error
-        );
-      }
-    }
-  } catch (error) {
-    console.warn('Failed to scan manual test features:', error);
-  }
-
-  return codegenConfigs;
 }
 
 /**
@@ -239,25 +94,8 @@ export async function runCodegenOnly(
     const __dirname = dirname(__filename);
     const packageRoot = resolve(__dirname, '..', '..');
 
-    // Load features from core package
     const featureConfigs = await loadManualTestConfigs(packageRoot);
     codegenConfigs.push(...featureConfigs);
-
-    // Also scan sibling packages for test features
-    const packagesDir = resolve(packageRoot, '..');
-    if (existsSync(packagesDir)) {
-      const packageDirs = readdirSync(packagesDir, { withFileTypes: true });
-      for (const pkgDir of packageDirs) {
-        if (!pkgDir.isDirectory()) continue;
-        // Skip core (already scanned) and non-plugin directories
-        if (pkgDir.name === 'core' || pkgDir.name === 'universal-data-layer')
-          continue;
-
-        const pkgPath = join(packagesDir, pkgDir.name);
-        const siblingFeatureConfigs = await loadManualTestConfigs(pkgPath);
-        codegenConfigs.push(...siblingFeatureConfigs);
-      }
-    }
   }
 
   // Build the GraphQL schema
