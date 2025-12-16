@@ -75,11 +75,13 @@ async function loadManualTestConfigs(
       try {
         console.log(`📦 Loading config from feature: ${featureDir.name}`);
 
-        // Load feature-specific .env file if it exists
-        const featureEnvPath = join(featurePath, '.env');
-        if (existsSync(featureEnvPath)) {
-          const { config: loadEnv } = await import('dotenv');
-          loadEnv({ path: featureEnvPath });
+        // Set mock credentials for plugins that require them
+        // (MSW will intercept actual API calls, so these just need to pass validation)
+        if (!process.env['CONTENTFUL_SPACE_ID']) {
+          process.env['CONTENTFUL_SPACE_ID'] = 'mock-space-id';
+        }
+        if (!process.env['CONTENTFUL_ACCESS_TOKEN']) {
+          process.env['CONTENTFUL_ACCESS_TOKEN'] = 'mock-access-token';
         }
 
         let config = null;
