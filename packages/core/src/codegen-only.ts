@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { basename, dirname, join, resolve } from 'node:path';
 import { existsSync, readdirSync } from 'node:fs';
 import { defaultStore } from '@/nodes/defaultStore.js';
+import { startMockServer, stopMockServer } from '@/mocks/index.js';
 
 /**
  * Track codegen configs from loaded features for automatic generation
@@ -73,6 +74,13 @@ async function loadManualTestConfigs(
 
       try {
         console.log(`📦 Loading config from feature: ${featureDir.name}`);
+
+        // Load feature-specific .env file if it exists
+        const featureEnvPath = join(featurePath, '.env');
+        if (existsSync(featureEnvPath)) {
+          const { config: loadEnv } = await import('dotenv');
+          loadEnv({ path: featureEnvPath });
+        }
 
         let config = null;
 
@@ -179,6 +187,11 @@ export async function runCodegenOnly(
 
   console.log('🔄 Running codegen...');
 
+  // Start mock server to intercept API calls (same as dev server)
+  if (process.env['NODE_ENV'] !== 'production') {
+    await startMockServer();
+  }
+
   const userConfig = await loadAppConfig(configPath);
 
   // Collect codegen configs
@@ -223,8 +236,26 @@ export async function runCodegenOnly(
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
     const packageRoot = resolve(__dirname, '..', '..');
+
+    // Load features from core package
     const featureConfigs = await loadManualTestConfigs(packageRoot);
     codegenConfigs.push(...featureConfigs);
+
+    // Also scan sibling packages for test features
+    const packagesDir = resolve(packageRoot, '..');
+    if (existsSync(packagesDir)) {
+      const packageDirs = readdirSync(packagesDir, { withFileTypes: true });
+      for (const pkgDir of packageDirs) {
+        if (!pkgDir.isDirectory()) continue;
+        // Skip core (already scanned) and non-plugin directories
+        if (pkgDir.name === 'core' || pkgDir.name === 'universal-data-layer')
+          continue;
+
+        const pkgPath = join(packagesDir, pkgDir.name);
+        const siblingFeatureConfigs = await loadManualTestConfigs(pkgPath);
+        codegenConfigs.push(...siblingFeatureConfigs);
+      }
+    }
   }
 
   // Build the GraphQL schema
@@ -253,6 +284,9 @@ export async function runCodegenOnly(
       errorCount++;
     }
   }
+
+  // Stop mock server
+  stopMockServer();
 
   if (errorCount > 0) {
     console.log(
