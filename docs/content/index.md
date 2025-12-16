@@ -16,7 +16,7 @@ Framework-agnostic multi-source data layer with Gatsby-inspired DX
   ---
   color: neutral
   size: xl
-  to: /introduction/getting-started
+  to: /getting-started/installation
   trailing-icon: i-lucide-arrow-right
   ---
   Get started
