@@ -3,7 +3,10 @@ import {
   TypeScriptGenerator,
   generateTypeScript,
 } from '@/codegen/generators/typescript.js';
-import type { ContentTypeDefinition } from '@/codegen/types/schema.js';
+import type {
+  ContentTypeDefinition,
+  FieldType,
+} from '@/codegen/types/schema.js';
 
 describe('TypeScriptGenerator', () => {
   describe('generate', () => {
@@ -380,6 +383,186 @@ describe('TypeScriptGenerator', () => {
       const code = generator.generate(schemas);
 
       expect(code).toContain('    name: string;');
+    });
+
+    it('should use custom scalar mappings', () => {
+      const schemas: ContentTypeDefinition[] = [
+        {
+          name: 'WithCustomScalar',
+          fields: [
+            {
+              name: 'dateField',
+              type: 'DateTime' as FieldType,
+              required: true,
+            },
+            { name: 'jsonField', type: 'JSON' as FieldType, required: true },
+          ],
+        },
+      ];
+
+      const generator = new TypeScriptGenerator({
+        customScalars: { DateTime: 'Date', JSON: 'Record<string, unknown>' },
+        includeInternal: false,
+      });
+      const code = generator.generate(schemas);
+
+      expect(code).toContain('dateField: Date;');
+      expect(code).toContain('jsonField: Record<string, unknown>;');
+    });
+
+    it('should fallback to unknown for unrecognized field types', () => {
+      const schemas: ContentTypeDefinition[] = [
+        {
+          name: 'WithUnknownType',
+          fields: [
+            {
+              name: 'customField',
+              type: 'SomeCustomType' as FieldType,
+              required: true,
+            },
+          ],
+        },
+      ];
+
+      const generator = new TypeScriptGenerator({ includeInternal: false });
+      const code = generator.generate(schemas);
+
+      expect(code).toContain('customField: unknown;');
+    });
+
+    it('should use Array<T> syntax for array of objects with inline fields', () => {
+      const schemas: ContentTypeDefinition[] = [
+        {
+          name: 'WithComplexArray',
+          fields: [
+            {
+              name: 'items',
+              type: 'array',
+              required: true,
+              arrayItemType: {
+                name: 'item',
+                type: 'object',
+                required: true,
+                objectFields: [
+                  { name: 'id', type: 'string', required: true },
+                  { name: 'value', type: 'number', required: true },
+                ],
+              },
+            },
+          ],
+        },
+      ];
+
+      const generator = new TypeScriptGenerator({ includeInternal: false });
+      const code = generator.generate(schemas);
+
+      // Should use Array<T> syntax because the inner type contains '{'
+      expect(code).toContain('items: Array<{');
+      expect(code).toContain('id: string;');
+      expect(code).toContain('value: number;');
+    });
+
+    it('should use Array<T> syntax for array of union types', () => {
+      const schemas: ContentTypeDefinition[] = [
+        {
+          name: 'WithUnionArray',
+          fields: [
+            {
+              name: 'values',
+              type: 'array',
+              required: true,
+              arrayItemType: {
+                name: 'item',
+                type: 'string',
+                required: true,
+                literalValues: ['a', 'b', 'c'],
+              },
+            },
+          ],
+        },
+      ];
+
+      const generator = new TypeScriptGenerator({ includeInternal: false });
+      const code = generator.generate(schemas);
+
+      // Should use Array<T> syntax because the inner type contains '|'
+      expect(code).toContain("values: Array<'a' | 'b' | 'c'>;");
+    });
+
+    it('should use owner unknown when owner is not specified', () => {
+      const schemas: ContentTypeDefinition[] = [
+        {
+          name: 'Product',
+          fields: [{ name: 'name', type: 'string', required: true }],
+        },
+      ];
+
+      const generator = new TypeScriptGenerator();
+      const code = generator.generate(schemas);
+
+      expect(code).toContain("internal: NodeInternal<'Product', 'unknown'>;");
+    });
+
+    it('should skip undefined schemas in array', () => {
+      // TypeScript allows arrays with undefined values at runtime
+      const schemas = [
+        {
+          name: 'Product',
+          owner: 'test',
+          fields: [
+            { name: 'name', type: 'string' as FieldType, required: true },
+          ],
+        },
+        undefined,
+        {
+          name: 'Category',
+          owner: 'test',
+          fields: [
+            { name: 'title', type: 'string' as FieldType, required: true },
+          ],
+        },
+      ] as ContentTypeDefinition[];
+
+      const generator = new TypeScriptGenerator();
+      const code = generator.generate(schemas);
+
+      expect(code).toContain('export interface Product {');
+      expect(code).toContain('export interface Category {');
+    });
+
+    it('should handle empty objectFields array', () => {
+      const schemas: ContentTypeDefinition[] = [
+        {
+          name: 'WithEmptyObject',
+          fields: [
+            {
+              name: 'data',
+              type: 'object',
+              required: true,
+              objectFields: [],
+            },
+          ],
+        },
+      ];
+
+      const generator = new TypeScriptGenerator({ includeInternal: false });
+      const code = generator.generate(schemas);
+
+      expect(code).toContain('data: Record<string, unknown>;');
+    });
+
+    it('should escape single quotes in field names', () => {
+      const schemas: ContentTypeDefinition[] = [
+        {
+          name: 'Special',
+          fields: [{ name: "field'name", type: 'string', required: true }],
+        },
+      ];
+
+      const generator = new TypeScriptGenerator({ includeInternal: false });
+      const code = generator.generate(schemas);
+
+      expect(code).toContain("'field\\'name': string;");
     });
   });
 

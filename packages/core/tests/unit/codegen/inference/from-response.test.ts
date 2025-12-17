@@ -213,6 +213,98 @@ describe('inferSchemaFromResponse', () => {
 
     expect(schema.fields).toEqual([]);
   });
+
+  it('should handle dataPath through null value', () => {
+    const response = { data: null };
+
+    const schema = inferSchemaFromResponse(response, 'Product', {
+      dataPath: 'data.nested',
+    });
+
+    expect(schema.fields).toEqual([]);
+  });
+
+  it('should handle dataPath through primitive value', () => {
+    const response = { count: 42 };
+
+    const schema = inferSchemaFromResponse(response, 'Product', {
+      dataPath: 'count.nested',
+    });
+
+    expect(schema.fields).toEqual([]);
+  });
+
+  it('should not include indexes when array is empty', () => {
+    const response = { id: '1' };
+
+    const schema = inferSchemaFromResponse(response, 'Product', {
+      indexes: [],
+    });
+
+    expect(schema.indexes).toBeUndefined();
+  });
+
+  it('should handle array with non-object items', () => {
+    const response = [null, 'string', 123, { id: '1' }];
+
+    const schema = inferSchemaFromResponse(response, 'Mixed', {
+      isArray: true,
+    });
+
+    // Only the object should contribute fields
+    expect(schema.fields.find((f) => f.name === 'id')).toBeDefined();
+  });
+
+  it('should handle array with only non-object items', () => {
+    const response = [null, 'string', 123, undefined];
+
+    const schema = inferSchemaFromResponse(response, 'Primitives', {
+      isArray: true,
+    });
+
+    // No objects to infer from - should return empty fields
+    expect(schema.fields).toEqual([]);
+  });
+
+  it('should handle isArray true with non-array data', () => {
+    const response = { id: '1', name: 'Widget' };
+
+    // isArray: true but data is not an array
+    const schema = inferSchemaFromResponse(response, 'Product', {
+      isArray: true,
+    });
+
+    // When isArray is true but data is not actually an array,
+    // the condition (shouldTreatAsArray && Array.isArray(data)) is false
+    // so it falls through to the single object handling
+    expect(schema.fields).toHaveLength(2);
+  });
+
+  it('should not include description when not provided', () => {
+    const response = { id: '1' };
+
+    const schema = inferSchemaFromResponse(response, 'Product');
+
+    expect(schema.description).toBeUndefined();
+  });
+
+  it('should not include owner when not provided', () => {
+    const response = { id: '1' };
+
+    const schema = inferSchemaFromResponse(response, 'Product');
+
+    expect(schema.owner).toBeUndefined();
+  });
+
+  it('should handle undefined value in dataPath traversal', () => {
+    const response = { data: { level1: undefined } };
+
+    const schema = inferSchemaFromResponse(response, 'Product', {
+      dataPath: 'data.level1.level2',
+    });
+
+    expect(schema.fields).toEqual([]);
+  });
 });
 
 describe('mergeResponseInferences', () => {
@@ -283,6 +375,26 @@ describe('mergeResponseInferences', () => {
     expect(schema.fields.find((f) => f.name === 'id')).toBeDefined();
     expect(schema.fields.find((f) => f.name === 'extra')?.required).toBe(false);
   });
+
+  it('should not include optional properties when not provided', () => {
+    const responses: unknown[] = [];
+
+    const schema = mergeResponseInferences(responses, 'Empty');
+
+    expect(schema.description).toBeUndefined();
+    expect(schema.indexes).toBeUndefined();
+    expect(schema.owner).toBeUndefined();
+  });
+
+  it('should handle empty indexes array', () => {
+    const responses: unknown[] = [];
+
+    const schema = mergeResponseInferences(responses, 'Empty', {
+      indexes: [],
+    });
+
+    expect(schema.indexes).toBeUndefined();
+  });
 });
 
 describe('inferSchemaFromJsonString', () => {
@@ -325,5 +437,41 @@ describe('inferSchemaFromJsonString', () => {
 
     expect(schema.description).toBe('From JSON');
     expect(schema.fields.find((f) => f.name === 'id')).toBeDefined();
+  });
+
+  it('should preserve all options on parse error', () => {
+    const invalidJson = 'not valid json';
+
+    const schema = inferSchemaFromJsonString(invalidJson, 'Product', {
+      description: 'Test desc',
+      indexes: ['slug'],
+      owner: 'test-owner',
+    });
+
+    expect(schema.name).toBe('Product');
+    expect(schema.fields).toEqual([]);
+    expect(schema.description).toBe('Test desc');
+    expect(schema.indexes).toEqual(['slug']);
+    expect(schema.owner).toBe('test-owner');
+  });
+
+  it('should not include options when not provided on parse error', () => {
+    const invalidJson = 'not valid';
+
+    const schema = inferSchemaFromJsonString(invalidJson, 'Test');
+
+    expect(schema.description).toBeUndefined();
+    expect(schema.indexes).toBeUndefined();
+    expect(schema.owner).toBeUndefined();
+  });
+
+  it('should handle empty indexes array on parse error', () => {
+    const invalidJson = '{bad json';
+
+    const schema = inferSchemaFromJsonString(invalidJson, 'Product', {
+      indexes: [],
+    });
+
+    expect(schema.indexes).toBeUndefined();
   });
 });

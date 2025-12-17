@@ -222,6 +222,31 @@ describe('TypeGuardGenerator', () => {
       expect(code).not.toContain('.every(');
     });
 
+    it('should skip array item check for non-primitive item types', () => {
+      const schemas: ContentTypeDefinition[] = [
+        {
+          name: 'WithObjectArray',
+          fields: [
+            {
+              name: 'items',
+              type: 'array',
+              required: true,
+              arrayItemType: { name: 'item', type: 'object', required: true },
+            },
+          ],
+        },
+      ];
+
+      // checkArrayItems is true, but item type is 'object' which returns null from getTypeofCheck
+      const generator = new TypeGuardGenerator({ checkArrayItems: true });
+      const code = generator.generate(schemas);
+
+      // Should check it's an array
+      expect(code).toContain("if (!Array.isArray(obj['items']))");
+      // But should NOT generate .every() check since object type can't be checked with typeof
+      expect(code).not.toContain('.every(');
+    });
+
     it('should handle object types', () => {
       const schemas: ContentTypeDefinition[] = [
         {

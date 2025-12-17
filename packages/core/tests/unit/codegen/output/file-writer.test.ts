@@ -510,3 +510,583 @@ describe('writeGeneratedFiles', () => {
     expect(result.written.length).toBeGreaterThan(0);
   });
 });
+
+describe('extractTypeCode edge cases', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = join(
+      tmpdir(),
+      `udl-codegen-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
+    mkdirSync(tempDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(tempDir)) {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should extract code with JSDoc comments followed by matching export', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({ output, mode: 'multi' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    // Code with JSDoc comment preceding the interface
+    const code = `/**
+ * Product interface
+ */
+export interface Product {
+  name: string;
+}`;
+
+    const files = writer.preview('types', schemas, code);
+
+    expect(files.length).toBe(1);
+    expect(files[0]?.content).toContain('export interface Product');
+  });
+
+  it('should extract code with JSDoc containing only comment markers', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({ output, mode: 'multi' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    // JSDoc with just the closing marker on next line
+    const code = `/**
+ */
+export interface Product {
+  name: string;
+}`;
+
+    const files = writer.preview('types', schemas, code);
+
+    expect(files.length).toBe(1);
+    expect(files[0]?.content).toContain('export interface Product');
+  });
+
+  it('should extract code with multi-line JSDoc and asterisks', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({ output, mode: 'multi' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    const code = `/**
+ * The Product interface
+ * @description A product entity
+ */
+export interface Product {
+  name: string;
+}`;
+
+    const files = writer.preview('types', schemas, code);
+
+    expect(files.length).toBe(1);
+    expect(files[0]?.content).toContain('export interface Product');
+    expect(files[0]?.content).toContain('The Product interface');
+  });
+
+  it('should extract guards with JSDoc comments', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({ output, mode: 'multi' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    // Code with JSDoc for type guard
+    const code = `/**
+ * Type guard for Product
+ */
+export function isProduct(value: unknown): value is Product {
+  return typeof value === 'object';
+}`;
+
+    const files = writer.preview('guards', schemas, code);
+
+    expect(files.length).toBe(1);
+    expect(files[0]?.content).toContain('export function isProduct');
+  });
+
+  it('should extract assertion guards', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({ output, mode: 'multi' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    const code = `export function assertProduct(value: unknown): asserts value is Product {
+  if (!isProduct(value)) {
+    throw new Error('Not a Product');
+  }
+}`;
+
+    const files = writer.preview('guards', schemas, code);
+
+    expect(files.length).toBe(1);
+    expect(files[0]?.content).toContain('export function assertProduct');
+  });
+
+  it('should handle code with nested braces', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({ output, mode: 'multi' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    const code = `export interface Product {
+  name: string;
+  nested: {
+    deep: {
+      value: number;
+    };
+  };
+}`;
+
+    const files = writer.preview('types', schemas, code);
+
+    expect(files.length).toBe(1);
+    expect(files[0]?.content).toContain('nested');
+    expect(files[0]?.content).toContain('deep');
+  });
+
+  it('should fall back to index file when code cannot be split', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({ output, mode: 'multi' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    // Code that doesn't match the extraction patterns
+    const code = `const someHelper = 'test';`;
+
+    const files = writer.preview('types', schemas, code);
+
+    expect(files.length).toBe(1);
+    expect(files[0]?.path).toBe('types/index.ts');
+  });
+});
+
+describe('writeAll with guards barrel', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = join(
+      tmpdir(),
+      `udl-codegen-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
+    mkdirSync(tempDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(tempDir)) {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should generate root barrel with guards export', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({
+      output,
+      mode: 'multi',
+      generateBarrel: true,
+    });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+
+    writer.writeAll({
+      guards: {
+        schemas,
+        code: 'export function isProduct(value: unknown): value is Product { return true; }',
+      },
+    });
+
+    const barrelPath = join(output, 'index.ts');
+    expect(existsSync(barrelPath)).toBe(true);
+    const content = readFileSync(barrelPath, 'utf-8');
+    expect(content).toContain("export * from './guards/index'");
+  });
+
+  it('should generate root barrel with both types and guards exports', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({
+      output,
+      mode: 'multi',
+      generateBarrel: true,
+    });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+
+    writer.writeAll({
+      types: { schemas, code: 'export interface Product { name: string; }' },
+      guards: {
+        schemas,
+        code: 'export function isProduct(value: unknown): value is Product { return true; }',
+      },
+    });
+
+    const barrelPath = join(output, 'index.ts');
+    const content = readFileSync(barrelPath, 'utf-8');
+    expect(content).toContain("export * from './types/index'");
+    expect(content).toContain("export * from './guards/index'");
+  });
+
+  it('should skip unchanged root barrel on second write', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({
+      output,
+      mode: 'multi',
+      generateBarrel: true,
+      incrementalWrite: true,
+    });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+
+    // First write
+    const result1 = writer.writeAll({
+      types: { schemas, code: 'export interface Product { name: string; }' },
+    });
+    const barrelPath = join(output, 'index.ts');
+    expect(result1.written).toContain(barrelPath);
+
+    // Second write with same content
+    const result2 = writer.writeAll({
+      types: { schemas, code: 'export interface Product { name: string; }' },
+    });
+    expect(result2.skipped).toContain(barrelPath);
+  });
+
+  it('should not generate root barrel when schemas are empty', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({
+      output,
+      mode: 'multi',
+      generateBarrel: true,
+    });
+    const emptySchemas: ContentTypeDefinition[] = [];
+
+    writer.writeAll({
+      types: { schemas: emptySchemas, code: '' },
+    });
+
+    const barrelPath = join(output, 'index.ts');
+    expect(existsSync(barrelPath)).toBe(false);
+  });
+});
+
+describe('addHeader edge cases', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = join(
+      tmpdir(),
+      `udl-codegen-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
+    mkdirSync(tempDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(tempDir)) {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should not add header when content already has JSDoc header', () => {
+    const output = join(tempDir, 'types.ts');
+    const writer = new FileWriter({ output, mode: 'single' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    // Content that already starts with JSDoc
+    const code = `/**
+ * Existing header
+ */
+export interface Product { name: string; }`;
+
+    writer.writeTypes(schemas, code);
+
+    const content = readFileSync(output, 'utf-8');
+    // Should not have double headers
+    const headerCount = (content.match(/Auto-generated by/g) || []).length;
+    expect(headerCount).toBe(0);
+    expect(content).toContain('Existing header');
+  });
+
+  it('should not add header when content starts with whitespace then JSDoc', () => {
+    const output = join(tempDir, 'types.ts');
+    const writer = new FileWriter({ output, mode: 'single' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    // Content with leading whitespace and JSDoc
+    const code = `  /**
+ * Existing header with whitespace
+ */
+export interface Product { name: string; }`;
+
+    writer.writeTypes(schemas, code);
+
+    const content = readFileSync(output, 'utf-8');
+    // The trim() in addHeader should detect the existing header
+    expect(content).toContain('Existing header with whitespace');
+  });
+
+  it('should preview in single mode with header', () => {
+    const output = join(tempDir, 'types.ts');
+    const writer = new FileWriter({ output, mode: 'single' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    const code = 'export interface Product { name: string; }';
+
+    const files = writer.preview('types', schemas, code);
+
+    expect(files.length).toBe(1);
+    expect(files[0]?.path).toBe(output);
+    expect(files[0]?.content).toContain(
+      'Auto-generated by universal-data-layer'
+    );
+    expect(files[0]?.content).toContain('export interface Product');
+  });
+});
+
+describe('clean edge cases', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = join(
+      tmpdir(),
+      `udl-codegen-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
+    mkdirSync(tempDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(tempDir)) {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should handle clean when files do not exist in single mode', () => {
+    const output = join(tempDir, 'nonexistent.ts');
+    const writer = new FileWriter({ output, mode: 'single' });
+
+    const result = writer.clean();
+
+    expect(result.deleted).toHaveLength(0);
+  });
+
+  it('should handle clean when directories do not exist in multi mode', () => {
+    const output = join(tempDir, 'nonexistent');
+    const writer = new FileWriter({ output, mode: 'multi' });
+
+    const result = writer.clean();
+
+    expect(result.deleted).toHaveLength(0);
+  });
+
+  it('should clean root barrel file', () => {
+    const output = join(tempDir, 'generated');
+    mkdirSync(output, { recursive: true });
+    const barrelPath = join(output, 'index.ts');
+    writeFileSync(barrelPath, 'export * from "./types"');
+
+    const writer = new FileWriter({ output, mode: 'multi' });
+    const result = writer.clean();
+
+    expect(result.deleted).toContain(barrelPath);
+    expect(existsSync(barrelPath)).toBe(false);
+  });
+});
+
+describe('extractTypeCode branch coverage', () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = join(
+      tmpdir(),
+      `udl-codegen-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
+    mkdirSync(tempDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(tempDir)) {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should handle JSDoc with standalone closing marker on its own line', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({ output, mode: 'multi' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    // JSDoc where the closing marker */ is on a line by itself (not preceded by *)
+    const code = `/**
+ * Description
+*/
+export interface Product {
+  name: string;
+}`;
+
+    const files = writer.preview('types', schemas, code);
+
+    expect(files.length).toBe(1);
+    expect(files[0]?.content).toContain('export interface Product');
+  });
+
+  it('should handle JSDoc with empty line in comment block', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({ output, mode: 'multi' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    // JSDoc with empty lines between comment lines
+    const code = `/**
+ * Description
+
+ * More description
+ */
+export interface Product {
+  name: string;
+}`;
+
+    const files = writer.preview('types', schemas, code);
+
+    expect(files.length).toBe(1);
+    expect(files[0]?.content).toContain('export interface Product');
+  });
+
+  it('should handle code with type alias instead of interface', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({ output, mode: 'multi' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    const code = `export type Product = {
+  name: string;
+}`;
+
+    const files = writer.preview('types', schemas, code);
+
+    expect(files.length).toBe(1);
+    expect(files[0]?.content).toContain('export type Product');
+  });
+
+  it('should handle empty code', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({ output, mode: 'multi' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    const code = '';
+
+    const files = writer.preview('types', schemas, code);
+
+    // Empty code with no matching types should return empty array
+    expect(files.length).toBe(0);
+  });
+
+  it('should handle code with multiple empty lines', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({ output, mode: 'multi' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    const code = `
+
+
+export interface Product {
+  name: string;
+}
+
+
+`;
+
+    const files = writer.preview('types', schemas, code);
+
+    expect(files.length).toBe(1);
+    expect(files[0]?.content).toContain('export interface Product');
+  });
+
+  it('should handle JSDoc that does not precede matching export', () => {
+    const output = join(tempDir, 'generated');
+    const writer = new FileWriter({ output, mode: 'multi' });
+    const schemas: ContentTypeDefinition[] = [
+      {
+        name: 'Product',
+        fields: [{ name: 'name', type: 'string', required: true }],
+      },
+    ];
+    // JSDoc followed by unrelated code, then the actual interface
+    const code = `/**
+ * Some helper documentation
+ */
+const helper = 'test';
+
+export interface Product {
+  name: string;
+}`;
+
+    const files = writer.preview('types', schemas, code);
+
+    expect(files.length).toBe(1);
+    // Should extract just the interface without the unrelated JSDoc
+    expect(files[0]?.content).toContain('export interface Product');
+  });
+});
