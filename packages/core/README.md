@@ -61,10 +61,10 @@ import { defineConfig } from 'universal-data-layer';
 
 export const { config } = defineConfig({
   port: 4000,
-  plugins: ['@udl/plugin-source-contentful'],
+  plugins: ['@universal-data-layer/plugin-source-contentful'],
   codegen: {
     output: './generated',
-    extensions: ['@udl/codegen-typed-queries'],
+    extensions: ['@universal-data-layer/codegen-typed-queries'],
   },
 });
 ```

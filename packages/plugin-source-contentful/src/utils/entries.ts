@@ -378,7 +378,7 @@ export function transformEntry(
     internal: {
       id: nodeId,
       type: nodeTypeName,
-      owner: '@udl/plugin-source-contentful',
+      owner: '@universal-data-layer/plugin-source-contentful',
       contentDigest: createContentDigest(entry),
     },
     contentfulId: entry.sys.id,

@@ -1,4 +1,4 @@
-# @udl/codegen-typed-queries
+# @universal-data-layer/codegen-typed-queries
 
 > **Beta**: This package is experimental and may change without notice.
 
@@ -11,7 +11,7 @@ This extension generates TypeScript types for your GraphQL queries with full typ
 ## Installation
 
 ```bash
-npm install @udl/codegen-typed-queries
+npm install @universal-data-layer/codegen-typed-queries
 ```
 
 ## Usage
@@ -23,10 +23,10 @@ Add the extension to your UDL config:
 import { defineConfig } from 'universal-data-layer';
 
 export const { config } = defineConfig({
-  plugins: ['@udl/plugin-source-contentful'],
+  plugins: ['@universal-data-layer/plugin-source-contentful'],
   codegen: {
     output: './generated',
-    extensions: ['@udl/codegen-typed-queries'],
+    extensions: ['@universal-data-layer/codegen-typed-queries'],
   },
 });
 ```

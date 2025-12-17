@@ -70,7 +70,7 @@ export interface CodegenConfig {
   /**
    * Codegen extensions to run after built-in generators.
    * Can be extension objects or package names (will be dynamically imported).
-   * @example ['@udl/codegen-typed-queries']
+   * @example ['@universal-data-layer/codegen-typed-queries']
    */
   extensions?: (
     | import('@/codegen/types/extension.js').CodegenExtension

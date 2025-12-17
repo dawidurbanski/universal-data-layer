@@ -20,7 +20,7 @@ describe('ContentfulPluginError', () => {
 
     expect(error.message).toBe('[TEST_ERROR] Something went wrong');
     expect(error.code).toBe('TEST_ERROR');
-    expect(error.plugin).toBe('@udl/plugin-source-contentful');
+    expect(error.plugin).toBe('@universal-data-layer/plugin-source-contentful');
     expect(error.name).toBe('ContentfulPluginError');
   });
 });

@@ -42,7 +42,7 @@ export const { config } = defineConfig({
   port: 4000,
   plugins: [
     {
-      name: '@udl/plugin-source-contentful',
+      name: '@universal-data-layer/plugin-source-contentful',
       options: {
         spaceId: process.env.CONTENTFUL_SPACE_ID,
         accessToken: process.env.CONTENTFUL_ACCESS_TOKEN,
@@ -51,18 +51,18 @@ export const { config } = defineConfig({
   ],
   codegen: {
     output: './generated',
-    extensions: ['@udl/codegen-typed-queries'],
+    extensions: ['@universal-data-layer/codegen-typed-queries'],
   },
 });
 ```
 
 ## Packages
 
-| Package                         | Description                              |
-| ------------------------------- | ---------------------------------------- |
-| `universal-data-layer`          | Core GraphQL server, node store, codegen |
-| `@udl/plugin-source-contentful` | Contentful CMS integration with Sync API |
-| `@udl/codegen-typed-queries`    | TypedDocumentNode query generation       |
+| Package                                          | Description                              |
+| ------------------------------------------------ | ---------------------------------------- |
+| `universal-data-layer`                           | Core GraphQL server, node store, codegen |
+| `@universal-data-layer/plugin-source-contentful` | Contentful CMS integration with Sync API |
+| `@universal-data-layer/codegen-typed-queries`    | TypedDocumentNode query generation       |
 
 ## Development
 

@@ -1,11 +1,11 @@
-# @udl/plugin-source-contentful
+# @universal-data-layer/plugin-source-contentful
 
 Contentful source plugin for Universal Data Layer. Automatically sources all content types, entries, and assets from a Contentful space.
 
 ## Installation
 
 ```bash
-npm install @udl/plugin-source-contentful
+npm install @universal-data-layer/plugin-source-contentful
 ```
 
 ## Configuration
@@ -19,7 +19,7 @@ import { defineConfig } from 'universal-data-layer';
 export default defineConfig({
   plugins: [
     {
-      resolve: '@udl/plugin-source-contentful',
+      resolve: '@universal-data-layer/plugin-source-contentful',
       options: {
         spaceId: process.env.CONTENTFUL_SPACE_ID,
         accessToken: process.env.CONTENTFUL_ACCESS_TOKEN,
@@ -69,7 +69,7 @@ Sync tokens are stored in `.udl-cache/contentful-sync-tokens.json` by default. Y
 
 ```typescript
 {
-  resolve: '@udl/plugin-source-contentful',
+  resolve: '@universal-data-layer/plugin-source-contentful',
   options: {
     spaceId: '...',
     accessToken: '...',
@@ -95,7 +95,7 @@ To fetch draft/unpublished content, use the Preview API:
 
 ```typescript
 {
-  resolve: '@udl/plugin-source-contentful',
+  resolve: '@universal-data-layer/plugin-source-contentful',
   options: {
     spaceId: process.env.CONTENTFUL_SPACE_ID,
     accessToken: process.env.CONTENTFUL_PREVIEW_TOKEN,
@@ -113,7 +113,7 @@ Use `nodePrefix` to source from multiple Contentful spaces:
 export default defineConfig({
   plugins: [
     {
-      resolve: '@udl/plugin-source-contentful',
+      resolve: '@universal-data-layer/plugin-source-contentful',
       options: {
         spaceId: process.env.CMS_SPACE_ID,
         accessToken: process.env.CMS_ACCESS_TOKEN,
@@ -122,7 +122,7 @@ export default defineConfig({
       },
     },
     {
-      resolve: '@udl/plugin-source-contentful',
+      resolve: '@universal-data-layer/plugin-source-contentful',
       options: {
         spaceId: process.env.CRM_SPACE_ID,
         accessToken: process.env.CRM_ACCESS_TOKEN,
@@ -142,7 +142,7 @@ Filter which content types to source:
 
 ```typescript
 {
-  resolve: '@udl/plugin-source-contentful',
+  resolve: '@universal-data-layer/plugin-source-contentful',
   options: {
     spaceId: '...',
     accessToken: '...',
@@ -194,7 +194,7 @@ import {
   ContentfulSyncError,
   isRateLimitError,
   isAuthError,
-} from '@udl/plugin-source-contentful';
+} from '@universal-data-layer/plugin-source-contentful';
 
 try {
   // ...

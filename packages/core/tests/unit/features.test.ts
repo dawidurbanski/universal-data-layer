@@ -332,7 +332,7 @@ describe('features.ts', () => {
           plugins: [
             './local-plugin',
             '../sibling-plugin',
-            '@udl/external-plugin',
+            '@universal-data-layer/external-plugin',
           ],
         });
 
@@ -358,7 +358,9 @@ describe('features.ts', () => {
         expect(resolvedPlugins[0]).toContain('local-plugin');
         expect(resolvedPlugins[1]).toContain('sibling-plugin');
         // External plugins should remain unchanged
-        expect(resolvedPlugins[2]).toBe('@udl/external-plugin');
+        expect(resolvedPlugins[2]).toBe(
+          '@universal-data-layer/external-plugin'
+        );
 
         // Should include codegen config from plugins
         expect(result).toHaveLength(1);
@@ -390,7 +392,7 @@ describe('features.ts', () => {
         vi.mocked(loadConfigFile).mockResolvedValue({
           plugins: [
             { name: './local-plugin', options: { key: 'value' } },
-            { name: '@udl/external-plugin', options: {} },
+            { name: '@universal-data-layer/external-plugin', options: {} },
           ],
         });
 
@@ -415,7 +417,7 @@ describe('features.ts', () => {
         expect(firstPlugin.name).toContain('local-plugin');
         expect(firstPlugin.options).toEqual({ key: 'value' });
         // External plugin should remain unchanged
-        expect(secondPlugin.name).toBe('@udl/external-plugin');
+        expect(secondPlugin.name).toBe('@universal-data-layer/external-plugin');
       });
 
       it('should respect cache settings', async () => {

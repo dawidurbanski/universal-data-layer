@@ -60,7 +60,7 @@ export async function startServer(options: StartServerOptions = {}) {
     console.log('Loading plugins...');
     // Track plugin names before loading
     // Note: The actual owner name is determined by the plugin's config.name or basename
-    // For npm packages like '@udl/plugin-source-contentful', the plugin's config.name is used
+    // For npm packages like '@universal-data-layer/plugin-source-contentful', the plugin's config.name is used
     for (const plugin of userConfig.plugins) {
       if (typeof plugin === 'string') {
         // For package names, use the full name (not basename)

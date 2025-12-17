@@ -20,13 +20,13 @@
     ],
     "paths": {
       "@/*": ["./*"],
-      "@udl/plugin-source-contentful": [
+      "@universal-data-layer/plugin-source-contentful": [
         "../../packages/plugin-source-contentful/dist"
       ],
-      "@udl/plugin-source-contentful/generated": [
+      "@universal-data-layer/plugin-source-contentful/generated": [
         "../../packages/plugin-source-contentful/generated"
       ],
-      "@udl/plugin-source-contentful/*": [
+      "@universal-data-layer/plugin-source-contentful/*": [
         "../../packages/plugin-source-contentful/dist/*"
       ]
     }

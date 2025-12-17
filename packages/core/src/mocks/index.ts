@@ -6,7 +6,8 @@ import { jsonplaceholderHandlers } from './jsonplaceholder.js';
 // Using string concatenation to prevent TypeScript from trying to resolve at compile time
 async function loadContentfulHandlers(): Promise<RequestHandler[]> {
   try {
-    const moduleName = '@udl/plugin-source-contentful' + '/mocks';
+    const moduleName =
+      '@universal-data-layer/plugin-source-contentful' + '/mocks';
     const mod = await import(/* webpackIgnore: true */ moduleName);
     return mod.contentfulHandlers || [];
   } catch {

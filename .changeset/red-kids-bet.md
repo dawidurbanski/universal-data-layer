@@ -1,10 +1,10 @@
 ---
-'@udl/plugin-source-contentful': patch
+'@universal-data-layer/plugin-source-contentful': patch
 'universal-data-layer': patch
 '@universal-data-layer/manual-tests': patch
 ---
 
-### New Contentful Source Plugin (`@udl/plugin-source-contentful`)
+### New Contentful Source Plugin (`@universal-data-layer/plugin-source-contentful`)
 
 Introduces the first official source plugin for the Universal Data Layer, enabling seamless integration with Contentful CMS.
 

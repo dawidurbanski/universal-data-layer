@@ -1,5 +1,5 @@
 {
-  "name": "@udl/plugin-source-contentful",
+  "name": "@universal-data-layer/plugin-source-contentful",
   "version": "0.1.0",
   "description": "Contentful source plugin for Universal Data Layer",
   "type": "module",

@@ -42,14 +42,14 @@ import {
 } from './src/utils/references.js';
 
 /** Plugin log prefix for consistent logging */
-const LOG_PREFIX = '[@udl/plugin-source-contentful]';
+const LOG_PREFIX = '[@universal-data-layer/plugin-source-contentful]';
 
 /**
  * Plugin configuration
  */
 export const config = {
   type: 'source' as const,
-  name: '@udl/plugin-source-contentful',
+  name: '@universal-data-layer/plugin-source-contentful',
   indexes: ['contentfulId'],
   codegen: {
     output: './generated',
@@ -230,7 +230,7 @@ export async function sourceNodes({
  * Tells the core how to identify and resolve references from Contentful.
  */
 export const referenceResolver: ReferenceResolverConfig = {
-  id: '@udl/plugin-source-contentful',
+  id: '@universal-data-layer/plugin-source-contentful',
   markerField: '_contentfulRef',
   lookupField: 'contentfulId',
   isReference: isContentfulReference,

@@ -1,5 +1,5 @@
 {
-  "name": "@udl/codegen-typed-queries",
+  "name": "@universal-data-layer/codegen-typed-queries",
   "version": "0.1.0-beta.1",
   "description": "TypedDocumentNode query generation extension for Universal Data Layer (experimental)",
   "type": "module",

@@ -117,7 +117,7 @@ const product = await udl.query(
 
 ## Mock Data
 
-Mock data is provided by the UDL server's MSW integration. The fixtures are defined in `@udl/plugin-source-contentful/mocks` and include:
+Mock data is provided by the UDL server's MSW integration. The fixtures are defined in `@universal-data-layer/plugin-source-contentful/mocks` and include:
 
 **Content Types:**
 
@@ -144,5 +144,5 @@ Mock data is provided by the UDL server's MSW integration. The fixtures are defi
 When using UDL in your own projects (not this monorepo example), install packages from npm:
 
 ```bash
-npm install universal-data-layer @udl/plugin-source-contentful
+npm install universal-data-layer @universal-data-layer/plugin-source-contentful
 ```

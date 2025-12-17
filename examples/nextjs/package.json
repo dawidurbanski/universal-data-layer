@@ -1,5 +1,5 @@
 {
-  "name": "@udl/example-nextjs",
+  "name": "@universal-data-layer/example-nextjs",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,8 +12,8 @@
     "udl": "universal-data-layer"
   },
   "dependencies": {
-    "@udl/codegen-typed-queries": "*",
-    "@udl/plugin-source-contentful": "*",
+    "@universal-data-layer/codegen-typed-queries": "*",
+    "@universal-data-layer/plugin-source-contentful": "*",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

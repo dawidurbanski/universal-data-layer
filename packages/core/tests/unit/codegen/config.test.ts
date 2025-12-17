@@ -131,10 +131,12 @@ describe('codegen/config', () => {
 
     it('should handle string extension specs', () => {
       const result = resolveCodegenConfig({
-        extensions: ['@udl/codegen-typed-queries'],
+        extensions: ['@universal-data-layer/codegen-typed-queries'],
       });
 
-      expect(result.extensions).toEqual(['@udl/codegen-typed-queries']);
+      expect(result.extensions).toEqual([
+        '@universal-data-layer/codegen-typed-queries',
+      ]);
     });
   });
 });

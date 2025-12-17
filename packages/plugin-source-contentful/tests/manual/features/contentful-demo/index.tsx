@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { udl, gql } from 'universal-data-layer/client';
-import type { ContentfulProduct } from '@udl/plugin-source-contentful/generated';
+import type { ContentfulProduct } from '@universal-data-layer/plugin-source-contentful/generated';
 
 export default function ContentfulDemo() {
   const [loading, setLoading] = useState(false);
@@ -47,7 +47,7 @@ export default function ContentfulDemo() {
           </p>
           <div className="bg-blue-900 text-blue-100 rounded p-3 font-mono text-sm overflow-x-auto whitespace-pre">
             {`{
-  resolve: '@udl/plugin-source-contentful',
+  resolve: '@universal-data-layer/plugin-source-contentful',
   options: {
     spaceId: process.env.CONTENTFUL_SPACE_ID,
     accessToken: process.env.CONTENTFUL_ACCESS_TOKEN,

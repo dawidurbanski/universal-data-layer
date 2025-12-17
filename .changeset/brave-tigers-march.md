@@ -1,10 +1,10 @@
 ---
-'@udl/codegen-typed-queries': minor
+'@universal-data-layer/codegen-typed-queries': minor
 'universal-data-layer': minor
-'@udl/plugin-source-contentful': minor
+'@universal-data-layer/plugin-source-contentful': minor
 ---
 
-### New Package: `@udl/codegen-typed-queries`
+### New Package: `@universal-data-layer/codegen-typed-queries`
 
 Introduces a codegen extension that generates fully typed query functions from GraphQL files.
 
@@ -23,10 +23,10 @@ Introduces a codegen extension that generates fully typed query functions from G
 import { defineConfig } from 'universal-data-layer';
 
 export const { config } = defineConfig({
-  plugins: ['@udl/plugin-source-contentful'],
+  plugins: ['@universal-data-layer/plugin-source-contentful'],
   codegen: {
     output: './generated',
-    extensions: ['@udl/codegen-typed-queries'],
+    extensions: ['@universal-data-layer/codegen-typed-queries'],
   },
 });
 ```
@@ -65,7 +65,7 @@ export const { config } = defineConfig({
 - MSW integration for mocking API calls in development
 - Enhanced GraphQL handler with improved type safety
 
-### Contentful Plugin Updates (`@udl/plugin-source-contentful`)
+### Contentful Plugin Updates (`@universal-data-layer/plugin-source-contentful`)
 
 - Integration with the new pluggable reference system
 - `FieldLinkMap` support for configuring reference resolution

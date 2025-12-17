@@ -27,7 +27,7 @@ export interface ReferenceResolutionContext {
  * ```typescript
  * // In a Contentful plugin
  * export const referenceResolver: ReferenceResolverConfig = {
- *   id: '@udl/plugin-source-contentful',
+ *   id: '@universal-data-layer/plugin-source-contentful',
  *   markerField: '_contentfulRef',
  *   lookupField: 'contentfulId',
  *   isReference: (value) => isContentfulReference(value),
@@ -39,7 +39,7 @@ export interface ReferenceResolutionContext {
 export interface ReferenceResolverConfig {
   /**
    * Unique identifier for this resolver (typically plugin name).
-   * @example '@udl/plugin-source-contentful'
+   * @example '@universal-data-layer/plugin-source-contentful'
    */
   id: string;
 

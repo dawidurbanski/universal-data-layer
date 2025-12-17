@@ -204,7 +204,7 @@ export function transformAsset(
     internal: {
       id: nodeId,
       type: nodeTypeName,
-      owner: '@udl/plugin-source-contentful',
+      owner: '@universal-data-layer/plugin-source-contentful',
       contentDigest: createContentDigest(asset),
     },
     contentfulId: asset.sys.id,

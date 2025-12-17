@@ -1,5 +1,5 @@
 /**
- * @udl/codegen-typed-queries
+ * @universal-data-layer/codegen-typed-queries
  *
  * TypedDocumentNode query generation extension for Universal Data Layer.
  * Provides compile-time type safety for GraphQL queries.
@@ -20,16 +20,16 @@ import { QueryDocumentGenerator } from './generator.js';
  * import { defineConfig } from 'universal-data-layer';
  *
  * export const { config } = defineConfig({
- *   plugins: ['@udl/plugin-source-contentful'],
+ *   plugins: ['@universal-data-layer/plugin-source-contentful'],
  *   codegen: {
  *     output: './generated',
- *     extensions: ['@udl/codegen-typed-queries'],
+ *     extensions: ['@universal-data-layer/codegen-typed-queries'],
  *   },
  * });
  * ```
  */
 export const extension: CodegenExtension = {
-  name: '@udl/codegen-typed-queries',
+  name: '@universal-data-layer/codegen-typed-queries',
   outputDir: 'queries',
 
   async generate(context) {

@@ -1,6 +1,6 @@
 # Contentful Source Plugin Demo
 
-This manual test demonstrates the `@udl/plugin-source-contentful` plugin in action.
+This manual test demonstrates the `@universal-data-layer/plugin-source-contentful` plugin in action.
 
 ## Prerequisites
 

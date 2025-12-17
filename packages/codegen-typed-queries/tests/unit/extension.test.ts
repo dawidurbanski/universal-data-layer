@@ -48,7 +48,9 @@ describe('codegen extension', () => {
 
   describe('extension metadata', () => {
     it('should have correct name', () => {
-      expect(extension.name).toBe('@udl/codegen-typed-queries');
+      expect(extension.name).toBe(
+        '@universal-data-layer/codegen-typed-queries'
+      );
     });
 
     it('should have correct output directory', () => {

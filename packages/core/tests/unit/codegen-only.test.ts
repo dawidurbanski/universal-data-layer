@@ -125,7 +125,7 @@ describe('runCodegenOnly', () => {
     it('should load plugins when config has plugins array', async () => {
       const mockConfig = {
         plugins: [
-          '@udl/plugin-source-contentful',
+          '@universal-data-layer/plugin-source-contentful',
           { name: './local-plugin', options: { key: 'value' } },
         ],
       };

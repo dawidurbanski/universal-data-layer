@@ -9,7 +9,7 @@
  */
 export class ContentfulPluginError extends Error {
   /** Plugin identifier */
-  readonly plugin = '@udl/plugin-source-contentful';
+  readonly plugin = '@universal-data-layer/plugin-source-contentful';
 
   constructor(
     message: string,

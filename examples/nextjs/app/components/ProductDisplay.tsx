@@ -6,7 +6,7 @@ import { ImageSlider } from './ImageSlider';
 import {
   ContentfulProduct,
   ContentfulVariant,
-} from '@udl/plugin-source-contentful/generated';
+} from '@universal-data-layer/plugin-source-contentful/generated';
 
 function getVariantImages(variant: ContentfulVariant): string[] {
   const images: string[] = [];

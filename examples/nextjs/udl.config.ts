@@ -4,7 +4,7 @@ export const { config } = defineConfig({
   config: {
     plugins: [
       {
-        name: '@udl/plugin-source-contentful',
+        name: '@universal-data-layer/plugin-source-contentful',
         options: {
           // These can be any values - MSW intercepts all Contentful API calls
           spaceId: process.env['CONTENTFUL_SPACE_ID'] || 'mock-space',
@@ -18,7 +18,7 @@ export const { config } = defineConfig({
     // Enable codegen with TypedDocumentNode query generation extension
     codegen: {
       output: './generated',
-      extensions: ['@udl/codegen-typed-queries'],
+      extensions: ['@universal-data-layer/codegen-typed-queries'],
     },
   },
 });
