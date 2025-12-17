@@ -20,6 +20,16 @@ import type {
 const DEFAULT_MAX_DEPTH = 5;
 
 /**
+ * Get priority value, defaulting to 0 if undefined.
+ */
+function getPriority(priority: number | undefined): number {
+  if (priority === undefined) {
+    return 0;
+  }
+  return priority;
+}
+
+/**
  * Central registry for reference resolvers.
  *
  * Plugins register their reference formats and the registry
@@ -261,7 +271,7 @@ export class ReferenceRegistry {
    */
   private rebuildSortedResolvers(): void {
     this.sortedResolvers = Array.from(this.resolvers.values()).sort(
-      (a, b) => (b.priority ?? 0) - (a.priority ?? 0)
+      (a, b) => getPriority(b.priority) - getPriority(a.priority)
     );
   }
 
@@ -271,6 +281,9 @@ export class ReferenceRegistry {
   private rebuildSortedEntityKeyConfigs(): void {
     this.sortedEntityKeyConfigs = Array.from(this.entityKeyConfigs.entries())
       .map(([pluginId, config]) => ({ pluginId, config }))
-      .sort((a, b) => (b.config.priority ?? 0) - (a.config.priority ?? 0));
+      .sort(
+        (a, b) =>
+          getPriority(b.config.priority) - getPriority(a.config.priority)
+      );
   }
 }
