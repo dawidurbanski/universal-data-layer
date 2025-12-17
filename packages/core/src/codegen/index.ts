@@ -38,11 +38,11 @@ export type {
   CodegenExtensionSpec,
 } from './types/index.js';
 
-export {
-  DEFAULT_CODEGEN_CONFIG,
-  resolveCodegenConfig,
-  loadExtensions,
-} from './types/index.js';
+// Config
+export { DEFAULT_CODEGEN_CONFIG, resolveCodegenConfig } from './config.js';
+
+// Extensions
+export { loadExtensions } from './extensions.js';
 
 // Registry
 export {

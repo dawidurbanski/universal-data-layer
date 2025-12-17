@@ -177,24 +177,6 @@ export interface CodegenConfig {
 }
 
 /**
- * Default configuration values
- */
-export const DEFAULT_CODEGEN_CONFIG: Required<
-  Omit<CodegenConfig, 'extensions'>
-> & {
-  extensions: CodegenExtensionSpec[];
-} = {
-  output: './generated',
-  guards: false,
-  helpers: false,
-  customScalars: {},
-  includeInternal: true,
-  includeJsDoc: true,
-  exportFormat: 'interface',
-  extensions: [],
-};
-
-/**
  * Resolved codegen config type with all required fields
  */
 export type ResolvedCodegenConfig = Required<
@@ -202,20 +184,3 @@ export type ResolvedCodegenConfig = Required<
 > & {
   extensions: CodegenExtensionSpec[];
 };
-
-/**
- * Merge user config with defaults
- */
-export function resolveCodegenConfig(
-  config?: CodegenConfig
-): ResolvedCodegenConfig {
-  return {
-    ...DEFAULT_CODEGEN_CONFIG,
-    ...config,
-    customScalars: {
-      ...DEFAULT_CODEGEN_CONFIG.customScalars,
-      ...config?.customScalars,
-    },
-    extensions: config?.extensions ?? [],
-  };
-}

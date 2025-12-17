@@ -12,13 +12,9 @@ export type {
   ResolvedCodegenConfig,
 } from './schema.js';
 
-export { DEFAULT_CODEGEN_CONFIG, resolveCodegenConfig } from './schema.js';
-
 export type {
   CodegenExtension,
   CodegenExtensionContext,
   CodegenExtensionResult,
   CodegenExtensionSpec,
 } from './extension.js';
-
-export { loadExtensions } from './extension.js';
