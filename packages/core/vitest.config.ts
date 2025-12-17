@@ -24,7 +24,13 @@ export default defineConfig({
         'src/server.ts',
         'src/start-server.ts',
         'src/handlers/**',
-        'src/index.ts',
+        // Barrel export files - no logic to test
+        '**/index.ts',
+        // Watch mode is excluded - contains untestable patterns
+        // (infinite promises, signal handlers, file watchers)
+        'src/codegen/watch.ts',
+        // Mock files used for testing
+        '**/mocks/**',
       ],
       thresholds: {
         branches: 100,
