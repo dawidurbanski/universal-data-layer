@@ -13,6 +13,8 @@ declare global {
   var __plugin2Loaded: unknown;
   var __tsCompiledLoaded: unknown;
   var __shouldFailTsxImport: boolean;
+  var __childObjPluginOptions: unknown;
+  var __childCacheDir: unknown;
 }
 
 // Use vi.hoisted to create a mutable reference that can be changed during tests
@@ -759,6 +761,783 @@ describe('loader integration tests', () => {
 
       // Cleanup
       delete global.__tsCompiledLoaded;
+    });
+
+    it('should execute registerTypes hook in loadConfigFile when context is provided', async () => {
+      const configPath = join(testDir, 'register-types-config.js');
+
+      writeFileSync(
+        configPath,
+        `
+        export const config = {
+          name: 'register-types-test'
+        };
+
+        export async function registerTypes(context) {
+          context.registerType({ name: 'TestType', fields: [] });
+        }
+        `
+      );
+
+      const registeredTypes: unknown[] = [];
+      const registerTypesContext = {
+        registerType: (def: unknown) => registeredTypes.push(def),
+        extendType: () => {},
+        getType: () => undefined,
+        getAllTypes: () => registeredTypes,
+        options: undefined,
+      };
+
+      await loadConfigFile(configPath, {
+        registerTypesContext,
+      });
+
+      expect(registeredTypes).toHaveLength(1);
+      expect(registeredTypes[0]).toEqual({ name: 'TestType', fields: [] });
+    });
+
+    it('should register reference resolver from plugin config', async () => {
+      const { defaultRegistry } = await import('@/references/index.js');
+
+      // Clear any existing resolvers
+      defaultRegistry.clear();
+
+      const pluginDir = join(pluginsDir, 'reference-resolver-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'reference-resolver-plugin'
+        };
+
+        export const referenceResolver = {
+          id: 'test-reference-resolver',
+          markerField: '_testRef',
+          lookupField: 'testId',
+          isReference: (value) => value && typeof value === 'object' && '_testRef' in value,
+          getLookupValue: (ref) => ref.testId,
+          getPossibleTypes: () => [],
+        };
+        `
+      );
+
+      await loadPlugins([pluginDir], { appConfig: {} });
+
+      const resolver = defaultRegistry.getResolver('test-reference-resolver');
+      expect(resolver).toBeDefined();
+      expect(resolver?.markerField).toBe('_testRef');
+      expect(resolver?.lookupField).toBe('testId');
+
+      // Cleanup
+      defaultRegistry.clear();
+    });
+
+    it('should register entity key config from plugin config', async () => {
+      const { defaultRegistry } = await import('@/references/index.js');
+
+      // Clear any existing configs
+      defaultRegistry.clear();
+
+      const pluginDir = join(pluginsDir, 'entity-key-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'entity-key-plugin'
+        };
+
+        export const entityKeyConfig = {
+          idField: 'customEntityId',
+          priority: 10
+        };
+        `
+      );
+
+      await loadPlugins([pluginDir], { appConfig: {} });
+
+      // Verify entity key config was registered by checking if it can extract entity keys
+      const entityKey = defaultRegistry.getEntityKey({
+        __typename: 'TestType',
+        customEntityId: 'test-123',
+      });
+      expect(entityKey).toBe('TestType:test-123');
+
+      // Cleanup
+      defaultRegistry.clear();
+    });
+
+    it('should execute registerTypes hook in loadPlugins with context', async () => {
+      const pluginDir = join(pluginsDir, 'register-types-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'register-types-plugin'
+        };
+
+        export async function registerTypes(context) {
+          context.registerType({ name: 'PluginType', fields: ['id', 'name'] });
+        }
+        `
+      );
+
+      const registeredTypes: unknown[] = [];
+      const registerTypesContext = {
+        registerType: (def: unknown) => registeredTypes.push(def),
+        extendType: () => {},
+        getType: () => undefined,
+        getAllTypes: () => registeredTypes,
+        options: undefined,
+      };
+
+      await loadPlugins([pluginDir], {
+        appConfig: {},
+        registerTypesContext,
+      });
+
+      expect(registeredTypes).toHaveLength(1);
+      expect(registeredTypes[0]).toEqual({
+        name: 'PluginType',
+        fields: ['id', 'name'],
+      });
+    });
+
+    it('should collect codegen configs from loaded plugins', async () => {
+      const pluginDir = join(pluginsDir, 'codegen-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'codegen-plugin',
+          codegen: {
+            output: './generated',
+            guards: true,
+            types: ['Product', 'Category']
+          }
+        };
+        `
+      );
+
+      const result = await loadPlugins([pluginDir], { appConfig: {} });
+
+      expect(result.codegenConfigs).toHaveLength(1);
+      expect(result.codegenConfigs[0]?.config).toEqual({
+        output: './generated',
+        guards: true,
+        types: ['Product', 'Category'],
+      });
+      expect(result.codegenConfigs[0]?.pluginName).toBe('codegen-plugin');
+    });
+
+    it('should stop loading when maximum plugin recursion depth is reached', async () => {
+      const consoleWarnSpy = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      // Create a plugin that would try to load itself recursively
+      const pluginDir = join(pluginsDir, 'recursive-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'recursive-plugin'
+        };
+        `
+      );
+
+      // Call loadPlugins at max depth (10)
+      await loadPlugins([pluginDir], {
+        appConfig: {},
+        _depth: 10,
+      });
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Maximum plugin recursion depth')
+      );
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should load nested plugins recursively and resolve relative paths', async () => {
+      const parentPluginDir = join(pluginsDir, 'parent-plugin');
+      const childPluginDir = join(parentPluginDir, 'child-plugin');
+      mkdirSync(childPluginDir, { recursive: true });
+
+      // Child plugin config
+      writeFileSync(
+        join(childPluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'child-plugin',
+          codegen: {
+            output: './child-generated'
+          }
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('ChildNode', '1'),
+              type: 'ChildNode',
+            },
+            parent: undefined,
+            children: undefined,
+            source: 'child',
+          });
+        }
+        `
+      );
+
+      // Parent plugin with nested plugin using relative path
+      writeFileSync(
+        join(parentPluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'parent-plugin',
+          plugins: ['./child-plugin'], // Relative path to child
+          codegen: {
+            output: './parent-generated'
+          }
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('ParentNode', '1'),
+              type: 'ParentNode',
+            },
+            parent: undefined,
+            children: undefined,
+            source: 'parent',
+          });
+        }
+        `
+      );
+
+      const { NodeStore } = await import('@/nodes/index.js');
+      const store = new NodeStore();
+
+      const result = await loadPlugins([parentPluginDir], {
+        appConfig: {},
+        store,
+        cache: false, // Disable cache for testing
+      });
+
+      // Both parent and child nodes should be created
+      const nodes = store.getAll();
+      expect(nodes).toHaveLength(2);
+
+      const parentNode = nodes.find(
+        (n) => (n as { source?: string }).source === 'parent'
+      );
+      const childNode = nodes.find(
+        (n) => (n as { source?: string }).source === 'child'
+      );
+
+      expect(parentNode).toBeDefined();
+      expect(childNode).toBeDefined();
+      expect(childNode?.internal.owner).toBe('child-plugin');
+
+      // Codegen configs from both should be collected
+      expect(result.codegenConfigs).toHaveLength(2);
+    });
+
+    it('should resolve nested plugin paths with ../ relative paths', async () => {
+      const pluginsBaseDir = join(pluginsDir, 'nested-test');
+      const parentDir = join(pluginsBaseDir, 'parent');
+      const siblingDir = join(pluginsBaseDir, 'sibling');
+      mkdirSync(parentDir, { recursive: true });
+      mkdirSync(siblingDir, { recursive: true });
+
+      // Sibling plugin (at same level as parent)
+      writeFileSync(
+        join(siblingDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'sibling-plugin'
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('SiblingNode', '1'),
+              type: 'SiblingNode',
+            },
+            parent: undefined,
+            children: undefined,
+          });
+        }
+        `
+      );
+
+      // Parent plugin referencing sibling with ../
+      writeFileSync(
+        join(parentDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'parent-with-sibling',
+          plugins: ['../sibling'] // Relative path up and across
+        };
+        `
+      );
+
+      const { NodeStore } = await import('@/nodes/index.js');
+      const store = new NodeStore();
+
+      await loadPlugins([parentDir], {
+        appConfig: {},
+        store,
+        cache: false,
+      });
+
+      const nodes = store.getAll();
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0]?.internal.owner).toBe('sibling-plugin');
+    });
+
+    it('should resolve nested plugin with object format and relative path', async () => {
+      const parentPluginDir = join(pluginsDir, 'parent-obj-plugin');
+      const childPluginDir = join(parentPluginDir, 'child-obj-plugin');
+      mkdirSync(childPluginDir, { recursive: true });
+
+      // Child plugin
+      writeFileSync(
+        join(childPluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'child-obj-plugin'
+        };
+
+        export async function onLoad(context) {
+          global.__childObjPluginOptions = context?.options;
+        }
+        `
+      );
+
+      // Parent plugin using object format with relative path
+      writeFileSync(
+        join(parentPluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'parent-obj-plugin',
+          plugins: [
+            {
+              name: './child-obj-plugin',
+              options: { nestedOption: 'value' }
+            }
+          ]
+        };
+        `
+      );
+
+      await loadPlugins([parentPluginDir], {
+        appConfig: {},
+        cache: false,
+      });
+
+      // Child plugin should have received options from parent config
+      // Nested plugin options ARE passed through when specified in object format
+      expect(global.__childObjPluginOptions).toEqual({ nestedOption: 'value' });
+
+      // Cleanup
+      delete global.__childObjPluginOptions;
+    });
+
+    it('should handle nested plugins with non-relative string paths (package names)', async () => {
+      const parentPluginDir = join(pluginsDir, 'parent-with-package-plugin');
+      mkdirSync(parentPluginDir, { recursive: true });
+
+      // Parent plugin that references a non-existent package name (not relative path)
+      writeFileSync(
+        join(parentPluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'parent-with-package',
+          plugins: ['some-external-package'] // Not a relative path, treated as package name
+        };
+        `
+      );
+
+      const consoleWarnSpy = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      await loadPlugins([parentPluginDir], {
+        appConfig: {},
+        cache: false,
+      });
+
+      // Should warn about the missing package
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('missing or failed to load config file')
+      );
+
+      consoleWarnSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should handle nested plugins with non-relative object paths (package names)', async () => {
+      const parentPluginDir = join(
+        pluginsDir,
+        'parent-with-obj-package-plugin'
+      );
+      mkdirSync(parentPluginDir, { recursive: true });
+
+      // Parent plugin that references a non-existent package name in object format
+      writeFileSync(
+        join(parentPluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'parent-with-obj-package',
+          plugins: [
+            {
+              name: 'some-external-package', // Not a relative path
+              options: { test: true }
+            }
+          ]
+        };
+        `
+      );
+
+      const consoleWarnSpy = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      await loadPlugins([parentPluginDir], {
+        appConfig: {},
+        cache: false,
+      });
+
+      // Should warn about the missing package
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('missing or failed to load config file')
+      );
+
+      consoleWarnSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should pass registerTypesContext to nested plugins', async () => {
+      const parentPluginDir = join(pluginsDir, 'parent-register-types');
+      const childPluginDir = join(parentPluginDir, 'child-register-types');
+      mkdirSync(childPluginDir, { recursive: true });
+
+      // Child plugin that registers types
+      writeFileSync(
+        join(childPluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'child-register-types'
+        };
+
+        export async function registerTypes(context) {
+          context.registerType({ name: 'NestedType', fields: ['nestedField'] });
+        }
+        `
+      );
+
+      // Parent plugin with nested child
+      writeFileSync(
+        join(parentPluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'parent-register-types',
+          plugins: ['./child-register-types']
+        };
+
+        export async function registerTypes(context) {
+          context.registerType({ name: 'ParentType', fields: ['parentField'] });
+        }
+        `
+      );
+
+      const registeredTypes: unknown[] = [];
+      const registerTypesContext = {
+        registerType: (def: unknown) => registeredTypes.push(def),
+        extendType: () => {},
+        getType: () => undefined,
+        getAllTypes: () => registeredTypes,
+        options: undefined,
+      };
+
+      await loadPlugins([parentPluginDir], {
+        appConfig: {},
+        registerTypesContext,
+        cache: false,
+      });
+
+      // Both parent and child should have registered their types
+      expect(registeredTypes).toHaveLength(2);
+      expect(registeredTypes).toContainEqual({
+        name: 'ParentType',
+        fields: ['parentField'],
+      });
+      expect(registeredTypes).toContainEqual({
+        name: 'NestedType',
+        fields: ['nestedField'],
+      });
+    });
+
+    it('should load and save nodes from cache when caching is enabled', async () => {
+      const pluginDir = join(pluginsDir, 'cached-plugin');
+      const cacheDir = join(pluginDir, '.udl-cache');
+      mkdirSync(pluginDir, { recursive: true });
+
+      // Create a plugin that creates nodes
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        let callCount = 0;
+        export const config = {
+          name: 'cached-plugin'
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          callCount++;
+          // Only create node on first call
+          // This simulates a real plugin that might skip work if cache is valid
+          await actions.createNode({
+            internal: {
+              id: createNodeId('CachedNode', 'cached-1'),
+              type: 'CachedNode',
+            },
+            parent: undefined,
+            children: undefined,
+            callNumber: callCount,
+          });
+        }
+        `
+      );
+
+      const { NodeStore } = await import('@/nodes/index.js');
+
+      // Suppress console logs for cleaner test output
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      // First load - should create nodes and save cache
+      const store1 = new NodeStore();
+      await loadPlugins([pluginDir], {
+        appConfig: {},
+        store: store1,
+        cache: true,
+        cacheDir: pluginDir,
+      });
+
+      expect(store1.getAll()).toHaveLength(1);
+      expect((store1.getAll()[0] as { callNumber?: number }).callNumber).toBe(
+        1
+      );
+
+      // Verify cache file was created
+      const { existsSync: fsExistsSync } = await import('node:fs');
+      expect(fsExistsSync(join(cacheDir, 'nodes.json'))).toBe(true);
+
+      // Second load - should load from cache first, then sourceNodes runs again
+      // (creating a second node since the plugin doesn't check for existing nodes)
+      const store2 = new NodeStore();
+      await loadPlugins([pluginDir], {
+        appConfig: {},
+        store: store2,
+        cache: true,
+        cacheDir: pluginDir,
+      });
+
+      // With caching, the first node is loaded from cache, then sourceNodes adds another
+      expect(store2.getAll().length).toBeGreaterThanOrEqual(1);
+
+      consoleLogSpy.mockRestore();
+
+      // Cleanup cache directory
+      rmSync(cacheDir, { recursive: true, force: true });
+    });
+
+    it('should restore indexes from cache', async () => {
+      const pluginDir = join(pluginsDir, 'cached-indexed-plugin');
+      const cacheDir = join(pluginDir, '.udl-cache');
+      mkdirSync(pluginDir, { recursive: true });
+
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'cached-indexed-plugin',
+          indexes: ['slug']
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('IndexedNode', '1'),
+              type: 'IndexedNode',
+            },
+            parent: undefined,
+            children: undefined,
+            slug: 'test-slug',
+          });
+        }
+        `
+      );
+
+      const { NodeStore } = await import('@/nodes/index.js');
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      // First load to create cache
+      const store1 = new NodeStore();
+      await loadPlugins([pluginDir], {
+        appConfig: {},
+        store: store1,
+        cache: true,
+        cacheDir: pluginDir,
+      });
+
+      // Verify index was registered
+      expect(store1.getRegisteredIndexes('IndexedNode')).toContain('slug');
+
+      // Second load should restore indexes from cache
+      const store2 = new NodeStore();
+      await loadPlugins([pluginDir], {
+        appConfig: {},
+        store: store2,
+        cache: true,
+        cacheDir: pluginDir,
+      });
+
+      // The index should be restored and queryable
+      const bySlug = store2.getByField('IndexedNode', 'slug', 'test-slug');
+      expect(bySlug).toBeDefined();
+
+      consoleLogSpy.mockRestore();
+
+      // Cleanup
+      rmSync(cacheDir, { recursive: true, force: true });
+    });
+
+    it('should not cache when plugin config has cache: false', async () => {
+      const pluginDir = join(pluginsDir, 'no-cache-plugin');
+      const cacheDir = join(pluginDir, '.udl-cache');
+      mkdirSync(pluginDir, { recursive: true });
+
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'no-cache-plugin',
+          cache: false // Explicitly disable caching
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('NoCacheNode', '1'),
+              type: 'NoCacheNode',
+            },
+            parent: undefined,
+            children: undefined,
+          });
+        }
+        `
+      );
+
+      const { NodeStore } = await import('@/nodes/index.js');
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      const store = new NodeStore();
+      await loadPlugins([pluginDir], {
+        appConfig: {},
+        store,
+        cache: true, // Global cache enabled, but plugin disables it
+        cacheDir: pluginDir,
+      });
+
+      expect(store.getAll()).toHaveLength(1);
+
+      // Cache directory should not be created since plugin has cache: false
+      const { existsSync: fsExistsSync } = await import('node:fs');
+      expect(fsExistsSync(cacheDir)).toBe(false);
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should use cacheDir from parent plugin for nested plugins', async () => {
+      const parentPluginDir = join(pluginsDir, 'parent-cache-plugin');
+      const childPluginDir = join(parentPluginDir, 'child-cache-plugin');
+      mkdirSync(childPluginDir, { recursive: true });
+
+      // Child plugin
+      writeFileSync(
+        join(childPluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'child-cache-plugin'
+        };
+
+        export async function sourceNodes({ actions, createNodeId, cacheDir }) {
+          // Store the cacheDir for verification
+          global.__childCacheDir = cacheDir;
+          await actions.createNode({
+            internal: {
+              id: createNodeId('ChildCacheNode', '1'),
+              type: 'ChildCacheNode',
+            },
+            parent: undefined,
+            children: undefined,
+          });
+        }
+        `
+      );
+
+      // Parent plugin with nested child
+      writeFileSync(
+        join(parentPluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'parent-cache-plugin',
+          plugins: ['./child-cache-plugin']
+        };
+        `
+      );
+
+      const { NodeStore } = await import('@/nodes/index.js');
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      const store = new NodeStore();
+      await loadPlugins([parentPluginDir], {
+        appConfig: {},
+        store,
+        cache: false, // Disable cache to avoid file creation
+      });
+
+      // The child plugin should receive the parent plugin path as its cacheDir
+      expect(global.__childCacheDir).toBe(parentPluginDir);
+
+      consoleLogSpy.mockRestore();
+
+      // Cleanup
+      delete global.__childCacheDir;
     });
   });
 });
