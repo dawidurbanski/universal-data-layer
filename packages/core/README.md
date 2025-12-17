@@ -1,6 +1,6 @@
 # Universal Data Layer - Core
 
-The core package of the Universal Data Layer project - a modular, high-performance intermediate data layer that acts as a unified interface between applications and multiple data sources.
+Core package providing GraphQL server, node store, and type generation.
 
 ## Installation
 
@@ -10,116 +10,75 @@ npm install universal-data-layer
 
 ## Quick Start
 
-### Using npx (no installation required)
+### CLI
 
 ```bash
-# Start server with default settings
+# Start server with defaults
 npx universal-data-layer
 
-# Start server on custom port
+# Custom port
 npx universal-data-layer --port 8080
 
-# Show help
-npx universal-data-layer --help
+# With config
+npx universal-data-layer --config ./udl.config.ts
 ```
 
-### After installation
+### Programmatic
 
-```bash
-# If installed globally
-universal-data-layer
+```typescript
+import { startServer } from 'universal-data-layer';
 
-# If installed locally in a project
-npx universal-data-layer
+await startServer({ port: 4000 });
 ```
-
-### Programmatic usage
-
-```javascript
-import server from 'universal-data-layer';
-
-// Start the server
-server.listen(4000);
-console.log('Server running on port 4000');
-```
-
-## CLI Options
-
-- `-p, --port <port>` - Port to run the server on (default: 4000)
-- `-h, --help` - Show help message
 
 ## Server Endpoints
 
-Once running, the server provides:
+- **GraphQL API**: `http://localhost:4000/graphql`
+- **GraphiQL IDE**: `http://localhost:4000/graphiql`
 
-- **GraphQL API**: `http://localhost:<port>/graphql`
-- **GraphiQL Interface**: `http://localhost:<port>/graphiql`
+## CLI Options
 
-## GraphQL Schema
+| Option                | Description      | Default         |
+| --------------------- | ---------------- | --------------- |
+| `-p, --port <port>`   | Server port      | `4000`          |
+| `-c, --config <path>` | Config file path | `udl.config.ts` |
+| `-h, --help`          | Show help        | -               |
 
-The current schema provides:
+## Features
 
-```graphql
-type Query {
-  version: String
-}
+- **Node Store**: In-memory storage with O(1) indexed lookups
+- **GraphQL Schema**: Auto-generated from node types
+- **Type Generation**: TypeScript types + type guards from nodes
+- **Plugin System**: Extensible data source architecture
+- **Reference Resolution**: Cross-plugin reference handling
+- **Caching**: Pluggable cache storage (file-based default)
+
+## Configuration
+
+```typescript
+// udl.config.ts
+import { defineConfig } from 'universal-data-layer';
+
+export const { config } = defineConfig({
+  port: 4000,
+  plugins: ['@udl/plugin-source-contentful'],
+  codegen: {
+    output: './generated',
+    extensions: ['@udl/codegen-typed-queries'],
+  },
+});
 ```
 
-Example query:
+## Querying Data
 
-```bash
-curl http://localhost:4000/graphql \
-  -H "Content-Type: application/json" \
-  -d '{"query":"{ version }"}'
+```typescript
+import { udl } from 'universal-data-layer/client';
+import { GetAllProducts } from './generated/queries';
+
+const result = await udl.query(GetAllProducts, {
+  resolveRefs: true,
+});
 ```
-
-## Development
-
-### Building from source
-
-```bash
-npm run build
-```
-
-### Development mode with auto-reload
-
-```bash
-npm run dev
-```
-
-### Starting the compiled server
-
-```bash
-npm start
-```
-
-## Architecture
-
-The core package provides:
-
-- GraphQL server with HTTP interface
-- GraphiQL development interface
-- Plugin-ready architecture for data sources
-- Type-safe TypeScript implementation
-
-## Environment Variables
-
-- `PORT` - Server port (used when running directly via `npm start`)
-
-## Project Status
-
-This is the core foundation of the Universal Data Layer project. Current features:
-
-- Basic GraphQL server setup
-- CLI interface for easy deployment
-- GraphiQL for development
-
-Upcoming features:
-
-- Plugin system for data sources
-- Caching layer
-- Data transformation pipeline
-- Framework-specific adapters
 
 ## License
 
