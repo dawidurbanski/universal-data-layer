@@ -48,13 +48,33 @@ export interface InferFromResponseOptions {
 }
 
 /**
- * Extract data from a response using a dot-notation path
+ * Build a ContentTypeDefinition with optional metadata fields
  */
-function extractDataFromPath(data: unknown, path: string): unknown {
-  if (!path) {
-    return data;
+function buildContentType(
+  name: string,
+  fields: FieldDefinition[],
+  options: Pick<InferFromResponseOptions, 'description' | 'indexes' | 'owner'>
+): ContentTypeDefinition {
+  const result: ContentTypeDefinition = { name, fields };
+
+  if (options.description) {
+    result.description = options.description;
+  }
+  if (options.indexes && options.indexes.length > 0) {
+    result.indexes = options.indexes;
+  }
+  if (options.owner) {
+    result.owner = options.owner;
   }
 
+  return result;
+}
+
+/**
+ * Extract data from a response using a dot-notation path.
+ * Note: This function expects a non-empty path string.
+ */
+function extractDataFromPath(data: unknown, path: string): unknown {
   const parts = path.split('.');
   let current: unknown = data;
 
@@ -104,24 +124,17 @@ export function inferSchemaFromResponse(
   typeName: string,
   options: InferFromResponseOptions = {}
 ): ContentTypeDefinition {
-  const { description, indexes, owner, dataPath, isArray } = options;
+  const { dataPath, isArray } = options;
 
   // Extract data from path if specified
-  let data = dataPath ? extractDataFromPath(response, dataPath) : response;
+  const data = dataPath ? extractDataFromPath(response, dataPath) : response;
 
   // Handle array responses - infer from all items
   const shouldTreatAsArray = isArray ?? Array.isArray(data);
 
   if (shouldTreatAsArray && Array.isArray(data)) {
     if (data.length === 0) {
-      // Empty array - return empty schema
-      return {
-        name: typeName,
-        fields: [],
-        ...(description && { description }),
-        ...(indexes && indexes.length > 0 && { indexes }),
-        ...(owner && { owner }),
-      };
+      return buildContentType(typeName, [], options);
     }
 
     // Infer from all items and merge
@@ -137,39 +150,20 @@ export function inferSchemaFromResponse(
     // Merge all field arrays
     let mergedFields = allFields[0] ?? [];
     for (let i = 1; i < allFields.length; i++) {
-      mergedFields = mergeFieldArrays(mergedFields, allFields[i] ?? []);
+      mergedFields = mergeFieldArrays(mergedFields, allFields[i]!);
     }
 
-    return {
-      name: typeName,
-      fields: mergedFields,
-      ...(description && { description }),
-      ...(indexes && indexes.length > 0 && { indexes }),
-      ...(owner && { owner }),
-    };
+    return buildContentType(typeName, mergedFields, options);
   }
 
   // Handle single object response
   if (data !== null && typeof data === 'object' && !Array.isArray(data)) {
     const fields = inferFieldsFromObject(data as Record<string, unknown>);
-
-    return {
-      name: typeName,
-      fields,
-      ...(description && { description }),
-      ...(indexes && indexes.length > 0 && { indexes }),
-      ...(owner && { owner }),
-    };
+    return buildContentType(typeName, fields, options);
   }
 
   // Unable to infer from this response type
-  return {
-    name: typeName,
-    fields: [],
-    ...(description && { description }),
-    ...(indexes && indexes.length > 0 && { indexes }),
-    ...(owner && { owner }),
-  };
+  return buildContentType(typeName, [], options);
 }
 
 /**
@@ -216,14 +210,7 @@ export function mergeResponseInferences(
   options: InferFromResponseOptions = {}
 ): ContentTypeDefinition {
   if (responses.length === 0) {
-    return {
-      name: typeName,
-      fields: [],
-      ...(options.description && { description: options.description }),
-      ...(options.indexes &&
-        options.indexes.length > 0 && { indexes: options.indexes }),
-      ...(options.owner && { owner: options.owner }),
-    };
+    return buildContentType(typeName, [], options);
   }
 
   // Infer from first response
@@ -267,13 +254,6 @@ export function inferSchemaFromJsonString(
     return inferSchemaFromResponse(parsed, typeName, options);
   } catch {
     // Return empty schema on parse error
-    return {
-      name: typeName,
-      fields: [],
-      ...(options.description && { description: options.description }),
-      ...(options.indexes &&
-        options.indexes.length > 0 && { indexes: options.indexes }),
-      ...(options.owner && { owner: options.owner }),
-    };
+    return buildContentType(typeName, [], options);
   }
 }

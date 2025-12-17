@@ -380,7 +380,7 @@ export class FileWriter {
     let braceCount = 0;
 
     // Patterns to match start of type-specific code
-    const startPatterns: Record<string, RegExp[]> = {
+    const startPatterns: Record<'types' | 'guards', RegExp[]> = {
       types: [
         new RegExp(`^export (interface|type) ${typeName}\\b`),
         new RegExp(`^/\\*\\*.*${typeName}.*\\*/$`),
@@ -391,10 +391,10 @@ export class FileWriter {
       ],
     };
 
-    const patterns = startPatterns[category] || [];
+    const patterns = startPatterns[category];
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i] ?? '';
+      const line = lines[i]!;
       const trimmedLine = line.trim();
 
       // Check if this line starts a relevant block
@@ -403,9 +403,8 @@ export class FileWriter {
         if (trimmedLine.startsWith('/**')) {
           // Look ahead to see if the next export matches
           for (let j = i + 1; j < lines.length; j++) {
-            const nextLine = (lines[j] ?? '').trim();
+            const nextLine = lines[j]!.trim();
             if (nextLine === '' || nextLine.startsWith('*')) continue;
-            if (nextLine.startsWith('*/')) continue;
 
             // Check if the export matches
             for (const pattern of patterns) {

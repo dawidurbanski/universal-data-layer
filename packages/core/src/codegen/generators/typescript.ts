@@ -78,12 +78,17 @@ function fieldTypeToTypeScript(
       return 'boolean';
     case 'null':
       return 'null';
+    // The following cases are handled by getTypeString before reaching this function,
+    // but are included for completeness and type safety
+    /* c8 ignore next 2 */
     case 'array':
-      return 'unknown[]'; // Will be overridden with specific type
+      return 'unknown[]';
+    /* c8 ignore next 2 */
     case 'object':
-      return 'Record<string, unknown>'; // Will be overridden with inline type
+      return 'Record<string, unknown>';
+    /* c8 ignore next 2 */
     case 'reference':
-      return 'unknown'; // Will be overridden with specific type name
+      return 'unknown';
     case 'unknown':
     default:
       return 'unknown';
@@ -330,13 +335,17 @@ export class TypeScriptGenerator {
 
   /**
    * Generate import statements.
+   * Note: This method is only called when includeInternal is true (see generate method),
+   * so the else branch is unreachable but kept for safety.
    */
+  /* c8 ignore start */
   private generateImports(): string {
     if (this.options.includeInternal) {
       return "import type { NodeInternal } from 'universal-data-layer/client';";
     }
     return '';
   }
+  /* c8 ignore stop */
 }
 
 /**

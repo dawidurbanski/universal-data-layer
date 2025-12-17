@@ -129,15 +129,12 @@ export class TypeGuardGenerator {
     }
 
     // Generate guards for each type
-    for (let i = 0; i < schemas.length; i++) {
-      const schema = schemas[i];
-      if (!schema) continue;
-
+    schemas.forEach((schema, i) => {
       if (i > 0) {
         parts.push('');
       }
       parts.push(this.generateGuardsForType(schema));
-    }
+    });
 
     return parts.join('\n');
   }
