@@ -99,6 +99,44 @@ describe('ReferenceRegistry', () => {
       expect(resolvers[0]?.id).toBe('high-priority');
       expect(resolvers[1]?.id).toBe('low-priority');
     });
+
+    it('should treat missing priority as 0', () => {
+      // Create resolver without priority field using explicit object (not spread)
+      const noPriority: ReferenceResolverConfig = {
+        id: 'no-priority',
+        markerField: '_testRef',
+        lookupField: 'testId',
+        isReference: isTestReference,
+        getLookupValue: (ref) => (ref as TestReference).testId,
+        getPossibleTypes: (ref) => (ref as TestReference).possibleTypes ?? [],
+        // Note: priority is intentionally omitted
+      };
+      const zeroPriority: ReferenceResolverConfig = {
+        ...testResolverConfig,
+        id: 'zero-priority',
+        priority: 0,
+      };
+      const positivePriority: ReferenceResolverConfig = {
+        ...testResolverConfig,
+        id: 'positive-priority',
+        priority: 5,
+      };
+
+      registry.registerResolver(noPriority);
+      registry.registerResolver(zeroPriority);
+      registry.registerResolver(positivePriority);
+
+      const resolvers = registry.getResolvers();
+      expect(resolvers[0]?.id).toBe('positive-priority');
+      // no-priority and zero-priority should both be treated as priority 0
+      // Order between them is not guaranteed, just check they're both after positive
+      expect(
+        resolvers
+          .slice(1)
+          .map((r) => r.id)
+          .sort()
+      ).toEqual(['no-priority', 'zero-priority']);
+    });
   });
 
   describe('unregisterResolver', () => {
@@ -107,6 +145,19 @@ describe('ReferenceRegistry', () => {
       registry.unregisterResolver('test-plugin');
 
       expect(registry.getResolver('test-plugin')).toBeUndefined();
+    });
+  });
+
+  describe('setStore and getStore', () => {
+    it('should return null when no store is set', () => {
+      expect(registry.getStore()).toBeNull();
+    });
+
+    it('should return the store after setStore is called', () => {
+      const mockStore = createMockStore([]);
+      registry.setStore(mockStore);
+
+      expect(registry.getStore()).toBe(mockStore);
     });
   });
 
@@ -202,6 +253,25 @@ describe('ReferenceRegistry', () => {
     });
   });
 
+  describe('getLookupField', () => {
+    beforeEach(() => {
+      registry.registerResolver(testResolverConfig);
+    });
+
+    it('should return lookup field for valid reference', () => {
+      const ref: TestReference = { _testRef: true, testId: 'abc123' };
+      expect(registry.getLookupField(ref)).toBe('testId');
+    });
+
+    it('should return null for non-reference', () => {
+      expect(registry.getLookupField({ foo: 'bar' })).toBeNull();
+    });
+
+    it('should return null for null value', () => {
+      expect(registry.getLookupField(null)).toBeNull();
+    });
+  });
+
   describe('resolveReference', () => {
     const testNode = {
       internal: {
@@ -269,6 +339,30 @@ describe('ReferenceRegistry', () => {
       const ref: TestReference = { _testRef: true, testId: 'ref-id-1' };
       expect(noStoreRegistry.resolveReference(ref)).toBeNull();
     });
+
+    it('should fallback to searching all types when possibleTypes is empty', () => {
+      const ref: TestReference = {
+        _testRef: true,
+        testId: 'ref-id-1',
+        // No possibleTypes specified, so fallback to all types search
+      };
+
+      const resolved = registry.resolveReference(ref);
+      expect(resolved).not.toBeNull();
+      expect(resolved?.internal.id).toBe('node-1');
+    });
+
+    it('should fallback to all types when possibleTypes does not contain the correct type', () => {
+      const ref: TestReference = {
+        _testRef: true,
+        testId: 'ref-id-1',
+        possibleTypes: ['WrongType', 'AnotherWrongType'], // Neither matches TestType
+      };
+
+      const resolved = registry.resolveReference(ref);
+      expect(resolved).not.toBeNull();
+      expect(resolved?.internal.id).toBe('node-1');
+    });
   });
 
   describe('entity key config', () => {
@@ -330,6 +424,65 @@ describe('ReferenceRegistry', () => {
 
       // Should use testId (priority 10) over lowPriorityId (priority 1)
       expect(registry.getEntityKey(obj)).toBe('TestType:high-priority-value');
+    });
+
+    it('should treat undefined priority as 0', () => {
+      // Clear default beforeEach registration
+      registry.clear();
+
+      // Config without priority field (omit instead of undefined)
+      const undefinedPriorityConfig: EntityKeyConfig = {
+        idField: 'undefinedPriorityId',
+      };
+      const zeroPriorityConfig: EntityKeyConfig = {
+        idField: 'zeroPriorityId',
+        priority: 0,
+      };
+      const positivePriorityConfig: EntityKeyConfig = {
+        idField: 'positivePriorityId',
+        priority: 5,
+      };
+
+      registry.registerEntityKeyConfig(
+        'undefined-plugin',
+        undefinedPriorityConfig
+      );
+      registry.registerEntityKeyConfig('zero-plugin', zeroPriorityConfig);
+      registry.registerEntityKeyConfig(
+        'positive-plugin',
+        positivePriorityConfig
+      );
+
+      // Object with all three id fields
+      const obj = {
+        __typename: 'TestType',
+        undefinedPriorityId: 'undefined-value',
+        zeroPriorityId: 'zero-value',
+        positivePriorityId: 'positive-value',
+      };
+
+      // Should use positive priority (5) over undefined/zero (0)
+      expect(registry.getEntityKey(obj)).toBe('TestType:positive-value');
+    });
+  });
+
+  describe('unregisterEntityKeyConfig', () => {
+    it('should unregister an entity key config', () => {
+      const config: EntityKeyConfig = { idField: 'testId', priority: 10 };
+      registry.registerEntityKeyConfig('test-plugin', config);
+
+      // Verify it works before unregistering
+      const obj = { __typename: 'TestType', testId: 'abc123' };
+      expect(registry.getEntityKey(obj)).toBe('TestType:abc123');
+
+      // Unregister and verify it no longer works
+      registry.unregisterEntityKeyConfig('test-plugin');
+      expect(registry.getEntityKey(obj)).toBeNull();
+    });
+
+    it('should handle unregistering non-existent config', () => {
+      // Should not throw
+      registry.unregisterEntityKeyConfig('non-existent-plugin');
     });
   });
 

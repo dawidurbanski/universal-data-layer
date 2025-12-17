@@ -335,6 +335,65 @@ describe('query utilities', () => {
       const [url] = mockFetch.mock.calls[0]!;
       expect(url).toBe('http://custom.api/graphql');
     });
+
+    it('should return data as-is when rootField is not found in data', async () => {
+      // When the data doesn't contain the expected rootField key, it should return data as-is
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: { differentField: { name: 'Test' } },
+          }),
+      });
+
+      const [error, result] = await query(gql`
+        {
+          product {
+            name
+          }
+        }
+      `);
+
+      // rootField is 'product' but data has 'differentField', so data is returned as-is
+      expect(error).toBeNull();
+      expect(result).toEqual({ differentField: { name: 'Test' } });
+    });
+
+    it('should return [error, null] when fetch throws an Error', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('Network failure'));
+
+      const [error, data] = await query(gql`
+        {
+          product {
+            name
+          }
+        }
+      `);
+
+      expect(data).toBeNull();
+      expect(error).toEqual({
+        message: 'Network failure',
+        type: 'unknown',
+      });
+    });
+
+    it('should return [error, null] with "Unknown error" when fetch throws non-Error', async () => {
+      mockFetch.mockRejectedValueOnce('string error');
+
+      const [error, data] = await query(gql`
+        {
+          product {
+            name
+          }
+        }
+      `);
+
+      expect(data).toBeNull();
+      expect(error).toEqual({
+        message: 'Unknown error',
+        type: 'unknown',
+      });
+    });
   });
 
   describe('createQuery', () => {

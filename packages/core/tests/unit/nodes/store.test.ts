@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { NodeStore } from '@/nodes/store.js';
 import type { Node } from '@/nodes/types.js';
+import { s, z } from '@/schema-builder.js';
 
 describe('NodeStore', () => {
   let store: NodeStore;
@@ -748,6 +749,440 @@ describe('NodeStore', () => {
       expect(store.size()).toBe(10000);
       expect(insertTime).toBeLessThan(1000); // Should insert 10k nodes in < 1s
       expect(lookupTime).toBeLessThan(100); // Lookups should be very fast
+    });
+  });
+
+  describe('type schema management', () => {
+    describe('setTypeSchema', () => {
+      it('should store InferSchema with overrides', () => {
+        const schema = s.infer().override({
+          status: s.enum(['active', 'inactive']),
+        });
+
+        store.setTypeSchema('Product', schema);
+
+        const retrieved = store.getTypeSchema('Product');
+        expect(retrieved).toBeDefined();
+        expect(retrieved?.overrides).toBeDefined();
+        expect(retrieved?.overrides?.['status']).toBeDefined();
+        expect(retrieved?.fullSchema).toBeUndefined();
+      });
+
+      it('should not store InferSchema without overrides', () => {
+        const schema = s.infer(); // No overrides
+
+        store.setTypeSchema('Product', schema);
+
+        const retrieved = store.getTypeSchema('Product');
+        expect(retrieved).toBeUndefined();
+      });
+
+      it('should store ZodObject as fullSchema', () => {
+        const schema = z.object({
+          name: z.string(),
+          price: z.number(),
+        });
+
+        store.setTypeSchema('Product', schema);
+
+        const retrieved = store.getTypeSchema('Product');
+        expect(retrieved).toBeDefined();
+        expect(retrieved?.fullSchema).toBeDefined();
+        expect(retrieved?.overrides).toBeUndefined();
+      });
+
+      it('should ignore subsequent setTypeSchema calls (first wins)', () => {
+        const schema1 = s.infer().override({
+          status: s.enum(['active', 'inactive']),
+        });
+        const schema2 = s.infer().override({
+          status: s.enum(['pending', 'completed']),
+        });
+
+        store.setTypeSchema('Product', schema1);
+        store.setTypeSchema('Product', schema2);
+
+        const retrieved = store.getTypeSchema('Product');
+        expect(retrieved).toBeDefined();
+        // First schema should win - has 'active'/'inactive' enum
+        expect(retrieved?.overrides).toBeDefined();
+      });
+
+      it('should handle null schema gracefully', () => {
+        // @ts-expect-error - testing edge case with null
+        store.setTypeSchema('Product', null);
+
+        const retrieved = store.getTypeSchema('Product');
+        expect(retrieved).toBeUndefined();
+      });
+
+      it('should handle undefined schema gracefully', () => {
+        // @ts-expect-error - testing edge case with undefined
+        store.setTypeSchema('Product', undefined);
+
+        const retrieved = store.getTypeSchema('Product');
+        expect(retrieved).toBeUndefined();
+      });
+
+      it('should handle non-schema object gracefully', () => {
+        // @ts-expect-error - testing edge case with non-schema object
+        store.setTypeSchema('Product', { notASchema: true });
+
+        const retrieved = store.getTypeSchema('Product');
+        expect(retrieved).toBeUndefined();
+      });
+    });
+
+    describe('getTypeSchema', () => {
+      it('should return undefined for non-existent type', () => {
+        expect(store.getTypeSchema('NonExistent')).toBeUndefined();
+      });
+
+      it('should return stored schema info', () => {
+        const schema = z.object({ name: z.string() });
+        store.setTypeSchema('Product', schema);
+
+        const retrieved = store.getTypeSchema('Product');
+        expect(retrieved).toBeDefined();
+        expect(retrieved?.fullSchema).toBe(schema);
+      });
+    });
+
+    describe('hasTypeSchema', () => {
+      it('should return false for non-existent type', () => {
+        expect(store.hasTypeSchema('NonExistent')).toBe(false);
+      });
+
+      it('should return true for type with InferSchema', () => {
+        store.setTypeSchema(
+          'Product',
+          s.infer().override({ status: s.enum(['active', 'inactive']) })
+        );
+        expect(store.hasTypeSchema('Product')).toBe(true);
+      });
+
+      it('should return true for type with ZodObject', () => {
+        store.setTypeSchema('Product', z.object({ name: z.string() }));
+        expect(store.hasTypeSchema('Product')).toBe(true);
+      });
+    });
+
+    describe('clear should reset type schemas', () => {
+      it('should clear type schemas on store.clear()', () => {
+        store.setTypeSchema(
+          'Product',
+          s.infer().override({ status: s.enum(['active', 'inactive']) })
+        );
+        expect(store.hasTypeSchema('Product')).toBe(true);
+
+        store.clear();
+
+        expect(store.hasTypeSchema('Product')).toBe(false);
+        expect(store.getTypeSchema('Product')).toBeUndefined();
+      });
+    });
+  });
+
+  describe('serialization', () => {
+    describe('toSerializable', () => {
+      it('should export empty store correctly', () => {
+        const data = store.toSerializable();
+
+        expect(data.nodes).toEqual([]);
+        expect(data.indexes).toEqual({});
+      });
+
+      it('should export nodes and indexes', () => {
+        const node1: Node = {
+          internal: {
+            id: 'product-1',
+            type: 'Product',
+            contentDigest: 'abc',
+            owner: 'test',
+            createdAt: Date.now(),
+            modifiedAt: Date.now(),
+          },
+          slug: 'test-product',
+          sku: 'SKU-001',
+        } as Node;
+
+        const node2: Node = {
+          internal: {
+            id: 'post-1',
+            type: 'BlogPost',
+            contentDigest: 'def',
+            owner: 'test',
+            createdAt: Date.now(),
+            modifiedAt: Date.now(),
+          },
+          slug: 'test-post',
+        } as Node;
+
+        store.set(node1);
+        store.set(node2);
+        store.registerIndex('Product', 'slug');
+        store.registerIndex('Product', 'sku');
+        store.registerIndex('BlogPost', 'slug');
+
+        const data = store.toSerializable();
+
+        expect(data.nodes).toHaveLength(2);
+        expect(data.nodes).toContainEqual(node1);
+        expect(data.nodes).toContainEqual(node2);
+        expect(data.indexes['Product']).toContain('slug');
+        expect(data.indexes['Product']).toContain('sku');
+        expect(data.indexes['BlogPost']).toContain('slug');
+      });
+    });
+
+    describe('fromSerializable', () => {
+      it('should import empty data correctly', () => {
+        // Add some data first
+        const node: Node = {
+          internal: {
+            id: 'old-node',
+            type: 'OldType',
+            contentDigest: 'old',
+            owner: 'test',
+            createdAt: Date.now(),
+            modifiedAt: Date.now(),
+          },
+        };
+        store.set(node);
+        store.registerIndex('OldType', 'field');
+
+        // Import empty data
+        store.fromSerializable({ nodes: [], indexes: {} });
+
+        expect(store.size()).toBe(0);
+        expect(store.getAll()).toEqual([]);
+        expect(store.getRegisteredIndexes('OldType')).toEqual([]);
+      });
+
+      it('should import nodes and indexes', () => {
+        const node1: Node = {
+          internal: {
+            id: 'product-1',
+            type: 'Product',
+            contentDigest: 'abc',
+            owner: 'test',
+            createdAt: 1234567890,
+            modifiedAt: 1234567890,
+          },
+          slug: 'imported-product',
+        } as Node;
+
+        const node2: Node = {
+          internal: {
+            id: 'post-1',
+            type: 'BlogPost',
+            contentDigest: 'def',
+            owner: 'test',
+            createdAt: 1234567891,
+            modifiedAt: 1234567891,
+          },
+          slug: 'imported-post',
+        } as Node;
+
+        store.fromSerializable({
+          nodes: [node1, node2],
+          indexes: {
+            Product: ['slug'],
+            BlogPost: ['slug'],
+          },
+        });
+
+        // Verify nodes were imported
+        expect(store.size()).toBe(2);
+        expect(store.get('product-1')).toEqual(node1);
+        expect(store.get('post-1')).toEqual(node2);
+
+        // Verify indexes were registered
+        expect(store.getRegisteredIndexes('Product')).toContain('slug');
+        expect(store.getRegisteredIndexes('BlogPost')).toContain('slug');
+
+        // Verify field indexes work (nodes should be indexed)
+        expect(store.getByField('Product', 'slug', 'imported-product')).toEqual(
+          node1
+        );
+        expect(store.getByField('BlogPost', 'slug', 'imported-post')).toEqual(
+          node2
+        );
+      });
+
+      it('should clear existing data before importing', () => {
+        // Add existing data
+        const existingNode: Node = {
+          internal: {
+            id: 'existing-1',
+            type: 'Existing',
+            contentDigest: 'existing',
+            owner: 'test',
+            createdAt: Date.now(),
+            modifiedAt: Date.now(),
+          },
+        };
+        store.set(existingNode);
+        store.registerIndex('Existing', 'field');
+
+        // Import new data
+        const newNode: Node = {
+          internal: {
+            id: 'new-1',
+            type: 'New',
+            contentDigest: 'new',
+            owner: 'test',
+            createdAt: Date.now(),
+            modifiedAt: Date.now(),
+          },
+        };
+        store.fromSerializable({
+          nodes: [newNode],
+          indexes: { New: ['otherField'] },
+        });
+
+        // Old data should be gone
+        expect(store.get('existing-1')).toBeUndefined();
+        expect(store.getByType('Existing')).toEqual([]);
+        expect(store.getRegisteredIndexes('Existing')).toEqual([]);
+
+        // New data should exist
+        expect(store.get('new-1')).toEqual(newNode);
+        expect(store.getRegisteredIndexes('New')).toContain('otherField');
+      });
+
+      it('should roundtrip through toSerializable/fromSerializable', () => {
+        const node1: Node = {
+          internal: {
+            id: 'product-1',
+            type: 'Product',
+            contentDigest: 'abc',
+            owner: 'test',
+            createdAt: 1234567890,
+            modifiedAt: 1234567890,
+          },
+          slug: 'product-slug',
+          sku: 'SKU-123',
+        } as Node;
+
+        store.set(node1);
+        store.registerIndex('Product', 'slug');
+        store.registerIndex('Product', 'sku');
+
+        // Export
+        const serialized = store.toSerializable();
+
+        // Create new store and import
+        const newStore = new NodeStore();
+        newStore.fromSerializable(serialized);
+
+        // Verify everything matches
+        expect(newStore.size()).toBe(store.size());
+        expect(newStore.get('product-1')).toEqual(node1);
+        expect(newStore.getRegisteredIndexes('Product').sort()).toEqual(
+          store.getRegisteredIndexes('Product').sort()
+        );
+        expect(newStore.getByField('Product', 'slug', 'product-slug')).toEqual(
+          node1
+        );
+        expect(newStore.getByField('Product', 'sku', 'SKU-123')).toEqual(node1);
+      });
+    });
+  });
+
+  describe('edge cases for field indexing', () => {
+    it('should handle node with null field value', () => {
+      store.registerIndex('Product', 'slug');
+
+      const node: Node = {
+        internal: {
+          id: 'product-1',
+          type: 'Product',
+          contentDigest: 'abc',
+          owner: 'test',
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        },
+        slug: null,
+      } as unknown as Node;
+
+      store.set(node);
+
+      // Should not index null values
+      expect(store.getByField('Product', 'slug', null)).toBeUndefined();
+    });
+
+    it('should handle node with undefined field value', () => {
+      store.registerIndex('Product', 'slug');
+
+      const node: Node = {
+        internal: {
+          id: 'product-1',
+          type: 'Product',
+          contentDigest: 'abc',
+          owner: 'test',
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        },
+        // slug is undefined
+      };
+
+      store.set(node);
+
+      // Should not index undefined values
+      expect(store.getByField('Product', 'slug', undefined)).toBeUndefined();
+    });
+
+    it('should handle updating node to remove indexed field', () => {
+      store.registerIndex('Product', 'slug');
+
+      const node1: Node = {
+        internal: {
+          id: 'product-1',
+          type: 'Product',
+          contentDigest: 'abc',
+          owner: 'test',
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        },
+        slug: 'my-slug',
+      } as Node;
+
+      store.set(node1);
+      expect(store.getByField('Product', 'slug', 'my-slug')).toEqual(node1);
+
+      // Update to remove slug field
+      const node2: Node = {
+        internal: {
+          id: 'product-1',
+          type: 'Product',
+          contentDigest: 'xyz',
+          owner: 'test',
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        },
+        // slug is now undefined
+      };
+
+      store.set(node2);
+
+      // Old value should be removed from index
+      expect(store.getByField('Product', 'slug', 'my-slug')).toBeUndefined();
+    });
+
+    it('should return empty array for getRegisteredIndexes on non-existent type', () => {
+      expect(store.getRegisteredIndexes('NonExistent')).toEqual([]);
+    });
+
+    it('should return undefined for getByField on non-indexed type', () => {
+      // Query a type that has no indexes registered
+      expect(store.getByField('Product', 'slug', 'some-value')).toBeUndefined();
+    });
+
+    it('should return undefined for getByField on non-indexed field', () => {
+      store.registerIndex('Product', 'slug');
+      // Query a field that is not indexed
+      expect(store.getByField('Product', 'sku', 'some-value')).toBeUndefined();
     });
   });
 });

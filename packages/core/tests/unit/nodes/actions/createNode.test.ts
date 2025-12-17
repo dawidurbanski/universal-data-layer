@@ -377,6 +377,46 @@ describe('createNode', () => {
     });
   });
 
+  describe('schema option', () => {
+    it('stores schema info when provided', async () => {
+      const { s } = await import('@/schema-builder.js');
+
+      const input: CreateNodeInput = {
+        internal: {
+          id: 'test-1',
+          type: 'TestNode',
+          owner: 'test-plugin',
+        },
+        status: 'active',
+      } as CreateNodeInput;
+
+      const schema = s.infer().override({
+        status: s.enum(['active', 'inactive']),
+      });
+
+      await createNode(input, { store, schema });
+
+      const schemaInfo = store.getTypeSchema('TestNode');
+      expect(schemaInfo).toBeDefined();
+      expect(schemaInfo?.overrides).toBeDefined();
+    });
+
+    it('does not store schema info when not provided', async () => {
+      const input: CreateNodeInput = {
+        internal: {
+          id: 'test-1',
+          type: 'TestNodeNoSchema',
+          owner: 'test-plugin',
+        },
+      };
+
+      await createNode(input, { store });
+
+      const schemaInfo = store.getTypeSchema('TestNodeNoSchema');
+      expect(schemaInfo).toBeUndefined();
+    });
+  });
+
   describe('node updates', () => {
     it('fully replaces existing node', async () => {
       const original: CreateNodeInput = {
