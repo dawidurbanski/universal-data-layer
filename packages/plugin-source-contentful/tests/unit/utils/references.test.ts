@@ -25,6 +25,57 @@ describe('createReference', () => {
       linkType: 'Asset',
     });
   });
+
+  it('creates a reference with possibleTypes', () => {
+    const ref = createReference('entry-789', 'Entry', [
+      'ContentfulHeroBlock',
+      'ContentfulTextBlock',
+    ]);
+
+    expect(ref).toEqual({
+      _contentfulRef: true,
+      contentfulId: 'entry-789',
+      linkType: 'Entry',
+      possibleTypes: ['ContentfulHeroBlock', 'ContentfulTextBlock'],
+    });
+  });
+
+  it('clones possibleTypes array to avoid shared references', () => {
+    const originalTypes = ['ContentfulHeroBlock', 'ContentfulTextBlock'];
+    const ref = createReference('entry-123', 'Entry', originalTypes);
+
+    // Modify original array
+    originalTypes.push('ContentfulNewBlock');
+
+    // Reference should not be affected
+    expect(ref.possibleTypes).toEqual([
+      'ContentfulHeroBlock',
+      'ContentfulTextBlock',
+    ]);
+    expect(ref.possibleTypes).not.toBe(originalTypes);
+  });
+
+  it('does not include possibleTypes when undefined', () => {
+    const ref = createReference('entry-123', 'Entry', undefined);
+
+    expect(ref).toEqual({
+      _contentfulRef: true,
+      contentfulId: 'entry-123',
+      linkType: 'Entry',
+    });
+    expect('possibleTypes' in ref).toBe(false);
+  });
+
+  it('does not include possibleTypes when empty array', () => {
+    const ref = createReference('entry-123', 'Entry', []);
+
+    expect(ref).toEqual({
+      _contentfulRef: true,
+      contentfulId: 'entry-123',
+      linkType: 'Entry',
+    });
+    expect('possibleTypes' in ref).toBe(false);
+  });
 });
 
 describe('isContentfulReference', () => {

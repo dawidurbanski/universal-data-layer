@@ -67,6 +67,37 @@ describe('ContentfulApiError', () => {
 
     expect(error.statusCode).toBe(403);
   });
+
+  it('extracts requestId from error with requestId property', () => {
+    const originalError = Object.assign(new Error('Rate limited'), {
+      status: 429,
+      requestId: 'req-abc-123',
+    });
+    const error = ContentfulApiError.fromError(originalError);
+
+    expect(error.requestId).toBe('req-abc-123');
+  });
+
+  it('extracts requestId from sys.id when requestId is missing', () => {
+    const originalError = Object.assign(new Error('Not found'), {
+      status: 404,
+      sys: { id: 'sys-xyz-789' },
+    });
+    const error = ContentfulApiError.fromError(originalError);
+
+    expect(error.requestId).toBe('sys-xyz-789');
+  });
+
+  it('prefers requestId over sys.id', () => {
+    const originalError = Object.assign(new Error('Error'), {
+      status: 500,
+      requestId: 'request-id',
+      sys: { id: 'sys-id' },
+    });
+    const error = ContentfulApiError.fromError(originalError);
+
+    expect(error.requestId).toBe('request-id');
+  });
 });
 
 describe('ContentfulSyncError', () => {
@@ -137,6 +168,26 @@ describe('isAuthError', () => {
     const error = new ContentfulApiError('Not found', 404);
     expect(isAuthError(error)).toBe(false);
   });
+
+  it('returns true for Error with status 401', () => {
+    const error = Object.assign(new Error('Unauthorized'), { status: 401 });
+    expect(isAuthError(error)).toBe(true);
+  });
+
+  it('returns true for Error with status 403', () => {
+    const error = Object.assign(new Error('Forbidden'), { status: 403 });
+    expect(isAuthError(error)).toBe(true);
+  });
+
+  it('returns false for Error with other status', () => {
+    const error = Object.assign(new Error('Not found'), { status: 404 });
+    expect(isAuthError(error)).toBe(false);
+  });
+
+  it('returns false for non-error values', () => {
+    expect(isAuthError(null)).toBe(false);
+    expect(isAuthError('error')).toBe(false);
+  });
 });
 
 describe('isNotFoundError', () => {
@@ -148,6 +199,21 @@ describe('isNotFoundError', () => {
   it('returns false for other status codes', () => {
     const error = new ContentfulApiError('Server error', 500);
     expect(isNotFoundError(error)).toBe(false);
+  });
+
+  it('returns true for Error with status 404', () => {
+    const error = Object.assign(new Error('Not found'), { status: 404 });
+    expect(isNotFoundError(error)).toBe(true);
+  });
+
+  it('returns false for Error with other status', () => {
+    const error = Object.assign(new Error('Unauthorized'), { status: 401 });
+    expect(isNotFoundError(error)).toBe(false);
+  });
+
+  it('returns false for non-error values', () => {
+    expect(isNotFoundError(null)).toBe(false);
+    expect(isNotFoundError('error')).toBe(false);
   });
 });
 
@@ -182,5 +248,13 @@ describe('wrapApiCall', () => {
         throw new Error('Original error');
       }, 'Fetching content types')
     ).rejects.toThrow('Fetching content types: Original error');
+  });
+
+  it('converts non-Error values to string in wrapped error', async () => {
+    await expect(
+      wrapApiCall(async () => {
+        throw 'string error';
+      }, 'Test operation')
+    ).rejects.toThrow('Test operation: string error');
   });
 });

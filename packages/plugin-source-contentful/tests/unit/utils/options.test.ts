@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import {
-  resolveOptions,
-  DEFAULT_OPTIONS,
-  type ContentfulPluginOptions,
-} from '@/types/options.js';
+import type { ContentfulPluginOptions } from '@/types/options.js';
+import { resolveOptions, DEFAULT_OPTIONS } from '@/utils/options.js';
 
 describe('DEFAULT_OPTIONS', () => {
   it('has correct default values', () => {

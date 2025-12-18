@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { ContentType } from 'contentful';
 import { createFieldLinkMap } from '@/utils/content-types.js';
-import { resolveOptions } from '@/types/options.js';
+import { resolveOptions } from '@/utils/options.js';
 
 // Helper to create a mock content type
 function createMockContentType(
