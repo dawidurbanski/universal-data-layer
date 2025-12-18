@@ -17,6 +17,8 @@
     "dev": "tsc --watch",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest watch --passWithNoTests",
+    "test:coverage": "vitest run --coverage",
+    "test:coverage:file": "vitest run --coverage",
     "lint": "npm run lint:formatting && npm run lint:quality && npm run lint:types",
     "lint:formatting": "prettier --check . --ignore-path ../../.prettierignore",
     "lint:quality": "eslint . --config ../../eslint.config.js",
