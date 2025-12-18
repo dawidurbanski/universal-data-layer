@@ -12,12 +12,12 @@
     "build": "turbo build --filter='./packages/*'",
     "start": "turbo start --filter='./packages/*'",
     "lint": "turbo lint --filter='./packages/*' --ui=stream",
-    "fix": "turbo fix --filter='./packages/*' && turbo fix --filter='./tests/manual' --ui=stream",
+    "fix": "turbo fix --filter='./packages/*' && npm run fix --prefix tests/manual",
     "test": "turbo test --filter='./packages/*' --ui=stream",
     "test:coverage": "turbo test:coverage --filter='./packages/*' --ui=stream",
     "test:coverage:file": "npm run test:coverage:file --workspace=universal-data-layer --",
     "codegen": "turbo codegen --filter='./packages/*' --ui=stream",
-    "typecheck": "turbo typecheck --filter='./packages/*' --ui=stream && turbo typecheck --filter='./tests/manual' --ui=stream",
+    "typecheck": "turbo typecheck --filter='./packages/*' --ui=stream && npm run typecheck --prefix tests/manual",
     "changeset": "changeset",
     "version": "changeset version && npm install --package-lock-only",
     "release": "turbo build --filter='./packages/*' && changeset publish --ui=stream",
@@ -61,9 +61,7 @@
   },
   "workspaces": [
     "packages/universal-data-layer",
-    "packages/*",
-    "examples/*",
-    "tests/manual"
+    "packages/*"
   ],
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
