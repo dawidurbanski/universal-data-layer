@@ -10,5 +10,9 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": []
+  "ignore": [
+    "@universal-data-layer/manual-tests",
+    "@universal-data-layer/example-nextjs",
+    "universal-data-layer-docs"
+  ]
 }

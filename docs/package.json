@@ -1,5 +1,7 @@
 {
   "name": "universal-data-layer-docs",
+  "version": "0.0.0",
+  "private": true,
   "scripts": {
     "dev": "nuxt dev --extends docus",
     "build": "nuxt build --extends docus"
