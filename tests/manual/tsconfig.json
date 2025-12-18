@@ -32,6 +32,7 @@
   "include": [
     "src/**/*",
     "../../packages/*/tests/manual/**/*",
+    "../../packages/*/generated/**/*",
     "vite-env.d.ts",
     "vite/vite-plugin-scenarios.ts"
   ]
