@@ -572,6 +572,44 @@ describe('QueryDocumentGenerator', () => {
       expect(code).toContain("'ELECTRONICS' | 'CLOTHING' | 'FOOD' | 'OTHER'");
     });
 
+    it('should handle empty enum types (fallback to string)', () => {
+      // Create a schema with an empty enum (edge case)
+      const schemaWithEmptyEnum = buildSchema(`
+        type Query {
+          product: Product
+        }
+        type Product {
+          status: EmptyEnum
+        }
+        enum EmptyEnum
+      `);
+
+      // Manually remove all enum values to test the fallback
+      const emptyEnum = schemaWithEmptyEnum.getType('EmptyEnum');
+      if (emptyEnum && 'getValues' in emptyEnum) {
+        // The enum already has no values from SDL parsing
+      }
+
+      const query: DiscoveredQuery = {
+        name: 'GetProduct',
+        operation: 'query',
+        document: parse(`
+          query GetProduct {
+            product {
+              status
+            }
+          }
+        `),
+        sourcePath: '/test/GetProduct.graphql',
+      };
+
+      const generator = new QueryDocumentGenerator(schemaWithEmptyEnum);
+      const code = generator.generate([query]);
+
+      // Empty enum should fallback to 'string'
+      expect(code).toContain('status: string;');
+    });
+
     it('should handle list types', () => {
       const query: DiscoveredQuery = {
         name: 'GetProduct',
@@ -842,6 +880,38 @@ describe('QueryDocumentGenerator', () => {
         "category: 'ELECTRONICS' | 'CLOTHING' | 'FOOD' | 'OTHER';"
       );
     });
+
+    it('should handle empty enum type variables (fallback to string)', () => {
+      // Create a schema with an empty enum used in a query variable
+      const schemaWithEmptyEnum = buildSchema(`
+        type Query {
+          productsByStatus(status: EmptyEnum!): [Product!]!
+        }
+        type Product {
+          id: ID!
+        }
+        enum EmptyEnum
+      `);
+
+      const query: DiscoveredQuery = {
+        name: 'GetProductsByStatus',
+        operation: 'query',
+        document: parse(`
+          query GetProductsByStatus($status: EmptyEnum!) {
+            productsByStatus(status: $status) {
+              id
+            }
+          }
+        `),
+        sourcePath: '/test/GetProductsByStatus.graphql',
+      };
+
+      const generator = new QueryDocumentGenerator(schemaWithEmptyEnum);
+      const code = generator.generate([query]);
+
+      // Empty enum in variable should fallback to 'string'
+      expect(code).toContain('status: string;');
+    });
   });
 
   describe('mutation support', () => {
@@ -936,6 +1006,85 @@ describe('QueryDocumentGenerator', () => {
       expect(code).toContain('export type DoSomethingResult = unknown;');
     });
 
+    it('should handle schema without query type (null fallback)', () => {
+      // Create a schema and remove its query type to test the ?? null fallback
+      const schemaWithMutationOnly = buildSchema(`
+        type Mutation {
+          doSomething: String
+        }
+      `);
+
+      const query: DiscoveredQuery = {
+        name: 'GetSomething',
+        operation: 'query',
+        document: {
+          kind: Kind.DOCUMENT,
+          definitions: [
+            {
+              kind: Kind.OPERATION_DEFINITION,
+              operation: OperationTypeNode.QUERY,
+              name: { kind: Kind.NAME, value: 'GetSomething' },
+              selectionSet: {
+                kind: Kind.SELECTION_SET,
+                selections: [
+                  {
+                    kind: Kind.FIELD,
+                    name: { kind: Kind.NAME, value: '__typename' },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        sourcePath: '/test/GetSomething.graphql',
+      };
+
+      const generator = new QueryDocumentGenerator(schemaWithMutationOnly);
+      const code = generator.generate([query]);
+
+      // Should handle gracefully and return unknown type
+      expect(code).toContain('export type GetSomethingResult = unknown;');
+    });
+
+    it('should handle schema without subscription type (null fallback)', () => {
+      const queryOnlySchema = buildSchema(`
+        type Query {
+          hello: String
+        }
+      `);
+
+      const query: DiscoveredQuery = {
+        name: 'OnSomething',
+        operation: 'subscription',
+        document: {
+          kind: Kind.DOCUMENT,
+          definitions: [
+            {
+              kind: Kind.OPERATION_DEFINITION,
+              operation: OperationTypeNode.SUBSCRIPTION,
+              name: { kind: Kind.NAME, value: 'OnSomething' },
+              selectionSet: {
+                kind: Kind.SELECTION_SET,
+                selections: [
+                  {
+                    kind: Kind.FIELD,
+                    name: { kind: Kind.NAME, value: '__typename' },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        sourcePath: '/test/OnSomething.graphql',
+      };
+
+      const generator = new QueryDocumentGenerator(queryOnlySchema);
+      const code = generator.generate([query]);
+
+      // Should handle gracefully and return unknown type
+      expect(code).toContain('export type OnSomethingResult = unknown;');
+    });
+
     it('should handle empty selection set', () => {
       const query: DiscoveredQuery = {
         name: 'GetProduct',
@@ -979,6 +1128,468 @@ describe('QueryDocumentGenerator', () => {
         expect.stringContaining('unknownField not found')
       );
       warnSpy.mockRestore();
+    });
+
+    it('should return empty string and warn when operation not found in document', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Create a query with mismatched name between DiscoveredQuery and actual document
+      const query: DiscoveredQuery = {
+        name: 'MismatchedName',
+        operation: 'query',
+        document: parse('query ActualName { product(id: "1") { id } }'),
+        sourcePath: '/test/Mismatched.graphql',
+      };
+
+      const generator = new QueryDocumentGenerator(testSchema);
+      const code = generator.generate([query]);
+
+      // Should warn about not finding the operation
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Could not find operation MismatchedName')
+      );
+      // Should still generate header and imports, but no actual query export
+      expect(code).toContain('Auto-generated TypedDocumentNode queries');
+      expect(code).not.toContain('export const MismatchedName');
+
+      warnSpy.mockRestore();
+    });
+
+    it('should handle inline fragments in selection set for non-union parent types', () => {
+      // Create a schema where we can test inline fragments on a non-union type
+      // This tests the buildSelectionSetType inline fragment branch
+      const schemaWithInlineFragments = buildSchema(`
+        type Query {
+          product: Product
+        }
+        type Product {
+          id: ID!
+          name: String!
+        }
+      `);
+
+      const query: DiscoveredQuery = {
+        name: 'GetProduct',
+        operation: 'query',
+        document: parse(`
+          query GetProduct {
+            product {
+              ... on Product {
+                id
+                name
+              }
+            }
+          }
+        `),
+        sourcePath: '/test/GetProduct.graphql',
+      };
+
+      const generator = new QueryDocumentGenerator(schemaWithInlineFragments);
+      const code = generator.generate([query]);
+
+      // The inline fragment fields should be merged into the parent
+      expect(code).toContain('id: string;');
+      expect(code).toContain('name: string;');
+    });
+
+    it('should handle object types without selection set', () => {
+      // When an object type field is selected but no nested fields are requested
+      // This is an edge case that returns 'unknown'
+      const query: DiscoveredQuery = {
+        name: 'GetProduct',
+        operation: 'query',
+        document: {
+          kind: Kind.DOCUMENT,
+          definitions: [
+            {
+              kind: Kind.OPERATION_DEFINITION,
+              operation: OperationTypeNode.QUERY,
+              name: { kind: Kind.NAME, value: 'GetProduct' },
+              selectionSet: {
+                kind: Kind.SELECTION_SET,
+                selections: [
+                  {
+                    kind: Kind.FIELD,
+                    name: { kind: Kind.NAME, value: 'product' },
+                    arguments: [
+                      {
+                        kind: Kind.ARGUMENT,
+                        name: { kind: Kind.NAME, value: 'id' },
+                        value: { kind: Kind.STRING, value: '1' },
+                      },
+                    ],
+                    // Note: no selectionSet - this is the edge case
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        sourcePath: '/test/GetProduct.graphql',
+      };
+
+      const generator = new QueryDocumentGenerator(testSchema);
+      const code = generator.generate([query]);
+
+      // Object type without selectionSet should return unknown
+      expect(code).toContain('product: unknown;');
+    });
+
+    it('should handle union types without selection set', () => {
+      const query: DiscoveredQuery = {
+        name: 'SearchProducts',
+        operation: 'query',
+        document: {
+          kind: Kind.DOCUMENT,
+          definitions: [
+            {
+              kind: Kind.OPERATION_DEFINITION,
+              operation: OperationTypeNode.QUERY,
+              name: { kind: Kind.NAME, value: 'SearchProducts' },
+              variableDefinitions: [
+                {
+                  kind: Kind.VARIABLE_DEFINITION,
+                  variable: {
+                    kind: Kind.VARIABLE,
+                    name: { kind: Kind.NAME, value: 'query' },
+                  },
+                  type: {
+                    kind: Kind.NON_NULL_TYPE,
+                    type: {
+                      kind: Kind.NAMED_TYPE,
+                      name: { kind: Kind.NAME, value: 'String' },
+                    },
+                  },
+                },
+              ],
+              selectionSet: {
+                kind: Kind.SELECTION_SET,
+                selections: [
+                  {
+                    kind: Kind.FIELD,
+                    name: { kind: Kind.NAME, value: 'search' },
+                    arguments: [
+                      {
+                        kind: Kind.ARGUMENT,
+                        name: { kind: Kind.NAME, value: 'query' },
+                        value: {
+                          kind: Kind.VARIABLE,
+                          name: { kind: Kind.NAME, value: 'query' },
+                        },
+                      },
+                    ],
+                    // No selectionSet for union type
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        sourcePath: '/test/SearchProducts.graphql',
+      };
+
+      const generator = new QueryDocumentGenerator(testSchema);
+      const code = generator.generate([query]);
+
+      // Union type without selectionSet should return unknown
+      expect(code).toContain('search: unknown;');
+    });
+
+    it('should handle union types with empty inline fragments (no matching fragments)', () => {
+      const query: DiscoveredQuery = {
+        name: 'SearchProducts',
+        operation: 'query',
+        document: {
+          kind: Kind.DOCUMENT,
+          definitions: [
+            {
+              kind: Kind.OPERATION_DEFINITION,
+              operation: OperationTypeNode.QUERY,
+              name: { kind: Kind.NAME, value: 'SearchProducts' },
+              variableDefinitions: [
+                {
+                  kind: Kind.VARIABLE_DEFINITION,
+                  variable: {
+                    kind: Kind.VARIABLE,
+                    name: { kind: Kind.NAME, value: 'query' },
+                  },
+                  type: {
+                    kind: Kind.NON_NULL_TYPE,
+                    type: {
+                      kind: Kind.NAMED_TYPE,
+                      name: { kind: Kind.NAME, value: 'String' },
+                    },
+                  },
+                },
+              ],
+              selectionSet: {
+                kind: Kind.SELECTION_SET,
+                selections: [
+                  {
+                    kind: Kind.FIELD,
+                    name: { kind: Kind.NAME, value: 'search' },
+                    arguments: [
+                      {
+                        kind: Kind.ARGUMENT,
+                        name: { kind: Kind.NAME, value: 'query' },
+                        value: {
+                          kind: Kind.VARIABLE,
+                          name: { kind: Kind.NAME, value: 'query' },
+                        },
+                      },
+                    ],
+                    selectionSet: {
+                      kind: Kind.SELECTION_SET,
+                      // Empty selections - no inline fragments
+                      selections: [],
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        sourcePath: '/test/SearchProducts.graphql',
+      };
+
+      const generator = new QueryDocumentGenerator(testSchema);
+      const code = generator.generate([query]);
+
+      // Union type with empty inline fragments should return unknown
+      expect(code).toContain('search: unknown;');
+    });
+
+    it('should handle interface types without selection set', () => {
+      const query: DiscoveredQuery = {
+        name: 'GetNode',
+        operation: 'query',
+        document: {
+          kind: Kind.DOCUMENT,
+          definitions: [
+            {
+              kind: Kind.OPERATION_DEFINITION,
+              operation: OperationTypeNode.QUERY,
+              name: { kind: Kind.NAME, value: 'GetNode' },
+              variableDefinitions: [
+                {
+                  kind: Kind.VARIABLE_DEFINITION,
+                  variable: {
+                    kind: Kind.VARIABLE,
+                    name: { kind: Kind.NAME, value: 'id' },
+                  },
+                  type: {
+                    kind: Kind.NON_NULL_TYPE,
+                    type: {
+                      kind: Kind.NAMED_TYPE,
+                      name: { kind: Kind.NAME, value: 'ID' },
+                    },
+                  },
+                },
+              ],
+              selectionSet: {
+                kind: Kind.SELECTION_SET,
+                selections: [
+                  {
+                    kind: Kind.FIELD,
+                    name: { kind: Kind.NAME, value: 'node' },
+                    arguments: [
+                      {
+                        kind: Kind.ARGUMENT,
+                        name: { kind: Kind.NAME, value: 'id' },
+                        value: {
+                          kind: Kind.VARIABLE,
+                          name: { kind: Kind.NAME, value: 'id' },
+                        },
+                      },
+                    ],
+                    // No selectionSet for interface type
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        sourcePath: '/test/GetNode.graphql',
+      };
+
+      const generator = new QueryDocumentGenerator(testSchema);
+      const code = generator.generate([query]);
+
+      // Interface type without selectionSet should return unknown
+      expect(code).toContain('node: unknown;');
+    });
+
+    it('should handle interface types with empty inline fragments', () => {
+      const query: DiscoveredQuery = {
+        name: 'GetNode',
+        operation: 'query',
+        document: {
+          kind: Kind.DOCUMENT,
+          definitions: [
+            {
+              kind: Kind.OPERATION_DEFINITION,
+              operation: OperationTypeNode.QUERY,
+              name: { kind: Kind.NAME, value: 'GetNode' },
+              variableDefinitions: [
+                {
+                  kind: Kind.VARIABLE_DEFINITION,
+                  variable: {
+                    kind: Kind.VARIABLE,
+                    name: { kind: Kind.NAME, value: 'id' },
+                  },
+                  type: {
+                    kind: Kind.NON_NULL_TYPE,
+                    type: {
+                      kind: Kind.NAMED_TYPE,
+                      name: { kind: Kind.NAME, value: 'ID' },
+                    },
+                  },
+                },
+              ],
+              selectionSet: {
+                kind: Kind.SELECTION_SET,
+                selections: [
+                  {
+                    kind: Kind.FIELD,
+                    name: { kind: Kind.NAME, value: 'node' },
+                    arguments: [
+                      {
+                        kind: Kind.ARGUMENT,
+                        name: { kind: Kind.NAME, value: 'id' },
+                        value: {
+                          kind: Kind.VARIABLE,
+                          name: { kind: Kind.NAME, value: 'id' },
+                        },
+                      },
+                    ],
+                    selectionSet: {
+                      kind: Kind.SELECTION_SET,
+                      // Empty selections - no inline fragments
+                      selections: [],
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        sourcePath: '/test/GetNode.graphql',
+      };
+
+      const generator = new QueryDocumentGenerator(testSchema);
+      const code = generator.generate([query]);
+
+      // Interface type with empty inline fragments should return unknown
+      expect(code).toContain('node: unknown;');
+    });
+
+    it('should return unknown for unrecognized GraphQL output types', () => {
+      // Create a schema with a field that returns an InputObjectType
+      // (which shouldn't happen in valid GraphQL, but tests the defensive fallback)
+      const schemaWithInput = buildSchema(`
+        type Query {
+          product: Product
+        }
+        type Product {
+          id: ID!
+        }
+        input ProductInput {
+          name: String!
+        }
+      `);
+
+      // Modify the Product type to have a field that returns an invalid type
+      const productType = schemaWithInput.getType('Product');
+      if (productType && 'getFields' in productType) {
+        const fields = (
+          productType as { getFields: () => Record<string, { type: unknown }> }
+        ).getFields();
+        // Inject an InputObjectType as a field type (invalid in normal GraphQL)
+        const inputType = schemaWithInput.getType('ProductInput');
+        if (inputType && fields['id']) {
+          // Replace the ID field type with the InputObjectType to trigger the fallback
+          fields['id']!.type = inputType;
+        }
+      }
+
+      const query: DiscoveredQuery = {
+        name: 'TestQuery',
+        operation: 'query',
+        document: parse('query TestQuery { product { id } }'),
+        sourcePath: '/test/TestQuery.graphql',
+      };
+
+      const generator = new QueryDocumentGenerator(schemaWithInput);
+      const code = generator.generate([query]);
+
+      // InputObjectType as output should result in 'unknown'
+      expect(code).toContain('id: unknown;');
+    });
+
+    it('should return unknown for unrecognized TypeNode kinds in variables', () => {
+      // Test the default case in typeNodeToTypeScript
+      // This can only be hit if the TypeNode kind is not NonNullType, ListType, or NamedType
+      // which is impossible in valid GraphQL, but we need to test the fallback
+      const query: DiscoveredQuery = {
+        name: 'TestQuery',
+        operation: 'query',
+        document: {
+          kind: Kind.DOCUMENT,
+          definitions: [
+            {
+              kind: Kind.OPERATION_DEFINITION,
+              operation: OperationTypeNode.QUERY,
+              name: { kind: Kind.NAME, value: 'TestQuery' },
+              variableDefinitions: [
+                {
+                  kind: Kind.VARIABLE_DEFINITION,
+                  variable: {
+                    kind: Kind.VARIABLE,
+                    name: { kind: Kind.NAME, value: 'test' },
+                  },
+                  // Use an invalid/unknown kind - this simulates a corrupted AST
+                  type: {
+                    kind: 'UnknownType' as unknown as Kind.NAMED_TYPE,
+                    name: { kind: Kind.NAME, value: 'String' },
+                  },
+                },
+              ],
+              selectionSet: {
+                kind: Kind.SELECTION_SET,
+                selections: [
+                  {
+                    kind: Kind.FIELD,
+                    name: { kind: Kind.NAME, value: 'product' },
+                    arguments: [
+                      {
+                        kind: Kind.ARGUMENT,
+                        name: { kind: Kind.NAME, value: 'id' },
+                        value: { kind: Kind.STRING, value: '1' },
+                      },
+                    ],
+                    selectionSet: {
+                      kind: Kind.SELECTION_SET,
+                      selections: [
+                        {
+                          kind: Kind.FIELD,
+                          name: { kind: Kind.NAME, value: 'id' },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        sourcePath: '/test/TestQuery.graphql',
+      };
+
+      const generator = new QueryDocumentGenerator(testSchema);
+      const code = generator.generate([query]);
+
+      // The unknown TypeNode kind should result in 'unknown' type
+      expect(code).toContain('test?: unknown;');
     });
 
     it('should generate multiple queries in sequence', () => {
