@@ -61,7 +61,8 @@
   },
   "workspaces": [
     "packages/universal-data-layer",
-    "packages/*"
+    "packages/*",
+    "tests/manual"
   ],
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
