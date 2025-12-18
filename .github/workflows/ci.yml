@@ -43,7 +43,7 @@ jobs:
   validate-changesets:
     name: Validate Changesets
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
 
     steps:
       - name: Checkout repository
