@@ -20,6 +20,8 @@ export default defineConfig({
         '**/bin/**',
         '**/__tests__/**',
         '**/__mocks__/**',
+        '**/mocks/**',
+        '**/generated/**',
         '**/index.ts',
         '**/handlers/**',
       ],

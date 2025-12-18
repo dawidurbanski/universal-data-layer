@@ -12,25 +12,26 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/**/*.ts'],
       exclude: [
-        // Default exclusions
+        // Global exclusions (keep in sync with root vitest.config.ts)
         'node_modules/**',
         'dist/**',
         'coverage/**',
         '**/*.test.ts',
         '**/*.spec.ts',
-        // Custom exclusions
+        '**/*.config.{js,ts,mjs,cjs}',
+        '**/*.d.ts',
+        '**/index.ts',
+        '**/handlers/**',
+        '**/mocks/**',
+        '**/generated/**',
+        // Custom exclusions for core package
         'src/utils/import-meta-resolve.ts',
         'src/schema.ts',
         'src/server.ts',
         'src/start-server.ts',
-        'src/handlers/**',
-        // Barrel export files - no logic to test
-        '**/index.ts',
         // Watch mode is excluded - contains untestable patterns
         // (infinite promises, signal handlers, file watchers)
         'src/codegen/watch.ts',
-        // Mock files used for testing
-        '**/mocks/**',
       ],
       thresholds: {
         branches: 100,
