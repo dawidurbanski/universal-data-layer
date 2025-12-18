@@ -13,7 +13,7 @@ import type {
 } from 'universal-data-layer';
 import { createContentfulClient } from './src/client.js';
 import type { ContentfulPluginOptions } from './src/types/index.js';
-import { resolveOptions } from './src/types/index.js';
+import { resolveOptions } from './src/utils/options.js';
 import {
   fetchContentTypes,
   createContentTypeMap,

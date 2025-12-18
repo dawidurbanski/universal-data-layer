@@ -19,8 +19,8 @@ export type {
 } from './types/index.js';
 
 // Export utility functions and helpers
-export { createReference, isContentfulReference } from './types/index.js';
-export { resolveOptions, DEFAULT_OPTIONS } from './types/index.js';
+export { createReference, isContentfulReference } from './utils/references.js';
+export { resolveOptions, DEFAULT_OPTIONS } from './utils/options.js';
 
 // Export client creation for advanced usage
 export { createContentfulClient, type ContentfulClient } from './client.js';

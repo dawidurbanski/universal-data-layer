@@ -4,8 +4,6 @@ export type {
   SyncTokenStorage,
 } from './options.js';
 
-export { DEFAULT_OPTIONS, resolveOptions } from './options.js';
-
 // Re-export reference types for consumers
 export type {
   ContentfulReference,
@@ -13,5 +11,3 @@ export type {
   RichTextDocument,
   RichTextNode,
 } from '../utils/references.js';
-
-export { createReference, isContentfulReference } from '../utils/references.js';

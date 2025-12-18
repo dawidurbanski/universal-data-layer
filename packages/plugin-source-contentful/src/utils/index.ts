@@ -31,3 +31,5 @@ export {
   FileSyncTokenStorage,
   type SyncResult,
 } from './sync.js';
+
+export { DEFAULT_OPTIONS, resolveOptions } from './options.js';
