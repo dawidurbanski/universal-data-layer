@@ -27,9 +27,8 @@ describe('references/index', () => {
       setDefaultRegistry(newRegistry);
 
       // Re-import to get updated value
-      const { defaultRegistry: updatedRegistry } = await import(
-        '@/references/index.js'
-      );
+      const { defaultRegistry: updatedRegistry } =
+        await import('@/references/index.js');
       expect(updatedRegistry).toBe(newRegistry);
 
       // Restore original

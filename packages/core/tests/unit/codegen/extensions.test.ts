@@ -70,9 +70,8 @@ describe('loadExtensions', () => {
       }));
 
       // Re-import the function to pick up the mock
-      const { loadExtensions: loadExtensionsFresh } = await import(
-        '@/codegen/extensions.js'
-      );
+      const { loadExtensions: loadExtensionsFresh } =
+        await import('@/codegen/extensions.js');
 
       const result = await loadExtensionsFresh([
         'vitest-test-default-export-package',
@@ -95,9 +94,8 @@ describe('loadExtensions', () => {
         extension: mockExtension,
       }));
 
-      const { loadExtensions: loadExtensionsFresh } = await import(
-        '@/codegen/extensions.js'
-      );
+      const { loadExtensions: loadExtensionsFresh } =
+        await import('@/codegen/extensions.js');
 
       const result = await loadExtensionsFresh([
         'vitest-test-named-export-package',
@@ -124,9 +122,8 @@ describe('loadExtensions', () => {
         extension: namedExtension,
       }));
 
-      const { loadExtensions: loadExtensionsFresh } = await import(
-        '@/codegen/extensions.js'
-      );
+      const { loadExtensions: loadExtensionsFresh } =
+        await import('@/codegen/extensions.js');
 
       const result = await loadExtensionsFresh([
         'vitest-test-both-exports-package',
@@ -148,9 +145,8 @@ describe('loadExtensions', () => {
         default: invalidExtension,
       }));
 
-      const { loadExtensions: loadExtensionsFresh } = await import(
-        '@/codegen/extensions.js'
-      );
+      const { loadExtensions: loadExtensionsFresh } =
+        await import('@/codegen/extensions.js');
 
       const result = await loadExtensionsFresh(['vitest-test-invalid-package']);
 
@@ -166,9 +162,8 @@ describe('loadExtensions', () => {
         extension: undefined,
       }));
 
-      const { loadExtensions: loadExtensionsFresh } = await import(
-        '@/codegen/extensions.js'
-      );
+      const { loadExtensions: loadExtensionsFresh } =
+        await import('@/codegen/extensions.js');
 
       const result = await loadExtensionsFresh(['vitest-test-null-package']);
 
@@ -189,9 +184,8 @@ describe('loadExtensions', () => {
         default: invalidExtension,
       }));
 
-      const { loadExtensions: loadExtensionsFresh } = await import(
-        '@/codegen/extensions.js'
-      );
+      const { loadExtensions: loadExtensionsFresh } =
+        await import('@/codegen/extensions.js');
 
       const result = await loadExtensionsFresh([
         'vitest-test-invalid-generate-package',
@@ -237,9 +231,8 @@ describe('loadExtensions', () => {
         default: dynamicExtension,
       }));
 
-      const { loadExtensions: loadExtensionsFresh } = await import(
-        '@/codegen/extensions.js'
-      );
+      const { loadExtensions: loadExtensionsFresh } =
+        await import('@/codegen/extensions.js');
 
       const result = await loadExtensionsFresh([
         directExtension,
@@ -291,9 +284,8 @@ describe('loadExtensions', () => {
         default: { name: 'invalid', outputDir: 'invalid' }, // Missing generate
       }));
 
-      const { loadExtensions: loadExtensionsFresh } = await import(
-        '@/codegen/extensions.js'
-      );
+      const { loadExtensions: loadExtensionsFresh } =
+        await import('@/codegen/extensions.js');
 
       const result = await loadExtensionsFresh([
         extension1,

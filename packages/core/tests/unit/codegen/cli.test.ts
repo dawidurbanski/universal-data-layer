@@ -622,12 +622,10 @@ describe('CLI', () => {
       mkdirSync(tempDir, { recursive: true });
 
       // Reset mocks
-      const { introspectGraphQLSchema } = await import(
-        '@/codegen/inference/from-graphql.js'
-      );
-      const { inferSchemaFromJsonString } = await import(
-        '@/codegen/inference/from-response.js'
-      );
+      const { introspectGraphQLSchema } =
+        await import('@/codegen/inference/from-graphql.js');
+      const { inferSchemaFromJsonString } =
+        await import('@/codegen/inference/from-response.js');
       vi.mocked(introspectGraphQLSchema).mockReset();
       vi.mocked(inferSchemaFromJsonString).mockReset();
     });
@@ -639,9 +637,8 @@ describe('CLI', () => {
     });
 
     it('should generate types from GraphQL endpoint', async () => {
-      const { introspectGraphQLSchema } = await import(
-        '@/codegen/inference/from-graphql.js'
-      );
+      const { introspectGraphQLSchema } =
+        await import('@/codegen/inference/from-graphql.js');
 
       const schemas: ContentTypeDefinition[] = [
         {
@@ -672,9 +669,8 @@ describe('CLI', () => {
     });
 
     it('should generate types from JSON response file', async () => {
-      const { inferSchemaFromJsonString } = await import(
-        '@/codegen/inference/from-response.js'
-      );
+      const { inferSchemaFromJsonString } =
+        await import('@/codegen/inference/from-response.js');
 
       const schema: ContentTypeDefinition = {
         name: 'Product',
@@ -783,9 +779,8 @@ describe('CLI', () => {
     });
 
     it('should handle empty schemas', async () => {
-      const { introspectGraphQLSchema } = await import(
-        '@/codegen/inference/from-graphql.js'
-      );
+      const { introspectGraphQLSchema } =
+        await import('@/codegen/inference/from-graphql.js');
 
       vi.mocked(introspectGraphQLSchema).mockResolvedValue([]);
 
@@ -802,9 +797,8 @@ describe('CLI', () => {
     });
 
     it('should preview output in dry-run mode', async () => {
-      const { introspectGraphQLSchema } = await import(
-        '@/codegen/inference/from-graphql.js'
-      );
+      const { introspectGraphQLSchema } =
+        await import('@/codegen/inference/from-graphql.js');
 
       const schemas: ContentTypeDefinition[] = [
         {
@@ -833,9 +827,8 @@ describe('CLI', () => {
     });
 
     it('should preview guards in dry-run mode when requested', async () => {
-      const { introspectGraphQLSchema } = await import(
-        '@/codegen/inference/from-graphql.js'
-      );
+      const { introspectGraphQLSchema } =
+        await import('@/codegen/inference/from-graphql.js');
 
       const schemas: ContentTypeDefinition[] = [
         {
@@ -873,9 +866,8 @@ describe('CLI', () => {
       mkdirSync(tempDir, { recursive: true });
 
       // Reset mocks
-      const { introspectGraphQLSchema } = await import(
-        '@/codegen/inference/from-graphql.js'
-      );
+      const { introspectGraphQLSchema } =
+        await import('@/codegen/inference/from-graphql.js');
       vi.mocked(introspectGraphQLSchema).mockReset();
     });
 
@@ -924,9 +916,8 @@ describe('CLI', () => {
     });
 
     it('should run generate when no special flags are passed', async () => {
-      const { introspectGraphQLSchema } = await import(
-        '@/codegen/inference/from-graphql.js'
-      );
+      const { introspectGraphQLSchema } =
+        await import('@/codegen/inference/from-graphql.js');
 
       const schemas: ContentTypeDefinition[] = [
         {
@@ -948,9 +939,8 @@ describe('CLI', () => {
     });
 
     it('should load config file and merge with CLI options', async () => {
-      const { introspectGraphQLSchema } = await import(
-        '@/codegen/inference/from-graphql.js'
-      );
+      const { introspectGraphQLSchema } =
+        await import('@/codegen/inference/from-graphql.js');
 
       const schemas: ContentTypeDefinition[] = [
         {
@@ -988,9 +978,8 @@ describe('CLI', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      const { introspectGraphQLSchema } = await import(
-        '@/codegen/inference/from-graphql.js'
-      );
+      const { introspectGraphQLSchema } =
+        await import('@/codegen/inference/from-graphql.js');
 
       vi.mocked(introspectGraphQLSchema).mockRejectedValue(
         new Error('Network error')
@@ -1016,9 +1005,8 @@ describe('CLI', () => {
     });
 
     it('should handle non-Error errors gracefully', async () => {
-      const { introspectGraphQLSchema } = await import(
-        '@/codegen/inference/from-graphql.js'
-      );
+      const { introspectGraphQLSchema } =
+        await import('@/codegen/inference/from-graphql.js');
 
       vi.mocked(introspectGraphQLSchema).mockRejectedValue('string error');
 
