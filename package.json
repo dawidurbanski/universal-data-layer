@@ -9,8 +9,8 @@
   "scripts": {
     "turbo": "turbo",
     "dev": "node scripts/dev.js",
-    "build": "turbo build --filter='./packages/*'",
-    "start": "turbo start --filter='./packages/*'",
+    "build": "turbo build --filter='./packages/*' --ui=stream",
+    "start": "turbo start --filter='./packages/*' --ui=stream",
     "lint": "turbo lint --filter='./packages/*' --ui=stream",
     "fix": "turbo fix --filter='./packages/*' && npm run fix --prefix tests/manual",
     "test": "turbo test --filter='./packages/*' --ui=stream",

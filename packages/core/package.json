@@ -16,8 +16,8 @@
     }
   },
   "bin": {
-    "universal-data-layer": "./bin/cli.js",
-    "udl-codegen": "./bin/codegen.js"
+    "universal-data-layer": "bin/cli.js",
+    "udl-codegen": "bin/codegen.js"
   },
   "scripts": {
     "build": "tsc && tsc-alias",
