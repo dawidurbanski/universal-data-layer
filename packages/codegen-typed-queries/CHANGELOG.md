@@ -1,5 +1,14 @@
 # @universal-data-layer/codegen-typed-queries
 
+## 1.0.1
+
+### Patch Changes
+
+- [`5399e18`](https://github.com/dawidurbanski/universal-data-layer/commit/5399e18ec55e8f588159ee276ca8ce321218d210) Thanks [@dawidurbanski](https://github.com/dawidurbanski)! - Exclude test files from npm package distribution
+
+- Updated dependencies [[`5399e18`](https://github.com/dawidurbanski/universal-data-layer/commit/5399e18ec55e8f588159ee276ca8ce321218d210)]:
+  - universal-data-layer@1.0.1
+
 ## 1.0.0
 
 ### Minor Changes
