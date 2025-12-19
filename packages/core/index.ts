@@ -10,6 +10,7 @@ export type {
   UDLConfigFile,
   OnLoadContext,
   PluginSpec,
+  CodegenConfig,
 } from './src/loader.js';
 export { defineConfig } from './src/loader.js';
 

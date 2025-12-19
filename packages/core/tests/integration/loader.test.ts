@@ -89,57 +89,49 @@ describe('loader integration tests', () => {
   });
 
   describe('defineConfig', () => {
-    it('should return config object with config and onLoad', () => {
-      const mockOnLoad = vi.fn();
+    it('should return the config object directly', () => {
       const result = defineConfig({
-        config: {
-          port: 3000,
-          plugins: ['test-plugin'],
-        },
-        onLoad: mockOnLoad,
-      });
-
-      expect(result.config).toEqual({
         port: 3000,
         plugins: ['test-plugin'],
       });
-      expect(result.onLoad).toBe(mockOnLoad);
+
+      expect(result).toEqual({
+        port: 3000,
+        plugins: ['test-plugin'],
+      });
     });
 
-    it('should return config object without onLoad', () => {
+    it('should preserve all config properties', () => {
       const result = defineConfig({
-        config: {
-          port: 4000,
-          host: 'localhost',
-        },
-      });
-
-      expect(result.config).toEqual({
         port: 4000,
         host: 'localhost',
+        codegen: {
+          output: './generated',
+          guards: true,
+        },
       });
-      expect(result.onLoad).toBeUndefined();
+
+      expect(result).toEqual({
+        port: 4000,
+        host: 'localhost',
+        codegen: {
+          output: './generated',
+          guards: true,
+        },
+      });
     });
 
-    it('should preserve type information for typed options', () => {
-      interface MyPluginOptions {
-        apiKey: string;
-        environment: 'dev' | 'prod';
-      }
-
-      const result = defineConfig<MyPluginOptions>({
-        config: {
-          plugins: ['my-plugin'],
-        },
-        onLoad: (context) => {
-          // Type test - this should compile without errors
-          const apiKey = context?.options?.apiKey;
-          expect(apiKey).toBeUndefined(); // No context passed in this test
-        },
+    it('should work with plugin type configs', () => {
+      const result = defineConfig({
+        type: 'source',
+        name: 'my-plugin',
+        indexes: ['slug'],
       });
 
-      expect(result.config).toEqual({
-        plugins: ['my-plugin'],
+      expect(result).toEqual({
+        type: 'source',
+        name: 'my-plugin',
+        indexes: ['slug'],
       });
     });
   });

@@ -170,35 +170,24 @@ export interface UDLConfigFile {
 }
 
 /**
- * Helper function for defining plugin configs with typed options
- * Provides better type inference and autocomplete for plugin configurations
+ * Helper function for defining UDL configs with TypeScript support.
+ * Provides autocomplete and type-checking for configuration options.
  *
  * @example
  * ```ts
- * // In your plugin's udl.config.ts
- * import { defineConfig, OnLoadContext } from 'universal-data-layer';
+ * // udl.config.ts
+ * import { defineConfig } from 'universal-data-layer';
  *
- * interface MyPluginOptions {
- *   apiKey: string;
- *   environment: 'dev' | 'prod';
- * }
- *
- * export const { config, onLoad } = defineConfig<MyPluginOptions>({
- *   config: {
- *     plugins: []
+ * export const config = defineConfig({
+ *   plugins: ['@universal-data-layer/plugin-source-contentful'],
+ *   codegen: {
+ *     output: './generated',
  *   },
- *   onLoad: async (context) => {
- *     // context.options is now typed as MyPluginOptions
- *     console.log(context?.options?.apiKey);
- *   }
  * });
  * ```
  */
-export function defineConfig<T = Record<string, unknown>>(configFile: {
-  config: UDLConfig;
-  onLoad?: (context?: OnLoadContext<T>) => void | Promise<void>;
-}): UDLConfigFile {
-  return configFile as UDLConfigFile;
+export function defineConfig(config: UDLConfig): UDLConfig {
+  return config;
 }
 
 /**
