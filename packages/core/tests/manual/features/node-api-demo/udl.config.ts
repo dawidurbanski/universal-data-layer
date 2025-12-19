@@ -1,4 +1,4 @@
-import type { UDLConfig } from '@core/loader.js';
+import { defineConfig } from 'universal-data-layer';
 
 /**
  * UDL Configuration for Node API Demo
@@ -10,7 +10,7 @@ import type { UDLConfig } from '@core/loader.js';
  * 3. Filtering data (removing nodes)
  */
 
-export const config: UDLConfig = {
+export const config = defineConfig({
   plugins: [
     // Plugin 1: Basic data source - creates Product nodes from static data
     {
@@ -26,4 +26,4 @@ export const config: UDLConfig = {
     // Plugin 3: Node filter - removes discontinued products
     './plugins/plugin3-node-filter',
   ],
-};
+});

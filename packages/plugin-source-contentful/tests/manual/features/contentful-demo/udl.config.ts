@@ -1,6 +1,6 @@
-import type { UDLConfig } from '@core/loader.js';
+import { defineConfig } from 'universal-data-layer';
 
-export const config: UDLConfig = {
+export const config = defineConfig({
   plugins: [
     {
       name: '@universal-data-layer/plugin-source-contentful',
@@ -11,4 +11,4 @@ export const config: UDLConfig = {
       },
     },
   ],
-};
+});

@@ -6,10 +6,12 @@
  * Sync API for efficient updates.
  */
 
-import type {
-  SourceNodesContext,
-  ReferenceResolverConfig,
-  EntityKeyConfig,
+import {
+  defineConfig,
+  type SourceNodesContext,
+  type ReferenceResolverConfig,
+  type EntityKeyConfig,
+  type OnLoadContext,
 } from 'universal-data-layer';
 import { createContentfulClient } from './src/client.js';
 import type { ContentfulPluginOptions } from './src/types/index.js';
@@ -47,8 +49,8 @@ const LOG_PREFIX = '[@universal-data-layer/plugin-source-contentful]';
 /**
  * Plugin configuration
  */
-export const config = {
-  type: 'source' as const,
+export const config = defineConfig({
+  type: 'source',
   name: '@universal-data-layer/plugin-source-contentful',
   indexes: ['contentfulId'],
   codegen: {
@@ -56,17 +58,15 @@ export const config = {
     guards: true,
     includeInternal: true,
   },
-};
+});
 
 /**
  * Called when the plugin is loaded.
  * Validates required options.
  */
-export function onLoad({
-  options,
-}: {
-  options?: ContentfulPluginOptions;
-} = {}): void {
+export function onLoad(context?: OnLoadContext<ContentfulPluginOptions>): void {
+  const options = context?.options;
+
   if (!options?.spaceId) {
     throw new ContentfulConfigError('Missing required option: spaceId');
   }

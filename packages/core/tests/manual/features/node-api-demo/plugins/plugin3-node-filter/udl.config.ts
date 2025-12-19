@@ -5,12 +5,12 @@
  * based on specific criteria. It removes discontinued products.
  */
 
-import type { SourceNodesContext } from '@core/nodes/index.js';
+import { defineConfig, type SourceNodesContext } from 'universal-data-layer';
 
-export const config = {
-  type: 'other' as const,
+export const config = defineConfig({
+  type: 'other',
   name: 'filter-products',
-};
+});
 
 export async function sourceNodes({ actions }: SourceNodesContext) {
   // Query all Product nodes

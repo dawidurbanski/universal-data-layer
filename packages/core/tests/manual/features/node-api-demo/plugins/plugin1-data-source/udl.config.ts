@@ -5,7 +5,7 @@
  * It sources product data from an in-memory array and creates nodes.
  */
 
-import type { SourceNodesContext } from '@core/nodes/index.js';
+import { defineConfig, type SourceNodesContext } from 'universal-data-layer';
 
 // Sample product data
 const products = [
@@ -51,11 +51,11 @@ const products = [
   },
 ];
 
-export const config = {
-  type: 'source' as const,
+export const config = defineConfig({
+  type: 'source',
   name: 'source-products',
   indexes: ['slug'], // Default indexed fields for this plugin
-};
+});
 
 export async function sourceNodes({
   actions,

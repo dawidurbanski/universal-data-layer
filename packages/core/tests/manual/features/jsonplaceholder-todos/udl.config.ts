@@ -1,4 +1,4 @@
-import type { UDLConfig } from '@core/loader.js';
+import { defineConfig } from 'universal-data-layer';
 
 /**
  * UDL Configuration for JSONPlaceholder Todos Demo
@@ -9,7 +9,7 @@ import type { UDLConfig } from '@core/loader.js';
  * 3. Using generated types, guards, and helpers
  */
 
-export const config: UDLConfig = {
+export const config = defineConfig({
   plugins: [
     // Todo source plugin - fetches from JSONPlaceholder API
     {
@@ -21,4 +21,4 @@ export const config: UDLConfig = {
   ],
   // Codegen is now configured in the plugin's udl.config.ts
   // Types will be generated at: plugins/todo-source/generated/
-};
+});

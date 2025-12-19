@@ -5,7 +5,7 @@
  * and creates nodes in the UDL store.
  */
 
-import type { SourceNodesContext } from 'universal-data-layer';
+import { defineConfig, type SourceNodesContext } from 'universal-data-layer';
 
 // API response type
 interface TodoApiResponse {
@@ -15,19 +15,18 @@ interface TodoApiResponse {
   completed: boolean;
 }
 
-export const config = {
-  type: 'source' as const,
+export const config = defineConfig({
+  type: 'source',
   name: 'jsonplaceholder-todo-source',
   indexes: ['userId'], // Enable userId indexing for efficient lookups
   // Codegen config - outputs relative to this plugin folder
   codegen: {
     output: './generated',
     guards: true,
-    helpers: true,
     includeInternal: true,
     // types not specified = auto-filter by owner (this plugin's nodes only)
   },
-};
+});
 
 export async function sourceNodes({
   actions,

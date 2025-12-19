@@ -5,12 +5,12 @@
  * It queries Product nodes and adds computed fields based on price ranges.
  */
 
-import type { SourceNodesContext } from '@core/nodes/index.js';
+import { defineConfig, type SourceNodesContext } from 'universal-data-layer';
 
-export const config = {
-  type: 'other' as const,
+export const config = defineConfig({
+  type: 'other',
   name: 'extend-products',
-};
+});
 
 export async function sourceNodes({ actions }: SourceNodesContext) {
   // Query all Product nodes created by Plugin 1
