@@ -45,6 +45,7 @@
   },
   "files": [
     "dist",
+    "!dist/tests",
     "bin",
     "README.md"
   ],
