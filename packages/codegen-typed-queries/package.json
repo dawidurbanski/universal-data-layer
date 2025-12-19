@@ -1,6 +1,6 @@
 {
   "name": "@universal-data-layer/codegen-typed-queries",
-  "version": "0.1.0-beta.1",
+  "version": "1.0.0",
   "description": "TypedDocumentNode query generation extension for Universal Data Layer (experimental)",
   "type": "module",
   "main": "dist/src/index.js",
@@ -44,10 +44,10 @@
   },
   "peerDependencies": {
     "graphql": "^16.0.0",
-    "universal-data-layer": "^0.1.0"
+    "universal-data-layer": "^1.0.0"
   },
   "devDependencies": {
     "graphql": "^16.11.0",
-    "universal-data-layer": "^0.1.0"
+    "universal-data-layer": "^1.0.0"
   }
 }
