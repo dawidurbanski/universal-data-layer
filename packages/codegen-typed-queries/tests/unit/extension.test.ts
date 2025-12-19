@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { buildSchema } from 'graphql';
-import { extension } from '../../src/index.js';
+import { extension } from '@/index.js';
 import type { CodegenExtensionContext } from 'universal-data-layer';
 import * as fs from 'node:fs/promises';
 

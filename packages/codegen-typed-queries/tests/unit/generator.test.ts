@@ -4,7 +4,7 @@ import {
   QueryDocumentGenerator,
   generateQueryDocuments,
   type DiscoveredQuery,
-} from '../../src/generator.js';
+} from '@/generator.js';
 import * as fs from 'node:fs/promises';
 
 // Mock fs module
