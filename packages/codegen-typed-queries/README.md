@@ -22,7 +22,7 @@ Add the extension to your UDL config:
 // udl.config.ts
 import { defineConfig } from 'universal-data-layer';
 
-export const { config } = defineConfig({
+export const config = defineConfig({
   plugins: ['@universal-data-layer/plugin-source-contentful'],
   codegen: {
     output: './generated',

@@ -59,7 +59,7 @@ await startServer({ port: 4000 });
 // udl.config.ts
 import { defineConfig } from 'universal-data-layer';
 
-export const { config } = defineConfig({
+export const config = defineConfig({
   port: 4000,
   plugins: ['@universal-data-layer/plugin-source-contentful'],
   codegen: {

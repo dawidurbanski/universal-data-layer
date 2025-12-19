@@ -156,7 +156,7 @@ When you click "Load Plugins & Source Nodes":
 ```graphql
 # Get all products
 {
-  allProduct {
+  allProducts {
     nodes {
       name
       price
@@ -168,7 +168,7 @@ When you click "Load Plugins & Source Nodes":
 
 # Get only affordable products
 {
-  allProduct(filter: { priceCategory: { eq: "affordable" } }) {
+  allProducts(filter: { priceCategory: { eq: "affordable" } }) {
     nodes {
       name
       price
@@ -179,7 +179,7 @@ When you click "Load Plugins & Source Nodes":
 
 # Get in-stock products
 {
-  allProduct(filter: { inStock: { eq: true } }) {
+  allProducts(filter: { inStock: { eq: true } }) {
     nodes {
       name
       category

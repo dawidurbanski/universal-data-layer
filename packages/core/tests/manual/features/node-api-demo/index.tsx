@@ -1,3 +1,4 @@
+import { resolveRefs } from '@core/client';
 import { useState } from 'react';
 
 interface NodeDisplay {
@@ -34,7 +35,7 @@ export default function NodeApiDemo() {
         body: JSON.stringify({
           query: `
             query {
-              allProduct {
+              allProducts {
                 name
                 price
                 inStock
@@ -85,10 +86,13 @@ export default function NodeApiDemo() {
         throw new Error(result.errors[0].message);
       }
 
+      const data = resolveRefs<{ allProducts: Product[] }>(result);
+
       // Transform GraphQL results to node display format
-      const products = (result.data.allProduct || []) as Product[];
+      const products = (data.allProducts || []) as Product[];
       const nodeDisplays: NodeDisplay[] = products.map((product) => {
         const { internal, ...fields } = product;
+        console.log('Product fields:', fields, product);
         return {
           id: internal.id,
           type: internal.type,

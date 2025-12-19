@@ -16,13 +16,13 @@ Add the plugin to your UDL configuration:
 // udl.config.ts
 import { defineConfig } from 'universal-data-layer';
 
-export default defineConfig({
+export const config = defineConfig({
   plugins: [
     {
-      resolve: '@universal-data-layer/plugin-source-contentful',
+      name: '@universal-data-layer/plugin-source-contentful',
       options: {
-        spaceId: process.env.CONTENTFUL_SPACE_ID,
-        accessToken: process.env.CONTENTFUL_ACCESS_TOKEN,
+        spaceId: process.env['CONTENTFUL_SPACE_ID'],
+        accessToken: process.env['CONTENTFUL_ACCESS_TOKEN'],
       },
     },
   ],
@@ -69,7 +69,7 @@ Sync tokens are stored in `.udl-cache/contentful-sync-tokens.json` by default. Y
 
 ```typescript
 {
-  resolve: '@universal-data-layer/plugin-source-contentful',
+  name: '@universal-data-layer/plugin-source-contentful',
   options: {
     spaceId: '...',
     accessToken: '...',
@@ -95,10 +95,10 @@ To fetch draft/unpublished content, use the Preview API:
 
 ```typescript
 {
-  resolve: '@universal-data-layer/plugin-source-contentful',
+  name: '@universal-data-layer/plugin-source-contentful',
   options: {
-    spaceId: process.env.CONTENTFUL_SPACE_ID,
-    accessToken: process.env.CONTENTFUL_PREVIEW_TOKEN,
+    spaceId: process.env['CONTENTFUL_SPACE_ID'],
+    accessToken: process.env['CONTENTFUL_PREVIEW_TOKEN'],
     locale: 'en-US',
     host: 'preview.contentful.com',
   },
@@ -110,22 +110,22 @@ To fetch draft/unpublished content, use the Preview API:
 Use `nodePrefix` to source from multiple Contentful spaces:
 
 ```typescript
-export default defineConfig({
+export const config = defineConfig({
   plugins: [
     {
-      resolve: '@universal-data-layer/plugin-source-contentful',
+      name: '@universal-data-layer/plugin-source-contentful',
       options: {
-        spaceId: process.env.CMS_SPACE_ID,
-        accessToken: process.env.CMS_ACCESS_TOKEN,
+        spaceId: process.env['CMS_SPACE_ID'],
+        accessToken: process.env['CMS_ACCESS_TOKEN'],
         locale: 'en-US',
         nodePrefix: 'CMS',
       },
     },
     {
-      resolve: '@universal-data-layer/plugin-source-contentful',
+      name: '@universal-data-layer/plugin-source-contentful',
       options: {
-        spaceId: process.env.CRM_SPACE_ID,
-        accessToken: process.env.CRM_ACCESS_TOKEN,
+        spaceId: process.env['CRM_SPACE_ID'],
+        accessToken: process.env['CRM_ACCESS_TOKEN'],
         locale: 'en-US',
         nodePrefix: 'CRM',
       },
@@ -142,7 +142,7 @@ Filter which content types to source:
 
 ```typescript
 {
-  resolve: '@universal-data-layer/plugin-source-contentful',
+  name: '@universal-data-layer/plugin-source-contentful',
   options: {
     spaceId: '...',
     accessToken: '...',

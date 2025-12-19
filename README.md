@@ -38,14 +38,14 @@ universal-data-layer/
 // udl.config.ts
 import { defineConfig } from 'universal-data-layer';
 
-export const { config } = defineConfig({
+export const config = defineConfig({
   port: 4000,
   plugins: [
     {
       name: '@universal-data-layer/plugin-source-contentful',
       options: {
-        spaceId: process.env.CONTENTFUL_SPACE_ID,
-        accessToken: process.env.CONTENTFUL_ACCESS_TOKEN,
+        spaceId: process.env['CONTENTFUL_SPACE_ID'],
+        accessToken: process.env['CONTENTFUL_ACCESS_TOKEN'],
       },
     },
   ],
