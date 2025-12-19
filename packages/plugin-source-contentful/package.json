@@ -44,7 +44,6 @@
   },
   "files": [
     "dist",
-    "!dist/tests",
     "README.md"
   ],
   "dependencies": {
