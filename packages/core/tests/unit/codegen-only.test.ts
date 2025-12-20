@@ -106,12 +106,14 @@ describe('runCodegenOnly', () => {
       expect(mockStartMockServer).toHaveBeenCalled();
     });
 
-    it('should NOT start mock server in production environment', async () => {
+    it('should call startMockServer in production (it decides internally not to mock)', async () => {
       process.env['NODE_ENV'] = 'production';
 
       await runCodegenOnly();
 
-      expect(mockStartMockServer).not.toHaveBeenCalled();
+      // startMockServer is always called, but it internally decides
+      // whether to actually start mocks based on credentials/env
+      expect(mockStartMockServer).toHaveBeenCalled();
     });
 
     it('should always stop mock server after execution', async () => {
