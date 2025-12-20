@@ -1,0 +1,49 @@
+{
+  "name": "@universal-data-layer/adapter-nextjs",
+  "version": "1.0.0",
+  "description": "Next.js adapter for Universal Data Layer - unified CLI for running UDL and Next.js together",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "udl-next": "bin/udl-next.js"
+  },
+  "scripts": {
+    "build": "tsc && tsc-alias",
+    "dev": "tsc --watch",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest watch --passWithNoTests",
+    "test:coverage": "vitest run --coverage",
+    "test:coverage:file": "vitest run --coverage",
+    "lint": "npm run lint:formatting && npm run lint:quality && npm run lint:types",
+    "lint:formatting": "prettier --check . --ignore-path ../../.prettierignore",
+    "lint:quality": "eslint . --config ../../eslint.config.js",
+    "lint:types": "tsc --noEmit",
+    "fix": "npm run fix:formatting && npm run fix:quality",
+    "fix:formatting": "prettier --write . --ignore-path ../../.prettierignore",
+    "fix:quality": "eslint . --fix --config ../../eslint.config.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "author": "Dawid Urbanski <hi@dawidurbanski.com>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "next": ">=13.0.0",
+    "universal-data-layer": "^1.0.5"
+  }
+}
