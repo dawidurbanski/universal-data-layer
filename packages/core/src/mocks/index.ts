@@ -1,6 +1,5 @@
-import { setupServer, SetupServerApi } from 'msw/node';
+import type { SetupServerApi } from 'msw/node';
 import type { RequestHandler } from 'msw';
-import { jsonplaceholderHandlers } from './jsonplaceholder.js';
 
 // Dynamic import to avoid bundling issues when plugin not installed
 // Using string concatenation to prevent TypeScript from trying to resolve at compile time
@@ -58,11 +57,45 @@ function shouldUseMocks(): { useMocks: boolean; reason: string } {
 
 let mockServer: SetupServerApi | null = null;
 
+/**
+ * Dynamically load msw and jsonplaceholder handlers only when needed.
+ * This prevents the "Cannot find package 'msw'" error when msw is not installed
+ * (it's a devDependency, so it won't be installed in consuming projects).
+ */
+async function loadMswDependencies() {
+  const [mswNode, jsonplaceholderModule] = await Promise.all([
+    import('msw/node'),
+    import('./jsonplaceholder.js'),
+  ]);
+  return {
+    setupServer: mswNode.setupServer,
+    jsonplaceholderHandlers: jsonplaceholderModule.jsonplaceholderHandlers,
+  };
+}
+
 export async function startMockServer() {
   const { useMocks, reason } = shouldUseMocks();
 
   if (!useMocks) {
     console.log(`🔵 Using real APIs (${reason})`);
+    return;
+  }
+
+  // Only try to load msw when we actually need mocks
+  let setupServer: typeof import('msw/node').setupServer;
+  let jsonplaceholderHandlers: RequestHandler[];
+
+  try {
+    const deps = await loadMswDependencies();
+    setupServer = deps.setupServer;
+    jsonplaceholderHandlers = deps.jsonplaceholderHandlers;
+  } catch (error) {
+    console.log(
+      `🔵 MSW not available (${error instanceof Error ? error.message : 'unknown error'}). Using real APIs.`
+    );
+    console.log(
+      '   To use mocks, install msw as a dev dependency: npm install -D msw'
+    );
     return;
   }
 
