@@ -13,6 +13,7 @@
 import { loadAppConfig, loadPlugins } from '@/loader.js';
 import { rebuildHandler } from '@/handlers/graphql.js';
 import { runCodegen } from '@/codegen.js';
+import { loadEnv } from '@/env.js';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname, resolve } from 'node:path';
 import { defaultStore } from '@/nodes/defaultStore.js';
@@ -44,10 +45,15 @@ export async function runCodegenOnly(
 
   console.log('🔄 Running codegen...');
 
-  // Start mock server to intercept API calls (same as dev server)
-  if (process.env['NODE_ENV'] !== 'production') {
-    await startMockServer();
-  }
+  // Load environment variables from .env files FIRST
+  // This must happen before startMockServer so credentials can be detected
+  loadEnv({ cwd: configPath });
+
+  // Start mock server (it will decide whether to use mocks based on:
+  // 1. Credentials provided → no mocks
+  // 2. UDL_USE_MOCKS env var
+  // 3. NODE_ENV=development → mocks)
+  await startMockServer();
 
   const userConfig = await loadAppConfig(configPath);
 

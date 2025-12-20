@@ -21,7 +21,7 @@
   },
   "scripts": {
     "build": "tsc && tsc-alias",
-    "dev": "node ./bin/cli.js & tsc --watch & tsc-alias --watch",
+    "dev": "NODE_ENV=development node ./bin/cli.js & tsc --watch & tsc-alias --watch",
     "start": "node ./bin/cli.js",
     "codegen": "node ./bin/codegen.js",
     "test": "vitest run --passWithNoTests",

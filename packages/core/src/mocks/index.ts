@@ -16,11 +16,53 @@ async function loadContentfulHandlers(): Promise<RequestHandler[]> {
   }
 }
 
+/**
+ * Check if real Contentful credentials are provided
+ */
+function hasContentfulCredentials(): boolean {
+  const spaceId = process.env['CONTENTFUL_SPACE_ID'];
+  const accessToken = process.env['CONTENTFUL_ACCESS_TOKEN'];
+  return Boolean(spaceId && accessToken);
+}
+
+/**
+ * Determine if mocks should be used based on priority:
+ * 1. Real credentials provided → NO mocks
+ * 2. UDL_USE_MOCKS=true → use mocks
+ * 3. UDL_USE_MOCKS=false → no mocks
+ * 4. NODE_ENV=development → use mocks
+ * 5. Otherwise → no mocks
+ */
+function shouldUseMocks(): { useMocks: boolean; reason: string } {
+  // Priority 1: Real credentials = no mocks
+  if (hasContentfulCredentials()) {
+    return { useMocks: false, reason: 'Contentful credentials provided' };
+  }
+
+  // Priority 2-3: Explicit UDL_USE_MOCKS setting
+  if (process.env['UDL_USE_MOCKS'] === 'true') {
+    return { useMocks: true, reason: 'UDL_USE_MOCKS=true' };
+  }
+  if (process.env['UDL_USE_MOCKS'] === 'false') {
+    return { useMocks: false, reason: 'UDL_USE_MOCKS=false' };
+  }
+
+  // Priority 4: NODE_ENV=development
+  if (process.env['NODE_ENV'] === 'development') {
+    return { useMocks: true, reason: 'NODE_ENV=development' };
+  }
+
+  // Priority 5: Default to no mocks
+  return { useMocks: false, reason: 'production mode (default)' };
+}
+
 let mockServer: SetupServerApi | null = null;
 
 export async function startMockServer() {
-  if (process.env['USE_REAL_API'] === 'true') {
-    console.log('🔵 Using real APIs (USE_REAL_API=true)');
+  const { useMocks, reason } = shouldUseMocks();
+
+  if (!useMocks) {
+    console.log(`🔵 Using real APIs (${reason})`);
     return;
   }
 
@@ -29,9 +71,8 @@ export async function startMockServer() {
   mockServer = setupServer(...contentfulHandlers, ...jsonplaceholderHandlers);
 
   mockServer.listen({ onUnhandledRequest: 'bypass' });
-  console.log(
-    '🔶 MSW Mock Server started - external API calls will be intercepted'
-  );
+  console.log(`🔶 MSW Mock Server started (${reason})`);
+  console.log('   External API calls will be intercepted with mock responses');
 }
 
 export function stopMockServer() {

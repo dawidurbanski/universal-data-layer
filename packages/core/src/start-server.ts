@@ -18,15 +18,16 @@ export interface StartServerOptions {
 }
 
 export async function startServer(options: StartServerOptions = {}) {
-  // Start mock server FIRST (before any plugins make API calls)
-  // Only in dev mode - mocks are for internal development only
-  if (process.env['NODE_ENV'] !== 'production') {
-    await startMockServer();
-  }
-
-  // Load environment variables from .env files before loading config
+  // Load environment variables from .env files FIRST
+  // This must happen before startMockServer so credentials can be detected
   const configDir = options.configPath || process.cwd();
   loadEnv({ cwd: configDir });
+
+  // Start mock server (it will decide whether to use mocks based on:
+  // 1. Credentials provided → no mocks
+  // 2. UDL_USE_MOCKS env var
+  // 3. NODE_ENV=development → mocks)
+  await startMockServer();
 
   const userConfig = await loadAppConfig(configDir);
 
@@ -97,7 +98,8 @@ export async function startServer(options: StartServerOptions = {}) {
   }
 
   // In dev mode, also load configs from manual test features
-  if (process.env['NODE_ENV'] !== 'production') {
+  // Only when explicitly in development mode (internal development only)
+  if (process.env['NODE_ENV'] === 'development') {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
     // Go up from dist/src to package root
@@ -136,7 +138,8 @@ export async function startServer(options: StartServerOptions = {}) {
   }
 
   // Setup file watcher for hot reloading in dev mode
-  if (options.watch !== false && process.env['NODE_ENV'] !== 'production') {
+  // Only when explicitly in development mode
+  if (options.watch !== false && process.env['NODE_ENV'] === 'development') {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
 
