@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { parseArgs, printHelp, main } from '@/cli.js';
 import { runDev } from '@/commands/dev.js';
 import { runStart } from '@/commands/start.js';
+import { runBuild } from '@/commands/build.js';
 
 // Mock the command modules
 vi.mock('@/commands/dev.js', () => ({
@@ -12,8 +13,13 @@ vi.mock('@/commands/start.js', () => ({
   runStart: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('@/commands/build.js', () => ({
+  runBuild: vi.fn().mockResolvedValue(undefined),
+}));
+
 const mockRunDev = vi.mocked(runDev);
 const mockRunStart = vi.mocked(runStart);
+const mockRunBuild = vi.mocked(runBuild);
 
 describe('parseArgs', () => {
   describe('command parsing', () => {
@@ -208,12 +214,19 @@ describe('main', () => {
   it('should handle build command', async () => {
     await main(['build']);
 
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      '[build] Starting with options:',
-      expect.any(Object),
-      'nextArgs:',
-      []
-    );
+    expect(mockRunBuild).toHaveBeenCalledWith({}, []);
+  });
+
+  it('should pass options to build command', async () => {
+    await main(['build', '-p', '5000']);
+
+    expect(mockRunBuild).toHaveBeenCalledWith({ port: 5000 }, []);
+  });
+
+  it('should pass nextArgs to build command', async () => {
+    await main(['build', '--', '--debug']);
+
+    expect(mockRunBuild).toHaveBeenCalledWith({}, ['--debug']);
   });
 
   it('should handle start command', async () => {
