@@ -1,5 +1,6 @@
 import { parseArgs as nodeParseArgs } from 'node:util';
 import type { CliCommand, CliOptions, ParsedArgs } from '@/types.js';
+import { runDev } from '@/commands/dev.js';
 
 const VALID_COMMANDS: CliCommand[] = ['dev', 'build', 'start'];
 
@@ -106,13 +107,7 @@ export async function main(args?: string[]): Promise<void> {
   // Commands will be implemented in subsequent tasks
   switch (command) {
     case 'dev':
-      // TODO: Import and call runDev from commands/dev.ts
-      console.log(
-        `[dev] Starting with options:`,
-        options,
-        `nextArgs:`,
-        nextArgs
-      );
+      await runDev(options, nextArgs);
       break;
     case 'build':
       // TODO: Import and call runBuild from commands/build.ts

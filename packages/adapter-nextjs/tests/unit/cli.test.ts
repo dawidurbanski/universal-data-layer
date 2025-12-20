@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { parseArgs, printHelp, main } from '@/cli.js';
+import { runDev } from '@/commands/dev.js';
+
+// Mock the runDev command
+vi.mock('@/commands/dev.js', () => ({
+  runDev: vi.fn().mockResolvedValue(undefined),
+}));
+
+const mockRunDev = vi.mocked(runDev);
 
 describe('parseArgs', () => {
   describe('command parsing', () => {
@@ -142,6 +150,7 @@ describe('main', () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     process.exitCode = undefined;
@@ -187,12 +196,7 @@ describe('main', () => {
   it('should handle dev command', async () => {
     await main(['dev']);
 
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      '[dev] Starting with options:',
-      expect.any(Object),
-      'nextArgs:',
-      []
-    );
+    expect(mockRunDev).toHaveBeenCalledWith({}, []);
   });
 
   it('should handle build command', async () => {
@@ -217,26 +221,16 @@ describe('main', () => {
     );
   });
 
-  it('should pass options to command', async () => {
+  it('should pass options to dev command', async () => {
     await main(['dev', '-p', '5000', '--next-port', '3001']);
 
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      '[dev] Starting with options:',
-      { port: 5000, nextPort: 3001 },
-      'nextArgs:',
-      []
-    );
+    expect(mockRunDev).toHaveBeenCalledWith({ port: 5000, nextPort: 3001 }, []);
   });
 
-  it('should pass nextArgs to command', async () => {
+  it('should pass nextArgs to dev command', async () => {
     await main(['dev', '--', '--turbo']);
 
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      '[dev] Starting with options:',
-      {},
-      'nextArgs:',
-      ['--turbo']
-    );
+    expect(mockRunDev).toHaveBeenCalledWith({}, ['--turbo']);
   });
 
   it('should use process.argv when args is undefined', async () => {
@@ -246,12 +240,7 @@ describe('main', () => {
     try {
       await main();
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        '[dev] Starting with options:',
-        {},
-        'nextArgs:',
-        []
-      );
+      expect(mockRunDev).toHaveBeenCalledWith({}, []);
     } finally {
       process.argv = originalArgv;
     }
