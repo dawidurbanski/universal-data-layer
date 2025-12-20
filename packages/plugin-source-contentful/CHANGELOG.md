@@ -1,5 +1,12 @@
 # @universal-data-layer/plugin-source-contentful
 
+## 1.0.2
+
+### Patch Changes
+
+- Updated dependencies [[`32b8769`](https://github.com/dawidurbanski/universal-data-layer/commit/32b8769e938db4cd9bba147e133ceb56b080ebb4)]:
+  - universal-data-layer@1.0.2
+
 ## 1.0.1
 
 ### Patch Changes

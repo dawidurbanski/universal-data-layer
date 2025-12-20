@@ -1,6 +1,6 @@
 {
   "name": "universal-data-layer",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Core library for the Universal Data Layer project",
   "type": "module",
   "main": "dist/index.js",

@@ -1,5 +1,11 @@
 # universal-data-layer
 
+## 1.0.2
+
+### Patch Changes
+
+- [`32b8769`](https://github.com/dawidurbanski/universal-data-layer/commit/32b8769e938db4cd9bba147e133ceb56b080ebb4) Thanks [@dawidurbanski](https://github.com/dawidurbanski)! - Fix manual-tests package dependency version
+
 ## 1.0.1
 
 ### Patch Changes
