@@ -18,7 +18,12 @@
     },
     "codegen": {
       "dependsOn": ["^build"],
-      "cache": false
+      "cache": false,
+      "passThroughEnv": [
+        "UDL_USE_MOCKS",
+        "CONTENTFUL_SPACE_ID",
+        "CONTENTFUL_ACCESS_TOKEN"
+      ]
     },
     "typecheck": {
       "dependsOn": ["codegen"]
@@ -28,7 +33,8 @@
     },
     "dev": {
       "persistent": true,
-      "cache": false
+      "cache": false,
+      "passThroughEnv": ["NODE_ENV"]
     },
     "lint": {
       "dependsOn": []

@@ -247,12 +247,15 @@ loadManifests()
     }
 
     // Start turbo with all filters
+    // NODE_ENV=development enables mocks and dev features
+    // turbo.json has passThroughEnv: ["NODE_ENV"] to pass it to child scripts
     const turbo = spawn('turbo', turboArgs, {
       cwd: resolve(__dirname, '..'),
       stdio: 'inherit',
       shell: true,
       env: {
         ...process.env,
+        NODE_ENV: 'development',
         VITE_PACKAGE_FILTER: packageName || '',
         VITE_FEATURE_FILTER: featureName || '',
       },
@@ -290,6 +293,10 @@ loadManifests()
         cwd: resolve(__dirname, '..'),
         stdio: 'inherit',
         shell: true,
+        env: {
+          ...process.env,
+          NODE_ENV: 'development',
+        },
       }
     );
 
