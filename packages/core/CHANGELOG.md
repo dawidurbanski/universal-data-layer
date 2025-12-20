@@ -1,5 +1,13 @@
 # universal-data-layer
 
+## 1.0.3
+
+### Patch Changes
+
+- [`245733b`](https://github.com/dawidurbanski/universal-data-layer/commit/245733b48669522c20a5fbc484b2f7a5f88b8eb0) Thanks [@dawidurbanski](https://github.com/dawidurbanski)! - Fix msw import error when running UDL in consuming projects
+
+  Changed msw imports to be dynamic so the package is only loaded when mocks are actually needed. This prevents the "Cannot find package 'msw'" error when running `universal-data-layer` as a dependency, since msw is a devDependency and not installed in consuming projects.
+
 ## 1.0.2
 
 ### Patch Changes
