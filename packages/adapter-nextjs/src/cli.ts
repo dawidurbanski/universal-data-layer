@@ -2,6 +2,7 @@ import { parseArgs as nodeParseArgs } from 'node:util';
 import type { CliCommand, CliOptions, ParsedArgs } from '@/types.js';
 import { runDev } from '@/commands/dev.js';
 import { runStart } from '@/commands/start.js';
+import { runBuild } from '@/commands/build.js';
 
 const VALID_COMMANDS: CliCommand[] = ['dev', 'build', 'start'];
 
@@ -111,13 +112,7 @@ export async function main(args?: string[]): Promise<void> {
       await runDev(options, nextArgs);
       break;
     case 'build':
-      // TODO: Import and call runBuild from commands/build.ts
-      console.log(
-        `[build] Starting with options:`,
-        options,
-        `nextArgs:`,
-        nextArgs
-      );
+      await runBuild(options, nextArgs);
       break;
     case 'start':
       await runStart(options, nextArgs);
