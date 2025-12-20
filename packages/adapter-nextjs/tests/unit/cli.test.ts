@@ -1,13 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { parseArgs, printHelp, main } from '@/cli.js';
 import { runDev } from '@/commands/dev.js';
+import { runStart } from '@/commands/start.js';
 
-// Mock the runDev command
+// Mock the command modules
 vi.mock('@/commands/dev.js', () => ({
   runDev: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('@/commands/start.js', () => ({
+  runStart: vi.fn().mockResolvedValue(undefined),
+}));
+
 const mockRunDev = vi.mocked(runDev);
+const mockRunStart = vi.mocked(runStart);
 
 describe('parseArgs', () => {
   describe('command parsing', () => {
@@ -213,12 +219,25 @@ describe('main', () => {
   it('should handle start command', async () => {
     await main(['start']);
 
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      '[start] Starting with options:',
-      expect.any(Object),
-      'nextArgs:',
+    expect(mockRunStart).toHaveBeenCalledWith({}, []);
+  });
+
+  it('should pass options to start command', async () => {
+    await main(['start', '-p', '5000', '--next-port', '3001']);
+
+    expect(mockRunStart).toHaveBeenCalledWith(
+      { port: 5000, nextPort: 3001 },
       []
     );
+  });
+
+  it('should pass nextArgs to start command', async () => {
+    await main(['start', '--', '--keepAliveTimeout', '5000']);
+
+    expect(mockRunStart).toHaveBeenCalledWith({}, [
+      '--keepAliveTimeout',
+      '5000',
+    ]);
   });
 
   it('should pass options to dev command', async () => {
