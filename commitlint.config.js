@@ -26,6 +26,7 @@ export default {
         'contentful',
         'shopify',
         'okendo',
+        'adapter-nextjs',
         'cache',
         'types',
         'docs',
