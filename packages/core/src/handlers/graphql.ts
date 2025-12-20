@@ -2,7 +2,8 @@ import { execute, parse, validate, type GraphQLSchema } from 'graphql';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { normalizeGraphQLResult } from '@/normalization/index.js';
 
-let currentSchema: GraphQLSchema;
+let currentSchema: GraphQLSchema | null = null;
+let schemaInitPromise: Promise<void> | null = null;
 
 /**
  * Whether to normalize responses (deduplicate entities)
@@ -11,15 +12,23 @@ let currentSchema: GraphQLSchema;
 let normalizeResponses = true;
 
 /**
- * Build and cache the GraphQL schema
+ * Build and cache the GraphQL schema (lazy initialization)
  */
-async function initSchema() {
-  const { buildSchema } = await import('@/schema.js');
-  currentSchema = buildSchema();
-}
+async function ensureSchema(): Promise<GraphQLSchema> {
+  if (currentSchema) {
+    return currentSchema;
+  }
 
-// Initialize on module load
-await initSchema();
+  if (!schemaInitPromise) {
+    schemaInitPromise = (async () => {
+      const { buildSchema } = await import('@/schema.js');
+      currentSchema = buildSchema();
+    })();
+  }
+
+  await schemaInitPromise;
+  return currentSchema!;
+}
 
 /**
  * Rebuild the GraphQL handler with a fresh schema
@@ -48,8 +57,8 @@ export async function rebuildHandler(): Promise<void> {
  * Get the current GraphQL schema
  * Used by codegen to generate TypedDocumentNode queries
  */
-export function getCurrentSchema(): GraphQLSchema {
-  return currentSchema;
+export async function getCurrentSchema(): Promise<GraphQLSchema> {
+  return ensureSchema();
 }
 
 /**
@@ -110,6 +119,9 @@ export default async function handler(
   }
 
   try {
+    // Ensure schema is initialized before handling request
+    const schema = await ensureSchema();
+
     const { query, variables, operationName } = await parseRequestBody(req);
 
     if (!query) {
@@ -128,7 +140,7 @@ export default async function handler(
       return;
     }
 
-    const validationErrors = validate(currentSchema, document);
+    const validationErrors = validate(schema, document);
     if (validationErrors.length > 0) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ errors: validationErrors }));
@@ -137,7 +149,7 @@ export default async function handler(
 
     // Execute the query
     const result = await execute({
-      schema: currentSchema,
+      schema,
       document,
       variableValues: variables,
       operationName,

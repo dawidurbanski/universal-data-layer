@@ -116,7 +116,7 @@ export async function startServer(options: StartServerOptions = {}) {
   await rebuildHandler();
 
   // Get the current schema for query generation
-  const schema = getCurrentSchema();
+  const schema = await getCurrentSchema();
 
   // Run codegen for all configs that have it enabled
   for (const {
@@ -267,7 +267,7 @@ export async function startServer(options: StartServerOptions = {}) {
           }
 
           // Get the current schema for query generation
-          const currentSchema = getCurrentSchema();
+          const currentSchema = await getCurrentSchema();
 
           // Find affected codegen configs
           // For .graphql changes, find configs whose basePath contains the changed file
