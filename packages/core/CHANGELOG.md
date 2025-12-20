@@ -1,5 +1,11 @@
 # universal-data-layer
 
+## 1.0.4
+
+### Patch Changes
+
+- [`b8d64cf`](https://github.com/dawidurbanski/universal-data-layer/commit/b8d64cf2229cb460245321d56ba56e1a61ec0587) Thanks [@dawidurbanski](https://github.com/dawidurbanski)! - Fix ERR_PACKAGE_PATH_NOT_EXPORTED error when loading udl.config.ts by adding default export condition to package.json exports field
+
 ## 1.0.3
 
 ### Patch Changes
