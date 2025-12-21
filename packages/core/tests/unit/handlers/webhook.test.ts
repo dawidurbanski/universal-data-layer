@@ -10,8 +10,12 @@ import {
 import {
   WebhookRegistry,
   setDefaultWebhookRegistry,
+  WebhookQueue,
+  setDefaultWebhookQueue,
+  resetWebhookHooks,
+  setWebhookHooks,
   type WebhookRegistration,
-  type WebhookHandlerContext,
+  type QueuedWebhook,
 } from '@/webhooks/index.js';
 
 // Create a mock request that extends EventEmitter to support .on() calls
@@ -170,10 +174,14 @@ describe('WEBHOOK_PATH_PREFIX', () => {
 
 describe('webhookHandler', () => {
   let registry: WebhookRegistry;
+  let queue: WebhookQueue;
 
   beforeEach(() => {
     registry = new WebhookRegistry();
     setDefaultWebhookRegistry(registry);
+    queue = new WebhookQueue({ debounceMs: 5000 });
+    setDefaultWebhookQueue(queue);
+    resetWebhookHooks();
   });
 
   describe('HTTP method validation', () => {
@@ -311,21 +319,15 @@ describe('webhookHandler', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should call handler when verifySignature returns true', async () => {
+    it('should queue webhook when verifySignature returns true', async () => {
       const consoleLogSpy = vi
         .spyOn(console, 'log')
         .mockImplementation(() => {});
-      const handlerCalled = vi.fn();
 
       registry.register(
         'plugin',
         createTestWebhook('path', {
           verifySignature: () => true,
-          handler: async (_req, res, _context) => {
-            handlerCalled();
-            res.writeHead(200);
-            res.end('OK');
-          },
         })
       );
 
@@ -335,8 +337,9 @@ describe('webhookHandler', () => {
       emitBody(req, '{}');
       await webhookHandler(req, res);
 
-      expect(res._statusCode).toBe(200);
-      expect(handlerCalled).toHaveBeenCalled();
+      // Webhook is queued, not immediately processed
+      expect(res._statusCode).toBe(202);
+      expect(queue.size()).toBe(1);
 
       consoleLogSpy.mockRestore();
     });
@@ -362,7 +365,9 @@ describe('webhookHandler', () => {
       emitBody(req, '{}');
       await webhookHandler(req, res);
 
-      expect(res._statusCode).toBe(200);
+      // Webhook is queued after signature verification
+      expect(res._statusCode).toBe(202);
+      expect(queue.size()).toBe(1);
 
       consoleLogSpy.mockRestore();
     });
@@ -380,7 +385,9 @@ describe('webhookHandler', () => {
       emitBody(req, '{}');
       await webhookHandler(req, res);
 
-      expect(res._statusCode).toBe(200);
+      // Webhook is queued without signature verification
+      expect(res._statusCode).toBe(202);
+      expect(queue.size()).toBe(1);
 
       consoleLogSpy.mockRestore();
     });
@@ -403,22 +410,20 @@ describe('webhookHandler', () => {
       expect(body.error).toBe('Invalid JSON body');
     });
 
-    it('should parse valid JSON body', async () => {
+    it('should queue webhook with parsed JSON body', async () => {
       const consoleLogSpy = vi
         .spyOn(console, 'log')
         .mockImplementation(() => {});
-      let receivedContext: WebhookHandlerContext | undefined;
+      let queuedWebhook: QueuedWebhook | undefined;
 
-      registry.register(
-        'plugin',
-        createTestWebhook('path', {
-          handler: async (_req, res, context) => {
-            receivedContext = context;
-            res.writeHead(200);
-            res.end('OK');
-          },
-        })
-      );
+      // Listen for enqueue
+      const originalEnqueue = queue.enqueue.bind(queue);
+      queue.enqueue = (webhook: QueuedWebhook) => {
+        queuedWebhook = webhook;
+        originalEnqueue(webhook);
+      };
+
+      registry.register('plugin', createTestWebhook('path'));
 
       const req = createMockRequest('POST', '/_webhooks/plugin/path', {
         'content-type': 'application/json',
@@ -429,28 +434,26 @@ describe('webhookHandler', () => {
       emitBody(req, JSON.stringify(payload));
       await webhookHandler(req, res);
 
-      expect(res._statusCode).toBe(200);
-      expect(receivedContext?.body).toEqual(payload);
+      expect(res._statusCode).toBe(202);
+      expect(queuedWebhook?.body).toEqual(payload);
 
       consoleLogSpy.mockRestore();
     });
 
-    it('should pass undefined body for non-JSON content types', async () => {
+    it('should queue webhook with undefined body for non-JSON content types', async () => {
       const consoleLogSpy = vi
         .spyOn(console, 'log')
         .mockImplementation(() => {});
-      let receivedContext: WebhookHandlerContext | undefined;
+      let queuedWebhook: QueuedWebhook | undefined;
 
-      registry.register(
-        'plugin',
-        createTestWebhook('path', {
-          handler: async (_req, res, context) => {
-            receivedContext = context;
-            res.writeHead(200);
-            res.end('OK');
-          },
-        })
-      );
+      // Listen for enqueue
+      const originalEnqueue = queue.enqueue.bind(queue);
+      queue.enqueue = (webhook: QueuedWebhook) => {
+        queuedWebhook = webhook;
+        originalEnqueue(webhook);
+      };
+
+      registry.register('plugin', createTestWebhook('path'));
 
       const req = createMockRequest('POST', '/_webhooks/plugin/path', {
         'content-type': 'text/plain',
@@ -460,28 +463,26 @@ describe('webhookHandler', () => {
       emitBody(req, 'plain text body');
       await webhookHandler(req, res);
 
-      expect(res._statusCode).toBe(200);
-      expect(receivedContext?.body).toBeUndefined();
+      expect(res._statusCode).toBe(202);
+      expect(queuedWebhook?.body).toBeUndefined();
 
       consoleLogSpy.mockRestore();
     });
 
-    it('should always pass rawBody buffer', async () => {
+    it('should queue webhook with rawBody buffer', async () => {
       const consoleLogSpy = vi
         .spyOn(console, 'log')
         .mockImplementation(() => {});
-      let receivedContext: WebhookHandlerContext | undefined;
+      let queuedWebhook: QueuedWebhook | undefined;
 
-      registry.register(
-        'plugin',
-        createTestWebhook('path', {
-          handler: async (_req, res, context) => {
-            receivedContext = context;
-            res.writeHead(200);
-            res.end('OK');
-          },
-        })
-      );
+      // Listen for enqueue
+      const originalEnqueue = queue.enqueue.bind(queue);
+      queue.enqueue = (webhook: QueuedWebhook) => {
+        queuedWebhook = webhook;
+        originalEnqueue(webhook);
+      };
+
+      registry.register('plugin', createTestWebhook('path'));
 
       const req = createMockRequest('POST', '/_webhooks/plugin/path');
       const res = createMockResponse();
@@ -490,31 +491,29 @@ describe('webhookHandler', () => {
       emitBody(req, bodyText);
       await webhookHandler(req, res);
 
-      expect(res._statusCode).toBe(200);
-      expect(receivedContext?.rawBody).toBeInstanceOf(Buffer);
-      expect(receivedContext?.rawBody.toString()).toBe(bodyText);
+      expect(res._statusCode).toBe(202);
+      expect(queuedWebhook?.rawBody).toBeInstanceOf(Buffer);
+      expect(queuedWebhook?.rawBody.toString()).toBe(bodyText);
 
       consoleLogSpy.mockRestore();
     });
   });
 
-  describe('handler execution', () => {
-    it('should call handler with correct context', async () => {
+  describe('webhook queuing', () => {
+    it('should queue webhook with correct metadata', async () => {
       const consoleLogSpy = vi
         .spyOn(console, 'log')
         .mockImplementation(() => {});
-      let receivedContext: WebhookHandlerContext | undefined;
+      let queuedWebhook: QueuedWebhook | undefined;
 
-      registry.register(
-        'test-plugin',
-        createTestWebhook('update', {
-          handler: async (_req, res, context) => {
-            receivedContext = context;
-            res.writeHead(200);
-            res.end('OK');
-          },
-        })
-      );
+      // Listen for enqueue
+      const originalEnqueue = queue.enqueue.bind(queue);
+      queue.enqueue = (webhook: QueuedWebhook) => {
+        queuedWebhook = webhook;
+        originalEnqueue(webhook);
+      };
+
+      registry.register('test-plugin', createTestWebhook('update'));
 
       const req = createMockRequest('POST', '/_webhooks/test-plugin/update', {
         'content-type': 'application/json',
@@ -524,96 +523,23 @@ describe('webhookHandler', () => {
       emitBody(req, '{"test": true}');
       await webhookHandler(req, res);
 
-      expect(receivedContext).toBeDefined();
-      expect(receivedContext?.store).toBeDefined();
-      expect(receivedContext?.actions).toBeDefined();
-      expect(receivedContext?.actions.createNode).toBeDefined();
-      expect(receivedContext?.actions.deleteNode).toBeDefined();
-      expect(receivedContext?.rawBody).toBeInstanceOf(Buffer);
-      expect(receivedContext?.body).toEqual({ test: true });
-
-      consoleLogSpy.mockRestore();
-    });
-
-    it('should return 500 when handler throws', async () => {
-      const consoleLogSpy = vi
-        .spyOn(console, 'log')
-        .mockImplementation(() => {});
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
-
-      registry.register(
-        'plugin',
-        createTestWebhook('path', {
-          handler: async () => {
-            throw new Error('Handler error');
-          },
-        })
-      );
-
-      const req = createMockRequest('POST', '/_webhooks/plugin/path');
-      const res = createMockResponse();
-
-      emitBody(req, '{}');
-      await webhookHandler(req, res);
-
-      expect(res._statusCode).toBe(500);
-      const body = JSON.parse(res._body);
-      expect(body.error).toBe('Internal server error');
-      expect(consoleErrorSpy).toHaveBeenCalled();
-
-      consoleLogSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
-    });
-
-    it('should not send error response if headers already sent', async () => {
-      const consoleLogSpy = vi
-        .spyOn(console, 'log')
-        .mockImplementation(() => {});
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
-
-      registry.register(
-        'plugin',
-        createTestWebhook('path', {
-          handler: async (_req, res) => {
-            res.writeHead(202);
-            res.end('Accepted');
-            throw new Error('Post-response error');
-          },
-        })
-      );
-
-      const req = createMockRequest('POST', '/_webhooks/plugin/path');
-      const res = createMockResponse();
-
-      emitBody(req, '{}');
-      await webhookHandler(req, res);
-
-      // Should keep the 202 status, not override with 500
       expect(res._statusCode).toBe(202);
-      expect(res._body).toBe('Accepted');
+      expect(queuedWebhook).toBeDefined();
+      expect(queuedWebhook?.pluginName).toBe('test-plugin');
+      expect(queuedWebhook?.path).toBe('update');
+      expect(queuedWebhook?.body).toEqual({ test: true });
+      expect(queuedWebhook?.rawBody).toBeInstanceOf(Buffer);
+      expect(queuedWebhook?.timestamp).toBeGreaterThan(0);
 
       consoleLogSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
     });
 
-    it('should allow handler to set custom response', async () => {
+    it('should return 202 with queued response', async () => {
       const consoleLogSpy = vi
         .spyOn(console, 'log')
         .mockImplementation(() => {});
 
-      registry.register(
-        'plugin',
-        createTestWebhook('path', {
-          handler: async (_req, res) => {
-            res.writeHead(201, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ status: 'created' }));
-          },
-        })
-      );
+      registry.register('plugin', createTestWebhook('path'));
 
       const req = createMockRequest('POST', '/_webhooks/plugin/path');
       const res = createMockResponse();
@@ -621,9 +547,9 @@ describe('webhookHandler', () => {
       emitBody(req, '{}');
       await webhookHandler(req, res);
 
-      expect(res._statusCode).toBe(201);
+      expect(res._statusCode).toBe(202);
       const body = JSON.parse(res._body);
-      expect(body.status).toBe('created');
+      expect(body.queued).toBe(true);
 
       consoleLogSpy.mockRestore();
     });
@@ -646,6 +572,171 @@ describe('webhookHandler', () => {
       );
 
       consoleLogSpy.mockRestore();
+    });
+
+    it('should include headers in queued webhook', async () => {
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      let queuedWebhook: QueuedWebhook | undefined;
+
+      // Listen for enqueue
+      const originalEnqueue = queue.enqueue.bind(queue);
+      queue.enqueue = (webhook: QueuedWebhook) => {
+        queuedWebhook = webhook;
+        originalEnqueue(webhook);
+      };
+
+      registry.register('plugin', createTestWebhook('path'));
+
+      const req = createMockRequest('POST', '/_webhooks/plugin/path', {
+        'content-type': 'application/json',
+        'x-custom-header': 'custom-value',
+      });
+      const res = createMockResponse();
+
+      emitBody(req, '{}');
+      await webhookHandler(req, res);
+
+      expect(res._statusCode).toBe(202);
+      expect(queuedWebhook?.headers['content-type']).toBe('application/json');
+      expect(queuedWebhook?.headers['x-custom-header']).toBe('custom-value');
+
+      consoleLogSpy.mockRestore();
+    });
+  });
+
+  describe('onWebhookReceived hook', () => {
+    it('should call onWebhookReceived hook when configured', async () => {
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      const hookCalled = vi.fn();
+
+      setWebhookHooks({
+        onWebhookReceived: async ({ webhook }) => {
+          hookCalled(webhook);
+          return webhook;
+        },
+      });
+
+      registry.register('plugin', createTestWebhook('path'));
+
+      const req = createMockRequest('POST', '/_webhooks/plugin/path');
+      const res = createMockResponse();
+
+      emitBody(req, '{}');
+      await webhookHandler(req, res);
+
+      expect(hookCalled).toHaveBeenCalled();
+      expect(res._statusCode).toBe(202);
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should skip webhook when onWebhookReceived returns null', async () => {
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      setWebhookHooks({
+        onWebhookReceived: async () => null,
+      });
+
+      registry.register('plugin', createTestWebhook('path'));
+
+      const req = createMockRequest('POST', '/_webhooks/plugin/path');
+      const res = createMockResponse();
+
+      emitBody(req, '{}');
+      await webhookHandler(req, res);
+
+      expect(res._statusCode).toBe(200);
+      const body = JSON.parse(res._body);
+      expect(body.skipped).toBe(true);
+      expect(queue.size()).toBe(0);
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should use transformed webhook from onWebhookReceived', async () => {
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      let queuedWebhook: QueuedWebhook | undefined;
+
+      // Listen for enqueue
+      const originalEnqueue = queue.enqueue.bind(queue);
+      queue.enqueue = (webhook: QueuedWebhook) => {
+        queuedWebhook = webhook;
+        originalEnqueue(webhook);
+      };
+
+      setWebhookHooks({
+        onWebhookReceived: async ({ webhook }) => ({
+          ...webhook,
+          body: { transformed: true, original: webhook.body },
+        }),
+      });
+
+      registry.register('plugin', createTestWebhook('path'));
+
+      const req = createMockRequest('POST', '/_webhooks/plugin/path', {
+        'content-type': 'application/json',
+      });
+      const res = createMockResponse();
+
+      emitBody(req, '{"original": "data"}');
+      await webhookHandler(req, res);
+
+      expect(res._statusCode).toBe(202);
+      expect(queuedWebhook?.body).toEqual({
+        transformed: true,
+        original: { original: 'data' },
+      });
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should continue with original webhook if onWebhookReceived throws', async () => {
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      let queuedWebhook: QueuedWebhook | undefined;
+
+      // Listen for enqueue
+      const originalEnqueue = queue.enqueue.bind(queue);
+      queue.enqueue = (webhook: QueuedWebhook) => {
+        queuedWebhook = webhook;
+        originalEnqueue(webhook);
+      };
+
+      setWebhookHooks({
+        onWebhookReceived: async () => {
+          throw new Error('Hook error');
+        },
+      });
+
+      registry.register('plugin', createTestWebhook('path'));
+
+      const req = createMockRequest('POST', '/_webhooks/plugin/path', {
+        'content-type': 'application/json',
+      });
+      const res = createMockResponse();
+
+      emitBody(req, '{"test": true}');
+      await webhookHandler(req, res);
+
+      // Should still queue the original webhook
+      expect(res._statusCode).toBe(202);
+      expect(queuedWebhook?.body).toEqual({ test: true });
+      expect(consoleErrorSpy).toHaveBeenCalled();
+
+      consoleLogSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
     });
   });
 

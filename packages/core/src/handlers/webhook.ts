@@ -3,13 +3,19 @@
  *
  * Routes incoming webhook requests to the appropriate plugin handler.
  * URL format: POST /_webhooks/{pluginName}/{path}
+ *
+ * Webhooks are queued and processed in batches after a debounce period.
+ * This prevents N rapid webhooks from triggering N separate processing cycles.
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { defaultWebhookRegistry } from '@/webhooks/index.js';
+import {
+  defaultWebhookRegistry,
+  defaultWebhookQueue,
+  getWebhookHooks,
+  type QueuedWebhook,
+} from '@/webhooks/index.js';
 import { defaultStore } from '@/nodes/defaultStore.js';
-import { createNodeActions } from '@/nodes/actions/index.js';
-import type { WebhookHandlerContext } from '@/webhooks/index.js';
 
 /** URL path prefix for webhook endpoints */
 export const WEBHOOK_PATH_PREFIX = '/_webhooks/';
@@ -177,26 +183,48 @@ export async function webhookHandler(
     }
   }
 
-  // Create context for the handler
-  const actions = createNodeActions(defaultStore, pluginName);
-  const context: WebhookHandlerContext = {
-    store: defaultStore,
-    actions,
-    rawBody,
-    body,
-  };
-
   console.log(`Webhook received: ${pluginName}/${webhookPath}`);
 
-  // Call the handler
-  try {
-    await handler.handler(req, res, context);
-  } catch (error) {
-    console.error(`Webhook handler error: ${pluginName}/${webhookPath}`, error);
-    // Only send error response if headers haven't been sent
-    if (!res.headersSent) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Internal server error' }));
+  // Create the queued webhook object
+  let queuedWebhook: QueuedWebhook = {
+    pluginName,
+    path: webhookPath,
+    rawBody,
+    body,
+    headers: req.headers as Record<string, string | string[] | undefined>,
+    timestamp: Date.now(),
+  };
+
+  // Run onWebhookReceived hook if configured
+  const hooks = getWebhookHooks();
+  if (hooks.onWebhookReceived) {
+    try {
+      console.log('🪝 Running onWebhookReceived hook...');
+      const result = await hooks.onWebhookReceived({
+        webhook: queuedWebhook,
+        store: defaultStore,
+      });
+
+      if (result === null) {
+        // Hook returned null, skip this webhook
+        console.log('⏭️ Webhook skipped by onWebhookReceived hook');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ skipped: true }));
+        return;
+      }
+
+      // Use the transformed webhook
+      queuedWebhook = result;
+    } catch (error) {
+      console.error('❌ onWebhookReceived hook error:', error);
+      // Continue with original webhook despite hook error
     }
   }
+
+  // Queue the webhook for batch processing
+  defaultWebhookQueue.enqueue(queuedWebhook);
+
+  // Respond immediately with 202 Accepted
+  res.writeHead(202, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ queued: true }));
 }
