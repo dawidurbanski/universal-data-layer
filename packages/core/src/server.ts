@@ -3,6 +3,7 @@ import staticHandler from '@/handlers/static.js';
 import graphqlHandler from '@/handlers/graphql.js';
 import graphiqlHandler from '@/handlers/graphiql.js';
 import { healthHandler, readyHandler } from '@/handlers/health.js';
+import { isWebhookRequest, webhookHandler } from '@/handlers/webhook.js';
 
 const server = createServer((req, res) => {
   // Add CORS headers for all requests
@@ -22,6 +23,11 @@ const server = createServer((req, res) => {
     return healthHandler(req, res);
   } else if (req.url === '/ready') {
     return readyHandler(req, res);
+  }
+
+  // Webhook endpoints
+  if (req.url && isWebhookRequest(req.url)) {
+    return webhookHandler(req, res);
   }
 
   if (req.url === '/graphql') {
