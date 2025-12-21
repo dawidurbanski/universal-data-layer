@@ -85,6 +85,33 @@ export interface CodegenConfig {
 }
 
 /**
+ * Configuration for an outbound webhook trigger.
+ * Outbound webhooks are sent after batch processing to notify external systems.
+ */
+export interface OutboundWebhookTriggerConfig {
+  /** URL to POST to */
+  url: string;
+  /**
+   * Events to trigger on. '*' = all events.
+   * @default ['*']
+   */
+  events?: string[];
+  /** Custom headers to include in the request */
+  headers?: Record<string, string>;
+  /**
+   * Number of retries on failure.
+   * @default 3
+   */
+  retries?: number;
+  /**
+   * Base delay between retries in milliseconds.
+   * Uses exponential backoff: retryDelayMs * (attempt + 1)
+   * @default 1000
+   */
+  retryDelayMs?: number;
+}
+
+/**
  * Configuration for remote webhook handling.
  */
 export interface RemoteWebhooksConfig {
@@ -106,6 +133,24 @@ export interface RemoteWebhooksConfig {
    * Lifecycle hooks for webhook processing.
    */
   hooks?: WebhookHooksConfig;
+
+  /**
+   * Outbound webhook triggers to notify after batch processing.
+   * These webhooks are sent after a batch of incoming webhooks has been processed,
+   * enabling the "30 webhooks → 1 build" optimization.
+   *
+   * @example
+   * ```typescript
+   * trigger: [
+   *   {
+   *     url: 'https://api.vercel.com/v1/integrations/deploy/...',
+   *     headers: { 'Authorization': 'Bearer token' },
+   *     retries: 3,
+   *   }
+   * ]
+   * ```
+   */
+  trigger?: OutboundWebhookTriggerConfig[];
 }
 
 /**

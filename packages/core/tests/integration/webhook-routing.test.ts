@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+  afterEach,
+} from 'vitest';
 import http, {
   createServer,
   type Server,
@@ -12,8 +20,10 @@ import {
   setDefaultWebhookQueue,
   resetWebhookHooks,
   processWebhookBatch,
+  OutboundWebhookManager,
   type WebhookRegistration,
   type WebhookHandlerContext,
+  type WebhookBatch,
 } from '@/webhooks/index.js';
 import { NodeStore } from '@/nodes/store.js';
 import { setDefaultStore } from '@/nodes/defaultStore.js';
@@ -487,6 +497,246 @@ describe('webhook routing integration', () => {
       await makeRequest(server, '/_webhooks/plugin-b/update', { body: '{}' });
       await queue.flush();
       expect(calls).toEqual(['plugin-a', 'plugin-b']);
+    });
+  });
+
+  describe('outbound webhook triggering', () => {
+    let mockOutboundServer: Server;
+    let receivedOutboundPayloads: unknown[];
+    let mockOutboundPort: number;
+    let batchCompleteHandler: ((batch: WebhookBatch) => void) | null = null;
+
+    beforeAll(() => {
+      receivedOutboundPayloads = [];
+      mockOutboundServer = createServer((req, res) => {
+        let body = '';
+        req.on('data', (chunk: Buffer) => {
+          body += chunk.toString();
+        });
+        req.on('end', () => {
+          try {
+            receivedOutboundPayloads.push(JSON.parse(body));
+          } catch {
+            receivedOutboundPayloads.push(body);
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ received: true }));
+        });
+      });
+
+      return new Promise<void>((resolve) => {
+        mockOutboundServer.listen(0, () => {
+          const address = mockOutboundServer.address();
+          if (address && typeof address !== 'string') {
+            mockOutboundPort = address.port;
+          }
+          resolve();
+        });
+      });
+    });
+
+    afterAll(() => {
+      return new Promise<void>((resolve) => {
+        mockOutboundServer.close(() => resolve());
+      });
+    });
+
+    // Create a separate queue for outbound tests with proper debounce
+    let outboundQueue: WebhookQueue;
+
+    beforeEach(() => {
+      receivedOutboundPayloads = [];
+      batchCompleteHandler = null;
+
+      // Use a small debounce (50ms) to ensure all HTTP requests arrive before processing
+      // This is needed because HTTP requests can arrive out of order
+      outboundQueue = new WebhookQueue({
+        debounceMs: 50,
+        batchProcessor: processWebhookBatch,
+      });
+      setDefaultWebhookQueue(outboundQueue);
+    });
+
+    afterEach(() => {
+      // Remove the batch-complete listener if it was registered
+      if (batchCompleteHandler) {
+        outboundQueue.removeListener(
+          'webhook:batch-complete',
+          batchCompleteHandler
+        );
+        batchCompleteHandler = null;
+      }
+    });
+
+    it('should trigger outbound webhook after batch processing', async () => {
+      // Set up outbound manager listening to queue events
+      const outboundManager = new OutboundWebhookManager([
+        { url: `http://localhost:${mockOutboundPort}/webhook` },
+      ]);
+
+      batchCompleteHandler = (batch: WebhookBatch) => {
+        void outboundManager.triggerAll(batch);
+      };
+      outboundQueue.on('webhook:batch-complete', batchCompleteHandler);
+
+      // Register a simple handler
+      registry.register('test-plugin', {
+        path: 'sync',
+        handler: async (_req, res) => {
+          res.writeHead(200);
+          res.end('OK');
+        },
+      });
+
+      // Clear payloads right before sending webhooks (in case of delayed arrivals from previous tests)
+      receivedOutboundPayloads = [];
+
+      // Send multiple webhooks
+      await makeRequest(server, '/_webhooks/test-plugin/sync', {
+        body: JSON.stringify({ id: 1 }),
+      });
+      await makeRequest(server, '/_webhooks/test-plugin/sync', {
+        body: JSON.stringify({ id: 2 }),
+      });
+      await makeRequest(server, '/_webhooks/test-plugin/sync', {
+        body: JSON.stringify({ id: 3 }),
+      });
+
+      // Flush queue to process the batch
+      await outboundQueue.flush();
+
+      // Wait for outbound webhook to complete
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Verify outbound webhook was triggered once
+      expect(receivedOutboundPayloads.length).toBe(1);
+
+      const payload = receivedOutboundPayloads[0] as {
+        event: string;
+        summary: { webhookCount: number; plugins: string[] };
+      };
+      expect(payload.event).toBe('batch-complete');
+      expect(payload.summary.webhookCount).toBe(3);
+      expect(payload.summary.plugins).toContain('test-plugin');
+    });
+
+    it('should include correct batch summary in outbound payload', async () => {
+      const outboundManager = new OutboundWebhookManager([
+        { url: `http://localhost:${mockOutboundPort}/webhook` },
+      ]);
+
+      batchCompleteHandler = (batch: WebhookBatch) => {
+        void outboundManager.triggerAll(batch);
+      };
+      outboundQueue.on('webhook:batch-complete', batchCompleteHandler);
+
+      // Register handlers for multiple plugins
+      registry.register('plugin-a', {
+        path: 'update',
+        handler: async (_req, res) => {
+          res.writeHead(200);
+          res.end('OK');
+        },
+      });
+
+      registry.register('plugin-b', {
+        path: 'sync',
+        handler: async (_req, res) => {
+          res.writeHead(200);
+          res.end('OK');
+        },
+      });
+
+      // Clear payloads right before sending webhooks (in case of delayed arrivals from previous tests)
+      receivedOutboundPayloads = [];
+
+      // Send webhooks to different plugins
+      await makeRequest(server, '/_webhooks/plugin-a/update', { body: '{}' });
+      await makeRequest(server, '/_webhooks/plugin-b/sync', { body: '{}' });
+      await makeRequest(server, '/_webhooks/plugin-a/update', { body: '{}' });
+
+      await outboundQueue.flush();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(receivedOutboundPayloads.length).toBe(1);
+
+      const payload = receivedOutboundPayloads[0] as {
+        event: string;
+        timestamp: string;
+        summary: { webhookCount: number; plugins: string[] };
+        source: string;
+      };
+
+      expect(payload.event).toBe('batch-complete');
+      expect(payload.timestamp).toBeDefined();
+      expect(payload.summary.webhookCount).toBe(3);
+      expect(payload.summary.plugins).toContain('plugin-a');
+      expect(payload.summary.plugins).toContain('plugin-b');
+      expect(payload.source).toBeDefined();
+    });
+
+    it('should trigger multiple outbound webhooks in parallel', async () => {
+      // Create a second mock server
+      let secondServerPayloads: unknown[] = [];
+      const secondMockServer = createServer((req, res) => {
+        let body = '';
+        req.on('data', (chunk: Buffer) => {
+          body += chunk.toString();
+        });
+        req.on('end', () => {
+          try {
+            secondServerPayloads.push(JSON.parse(body));
+          } catch {
+            secondServerPayloads.push(body);
+          }
+          res.writeHead(200);
+          res.end('OK');
+        });
+      });
+
+      const secondPort = await new Promise<number>((resolve) => {
+        secondMockServer.listen(0, () => {
+          const address = secondMockServer.address();
+          if (address && typeof address !== 'string') {
+            resolve(address.port);
+          }
+        });
+      });
+
+      try {
+        const outboundManager = new OutboundWebhookManager([
+          { url: `http://localhost:${mockOutboundPort}/webhook` },
+          { url: `http://localhost:${secondPort}/webhook` },
+        ]);
+
+        batchCompleteHandler = (batch: WebhookBatch) => {
+          void outboundManager.triggerAll(batch);
+        };
+        outboundQueue.on('webhook:batch-complete', batchCompleteHandler);
+
+        registry.register('plugin', {
+          path: 'test',
+          handler: async (_req, res) => {
+            res.writeHead(200);
+            res.end('OK');
+          },
+        });
+
+        // Clear payloads right before sending webhooks (in case of delayed arrivals from previous tests)
+        receivedOutboundPayloads = [];
+
+        await makeRequest(server, '/_webhooks/plugin/test', { body: '{}' });
+        await outboundQueue.flush();
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Both endpoints should receive the payload
+        expect(receivedOutboundPayloads.length).toBe(1);
+        expect(secondServerPayloads.length).toBe(1);
+      } finally {
+        await new Promise<void>((resolve) => {
+          secondMockServer.close(() => resolve());
+        });
+      }
     });
   });
 });

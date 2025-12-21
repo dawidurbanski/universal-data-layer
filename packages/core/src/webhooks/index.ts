@@ -58,3 +58,12 @@ export {
   initializeWebhookProcessor,
   processWebhookBatch,
 } from './processor.js';
+
+// Outbound
+export type {
+  OutboundWebhookConfig,
+  OutboundWebhookPayload,
+  OutboundWebhookResult,
+} from './outbound.js';
+
+export { OutboundWebhookManager } from './outbound.js';
