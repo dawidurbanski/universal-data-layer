@@ -5,10 +5,12 @@ import {
   getReadinessChecks,
   resetReadiness,
 } from '@/handlers/readiness.js';
+import { setShuttingDown, resetShutdownState } from '@/shutdown.js';
 
 describe('readiness state', () => {
   beforeEach(() => {
     resetReadiness();
+    resetShutdownState();
   });
 
   describe('initial state', () => {
@@ -140,6 +142,39 @@ describe('readiness state', () => {
       expect(isReady()).toBe(true);
 
       resetReadiness();
+      expect(isReady()).toBe(false);
+    });
+  });
+
+  describe('shutdown state integration', () => {
+    it('should return false when shutting down even if all components are ready', () => {
+      setReady('graphql', true);
+      setReady('nodeStore', true);
+      expect(isReady()).toBe(true);
+
+      setShuttingDown(true);
+      expect(isReady()).toBe(false);
+    });
+
+    it('should return true again after shutdown is cancelled', () => {
+      setReady('graphql', true);
+      setReady('nodeStore', true);
+
+      setShuttingDown(true);
+      expect(isReady()).toBe(false);
+
+      setShuttingDown(false);
+      expect(isReady()).toBe(true);
+    });
+
+    it('should return false when shutting down regardless of component state', () => {
+      setShuttingDown(true);
+      expect(isReady()).toBe(false);
+
+      setReady('graphql', true);
+      expect(isReady()).toBe(false);
+
+      setReady('nodeStore', true);
       expect(isReady()).toBe(false);
     });
   });

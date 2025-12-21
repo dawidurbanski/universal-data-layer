@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { healthHandler, readyHandler } from '@/handlers/health.js';
 import { setReady, resetReadiness } from '@/handlers/readiness.js';
+import { setShuttingDown, resetShutdownState } from '@/shutdown.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 function createMockRequest(method: string = 'GET'): IncomingMessage {
@@ -97,6 +98,7 @@ describe('healthHandler', () => {
 describe('readyHandler', () => {
   beforeEach(() => {
     resetReadiness();
+    resetShutdownState();
   });
 
   it('should return 503 when no components are ready', () => {
@@ -200,5 +202,82 @@ describe('readyHandler', () => {
     readyHandler(req, res);
 
     expect(res._statusCode).toBe(405);
+  });
+
+  describe('shutdown state', () => {
+    it('should return 503 when shutting down', () => {
+      setReady('graphql', true);
+      setReady('nodeStore', true);
+
+      const req = createMockRequest('GET');
+      const res = createMockResponse();
+
+      // First verify it's ready
+      readyHandler(req, res);
+      expect(res._statusCode).toBe(200);
+
+      // Now trigger shutdown
+      setShuttingDown(true);
+      const res2 = createMockResponse();
+      readyHandler(req, res2);
+
+      expect(res2._statusCode).toBe(503);
+    });
+
+    it('should include shuttingDown: true in response when shutting down', () => {
+      setReady('graphql', true);
+      setReady('nodeStore', true);
+      setShuttingDown(true);
+
+      const req = createMockRequest('GET');
+      const res = createMockResponse();
+
+      readyHandler(req, res);
+
+      const body = JSON.parse(res._body);
+      expect(body.shuttingDown).toBe(true);
+    });
+
+    it('should return status shutting_down when shutting down', () => {
+      setReady('graphql', true);
+      setReady('nodeStore', true);
+      setShuttingDown(true);
+
+      const req = createMockRequest('GET');
+      const res = createMockResponse();
+
+      readyHandler(req, res);
+
+      const body = JSON.parse(res._body);
+      expect(body.status).toBe('shutting_down');
+    });
+
+    it('should not include shuttingDown field when not shutting down', () => {
+      setReady('graphql', true);
+      setReady('nodeStore', true);
+
+      const req = createMockRequest('GET');
+      const res = createMockResponse();
+
+      readyHandler(req, res);
+
+      const body = JSON.parse(res._body);
+      expect(body.shuttingDown).toBeUndefined();
+    });
+
+    it('should still include checks during shutdown', () => {
+      setReady('graphql', true);
+      setReady('nodeStore', true);
+      setShuttingDown(true);
+
+      const req = createMockRequest('GET');
+      const res = createMockResponse();
+
+      readyHandler(req, res);
+
+      const body = JSON.parse(res._body);
+      expect(body.checks.graphql).toBe(true);
+      expect(body.checks.nodeStore).toBe(true);
+    });
   });
 });

@@ -3,6 +3,8 @@
  * Tracks initialization status of server components.
  */
 
+import { isShuttingDown } from '@/shutdown.js';
+
 export interface ReadinessChecks {
   graphql: boolean;
   nodeStore: boolean;
@@ -31,9 +33,13 @@ export function setReady(
 
 /**
  * Check if all server components are ready.
- * @returns true if all components are ready, false otherwise
+ * Returns false if shutdown is in progress.
+ * @returns true if all components are ready and not shutting down, false otherwise
  */
 export function isReady(): boolean {
+  if (isShuttingDown()) {
+    return false;
+  }
   return state.graphql && state.nodeStore;
 }
 
