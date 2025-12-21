@@ -6,17 +6,23 @@ import { setReady } from '@/handlers/readiness.js';
 import { runCodegen } from '@/codegen.js';
 import { loadEnv } from '@/env.js';
 import { startMockServer } from '@/mocks/index.js';
-import { watch } from 'chokidar';
+import { watch, type FSWatcher } from 'chokidar';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { defaultStore } from '@/nodes/defaultStore.js';
 import { loadManualTestConfigs, type FeatureCodegenInfo } from '@/features.js';
+import { setShuttingDown } from '@/shutdown.js';
 
 export interface StartServerOptions {
   port?: number;
   configPath?: string;
   watch?: boolean;
+  /** Grace period in milliseconds before forcing exit. Default: 30000 (30 seconds) */
+  gracePeriodMs?: number;
 }
+
+/** Default grace period for shutdown (30 seconds, matches Kubernetes default) */
+const DEFAULT_GRACE_PERIOD_MS = 30000;
 
 export async function startServer(options: StartServerOptions = {}) {
   // Load environment variables from .env files FIRST
@@ -144,6 +150,10 @@ export async function startServer(options: StartServerOptions = {}) {
     }
   }
 
+  // Watcher and debounce state - declared outside conditional for shutdown access
+  let fileWatcher: FSWatcher | undefined;
+  let debounceTimer: NodeJS.Timeout | null = null;
+
   // Setup file watcher for hot reloading in dev mode
   // Only when explicitly in development mode
   if (options.watch !== false && process.env['NODE_ENV'] === 'development') {
@@ -173,7 +183,7 @@ export async function startServer(options: StartServerOptions = {}) {
       );
     }
 
-    const watcher = watch([distSrc, manualTestsSrc, ...graphqlWatchPaths], {
+    fileWatcher = watch([distSrc, manualTestsSrc, ...graphqlWatchPaths], {
       ignored: (path: string) => {
         // Ignore dotfiles
         if (/(^|[\\/])\./.test(path)) return true;
@@ -195,7 +205,6 @@ export async function startServer(options: StartServerOptions = {}) {
       },
     });
 
-    let debounceTimer: NodeJS.Timeout | null = null;
     let pendingChangedPaths: Set<string> = new Set();
 
     /**
@@ -237,7 +246,7 @@ export async function startServer(options: StartServerOptions = {}) {
       return affectedConfigs.length > 0 ? affectedConfigs : codegenConfigs;
     }
 
-    watcher.on('change', (path) => {
+    fileWatcher.on('change', (path) => {
       // Normalize path to always use forward slashes
       const normalizedPath = path.replace(/\\/g, '/');
       // Ignore .map files from logging
@@ -311,9 +320,61 @@ export async function startServer(options: StartServerOptions = {}) {
 
     // Clean up watcher on server close
     server.on('close', () => {
-      watcher.close();
+      fileWatcher?.close();
     });
   }
+
+  // Graceful shutdown handler
+  const gracePeriodMs = options.gracePeriodMs ?? DEFAULT_GRACE_PERIOD_MS;
+  let isShuttingDown = false;
+
+  const gracefulShutdown = (signal: string): void => {
+    // Prevent multiple shutdown attempts
+    if (isShuttingDown) {
+      return;
+    }
+    isShuttingDown = true;
+
+    console.log(`\n🛑 Received ${signal}, starting graceful shutdown...`);
+
+    // Mark server as not ready (readiness probe will return 503)
+    setShuttingDown(true);
+
+    // Set up force exit after grace period
+    const forceExitTimeout = setTimeout(() => {
+      console.error('⚠️ Forcing exit after grace period');
+      process.exit(1);
+    }, gracePeriodMs);
+
+    // Unref the timeout so it doesn't keep the process alive
+    forceExitTimeout.unref();
+
+    // Stop accepting new connections and wait for in-flight requests
+    server.close(() => {
+      console.log('✅ HTTP server closed');
+
+      // Clear the force exit timeout
+      clearTimeout(forceExitTimeout);
+
+      // Clean up debounce timer if active
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
+
+      // Clean up file watcher
+      if (fileWatcher) {
+        fileWatcher.close();
+      }
+
+      console.log('👋 Shutdown complete');
+      process.exit(0);
+    });
+  };
+
+  // Register signal handlers
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
   server.listen(port);
   console.log(`🚀 Universal Data Layer server listening on port ${port}`);

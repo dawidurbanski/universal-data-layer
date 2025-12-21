@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { isReady, getReadinessChecks } from './readiness.js';
+import { isShuttingDown } from '@/shutdown.js';
 
 export interface HealthResponse {
   status: 'ok';
@@ -7,12 +8,13 @@ export interface HealthResponse {
 }
 
 export interface ReadinessResponse {
-  status: 'ready' | 'initializing';
+  status: 'ready' | 'initializing' | 'shutting_down';
   timestamp: string;
   checks: {
     graphql: boolean;
     nodeStore: boolean;
   };
+  shuttingDown?: boolean;
 }
 
 /**
@@ -38,7 +40,7 @@ export function healthHandler(req: IncomingMessage, res: ServerResponse): void {
 /**
  * Readiness check handler (readiness probe).
  * Returns 200 if server is ready to accept traffic.
- * Returns 503 if server is still initializing.
+ * Returns 503 if server is still initializing or shutting down.
  */
 export function readyHandler(req: IncomingMessage, res: ServerResponse): void {
   if (req.method !== 'GET') {
@@ -47,13 +49,24 @@ export function readyHandler(req: IncomingMessage, res: ServerResponse): void {
     return;
   }
 
+  const shuttingDown = isShuttingDown();
   const ready = isReady();
   const checks = getReadinessChecks();
 
+  let status: ReadinessResponse['status'];
+  if (shuttingDown) {
+    status = 'shutting_down';
+  } else if (ready) {
+    status = 'ready';
+  } else {
+    status = 'initializing';
+  }
+
   const response: ReadinessResponse = {
-    status: ready ? 'ready' : 'initializing',
+    status,
     timestamp: new Date().toISOString(),
     checks,
+    ...(shuttingDown && { shuttingDown: true }),
   };
 
   const statusCode = ready ? 200 : 503;
