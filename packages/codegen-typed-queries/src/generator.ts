@@ -174,9 +174,9 @@ export class QueryDocumentGenerator {
     // File header
     lines.push(this.generateHeader());
 
-    // Imports
+    // Imports - use codegen package to avoid pnpm phantom dependency issues
     lines.push(
-      "import type { TypedDocumentNode } from '@graphql-typed-document-node/core';"
+      "import type { TypedDocumentNode } from '@universal-data-layer/codegen-typed-queries';"
     );
     lines.push('');
 

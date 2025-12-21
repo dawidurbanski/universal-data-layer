@@ -62,13 +62,12 @@ export class ReferenceRegistry {
 
   /**
    * Register a reference resolver for a plugin.
-   * @throws if a resolver with the same ID is already registered
+   * If a resolver with the same ID is already registered, it is skipped.
    */
   registerResolver(config: ReferenceResolverConfig): void {
     if (this.resolvers.has(config.id)) {
-      throw new Error(
-        `Reference resolver with ID "${config.id}" is already registered`
-      );
+      // Already registered, skip silently (same plugin loaded multiple times)
+      return;
     }
 
     this.resolvers.set(config.id, config);

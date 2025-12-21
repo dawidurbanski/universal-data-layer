@@ -67,3 +67,7 @@ export {
   type QueryDocumentGeneratorOptions,
   type DiscoveredQuery,
 } from './generator.js';
+
+// Re-export TypedDocumentNode so generated code can import from this package
+// This avoids pnpm phantom dependency issues
+export type { TypedDocumentNode } from '@graphql-typed-document-node/core';

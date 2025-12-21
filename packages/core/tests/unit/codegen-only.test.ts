@@ -8,6 +8,7 @@ vi.mock('@/loader.js', () => ({
 
 vi.mock('@/handlers/graphql.js', () => ({
   rebuildHandler: vi.fn(),
+  getCurrentSchema: vi.fn(),
 }));
 
 vi.mock('@/codegen.js', () => ({
@@ -32,7 +33,7 @@ vi.mock('@/features.js', () => ({
 
 // Import mocks for type-safe access
 import { loadAppConfig, loadPlugins } from '@/loader.js';
-import { rebuildHandler } from '@/handlers/graphql.js';
+import { rebuildHandler, getCurrentSchema } from '@/handlers/graphql.js';
 import { runCodegen } from '@/codegen.js';
 import { startMockServer, stopMockServer } from '@/mocks/index.js';
 import { loadManualTestConfigs } from '@/features.js';
@@ -44,6 +45,8 @@ describe('runCodegenOnly', () => {
   const mockLoadAppConfig = vi.mocked(loadAppConfig);
   const mockLoadPlugins = vi.mocked(loadPlugins);
   const mockRebuildHandler = vi.mocked(rebuildHandler);
+  // Used by the mock - keeps the mock export available
+  void vi.mocked(getCurrentSchema);
   const mockRunCodegen = vi.mocked(runCodegen);
   const mockStartMockServer = vi.mocked(startMockServer);
   const mockStopMockServer = vi.mocked(stopMockServer);
@@ -139,6 +142,8 @@ describe('runCodegenOnly', () => {
       expect(mockLoadPlugins).toHaveBeenCalledWith(mockConfig.plugins, {
         appConfig: mockConfig,
         store: expect.anything(),
+        cache: true,
+        cacheDir: expect.any(String),
       });
     });
 
@@ -158,7 +163,7 @@ describe('runCodegenOnly', () => {
       expect(mockLoadPlugins).not.toHaveBeenCalled();
     });
 
-    it('should extract plugin names from string plugin specs', async () => {
+    it('should use full plugin names from string plugin specs', async () => {
       const mockConfig = {
         plugins: ['/path/to/my-plugin'],
         codegen: { output: './generated' },
@@ -168,15 +173,15 @@ describe('runCodegenOnly', () => {
 
       await runCodegenOnly();
 
-      // Verify runCodegen was called with the plugin name extracted using basename
+      // Verify runCodegen was called with the full plugin path
       expect(mockRunCodegen).toHaveBeenCalledWith(
         expect.objectContaining({
-          owners: ['my-plugin'],
+          owners: ['/path/to/my-plugin'],
         })
       );
     });
 
-    it('should extract plugin names from object plugin specs', async () => {
+    it('should use full plugin names from object plugin specs', async () => {
       const mockConfig = {
         plugins: [{ name: '/path/to/another-plugin', options: {} }],
         codegen: { output: './generated' },
@@ -188,7 +193,7 @@ describe('runCodegenOnly', () => {
 
       expect(mockRunCodegen).toHaveBeenCalledWith(
         expect.objectContaining({
-          owners: ['another-plugin'],
+          owners: ['/path/to/another-plugin'],
         })
       );
     });

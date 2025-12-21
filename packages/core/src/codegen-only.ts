@@ -11,11 +11,11 @@
  */
 
 import { loadAppConfig, loadPlugins } from '@/loader.js';
-import { rebuildHandler } from '@/handlers/graphql.js';
+import { rebuildHandler, getCurrentSchema } from '@/handlers/graphql.js';
 import { runCodegen } from '@/codegen.js';
 import { loadEnv } from '@/env.js';
 import { fileURLToPath } from 'node:url';
-import { basename, dirname, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { defaultStore } from '@/nodes/defaultStore.js';
 import { startMockServer, stopMockServer } from '@/mocks/index.js';
 import { loadManualTestConfigs, type FeatureCodegenInfo } from '@/features.js';
@@ -61,19 +61,29 @@ export async function runCodegenOnly(
   const codegenConfigs: FeatureCodegenInfo[] = [];
   const mainAppPluginNames: string[] = [];
 
+  // Determine if caching is enabled
+  const cacheEnabled = userConfig.cache !== false;
+
   // Load main app config plugins
   if (userConfig.plugins && userConfig.plugins.length > 0) {
     console.log('Loading plugins...');
+    // Track plugin names before loading
+    // Note: The actual owner name is determined by the plugin's config.name or basename
+    // For npm packages like '@universal-data-layer/plugin-source-contentful', the plugin's config.name is used
     for (const plugin of userConfig.plugins) {
       if (typeof plugin === 'string') {
-        mainAppPluginNames.push(basename(plugin));
+        // For package names, use the full name (not basename)
+        // The plugin will use its config.name if available, or basename of resolved path
+        mainAppPluginNames.push(plugin);
       } else {
-        mainAppPluginNames.push(basename(plugin.name));
+        mainAppPluginNames.push(plugin.name);
       }
     }
     const pluginResult = await loadPlugins(userConfig.plugins, {
       appConfig: userConfig,
       store: defaultStore,
+      cache: cacheEnabled,
+      cacheDir: configPath,
     });
 
     for (const pluginCodegen of pluginResult.codegenConfigs) {
@@ -94,19 +104,30 @@ export async function runCodegenOnly(
     });
   }
 
-  // Load configs from manual test features
+  // Load configs from manual test features (only when running from within UDL development)
+  // Skip when running from a consumer's app (configPath outside the package)
   if (includeManualTests) {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
     const packageRoot = resolve(__dirname, '..', '..');
 
-    const featureConfigs = await loadManualTestConfigs(packageRoot);
-    codegenConfigs.push(...featureConfigs);
+    // Only load manual tests if cwd is within the UDL monorepo
+    const isWithinMonorepo =
+      configPath.startsWith(packageRoot) ||
+      configPath.startsWith(resolve(packageRoot, '..', '..'));
+
+    if (isWithinMonorepo) {
+      const featureConfigs = await loadManualTestConfigs(packageRoot);
+      codegenConfigs.push(...featureConfigs);
+    }
   }
 
   // Build the GraphQL schema
   console.log('🔨 Building GraphQL schema from sourced nodes...');
   await rebuildHandler();
+
+  // Get the current schema for query generation
+  const schema = await getCurrentSchema();
 
   // Run codegen for all configs
   let successCount = 0;
@@ -123,6 +144,7 @@ export async function runCodegenOnly(
         store: defaultStore,
         basePath,
         owners: pluginNames,
+        schema,
       });
       successCount++;
     } catch (error) {

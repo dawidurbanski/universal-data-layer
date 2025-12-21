@@ -72,12 +72,17 @@ describe('ReferenceRegistry', () => {
       expect(resolver?.id).toBe('test-plugin');
     });
 
-    it('should throw if registering duplicate ID', () => {
+    it('should silently skip if registering duplicate ID', () => {
       registry.registerResolver(testResolverConfig);
 
+      // Registering again should not throw, just skip silently
       expect(() => {
         registry.registerResolver(testResolverConfig);
-      }).toThrow('already registered');
+      }).not.toThrow();
+
+      // Should still only have one resolver
+      const resolvers = registry.getResolvers();
+      expect(resolvers.length).toBe(1);
     });
 
     it('should sort resolvers by priority', () => {
