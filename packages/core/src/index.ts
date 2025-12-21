@@ -124,5 +124,17 @@ export {
   type NormalizedResponse as NormalizedGraphQLResponse,
 } from './normalization/index.js';
 
+// Re-export webhook utilities
+export {
+  WebhookRegistry,
+  WebhookRegistrationError,
+  defaultWebhookRegistry,
+  setDefaultWebhookRegistry,
+  type WebhookRegistration,
+  type WebhookHandlerFn,
+  type WebhookHandlerContext,
+  type WebhookHandler,
+} from './webhooks/index.js';
+
 // Export the default server for programmatic usage
 export { default } from './server.js';

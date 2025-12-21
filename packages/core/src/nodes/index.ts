@@ -39,6 +39,7 @@ export { createNodeId, createContentDigest } from './utils/index.js';
 
 // Context for sourceNodes hook
 import type { NodeActions } from './actions/index.js';
+import type { WebhookRegistration } from '@/webhooks/types.js';
 
 /**
  * Context passed to the sourceNodes lifecycle hook
@@ -59,4 +60,22 @@ export interface SourceNodesContext<T = Record<string, unknown>> {
    * This is the directory containing the udl.config.ts that loaded this plugin.
    */
   cacheDir?: string;
+  /**
+   * Register a webhook handler for this plugin.
+   * The webhook will be available at `/_webhooks/{pluginName}/{path}`.
+   *
+   * @example
+   * ```typescript
+   * registerWebhook({
+   *   path: 'entry-update',
+   *   handler: async (req, res, context) => {
+   *     const { body, actions } = context;
+   *     await actions.createNode(transformEntry(body), { ... });
+   *     res.writeHead(200);
+   *     res.end();
+   *   },
+   * });
+   * ```
+   */
+  registerWebhook: (webhook: WebhookRegistration) => void;
 }
