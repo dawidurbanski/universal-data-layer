@@ -4,8 +4,8 @@
 node_modules
 dist
 # Coverage reports (except root index)
+coverage
 coverage/*
-!coverage/*
 packages/*/coverage/
 .nyc_output
 *.log
