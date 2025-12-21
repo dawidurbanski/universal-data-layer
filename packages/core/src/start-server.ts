@@ -18,6 +18,7 @@ import {
   WebhookQueue,
   setWebhookHooks,
   processWebhookBatch,
+  OutboundWebhookManager,
 } from '@/webhooks/index.js';
 
 export interface StartServerOptions {
@@ -73,6 +74,18 @@ export async function startServer(options: StartServerOptions = {}) {
   // Set webhook lifecycle hooks if configured
   if (webhookConfig.hooks) {
     setWebhookHooks(webhookConfig.hooks);
+  }
+
+  // Configure outbound webhook triggers if specified
+  const outboundTriggers = webhookConfig.trigger;
+  if (outboundTriggers && outboundTriggers.length > 0) {
+    const outboundManager = new OutboundWebhookManager(outboundTriggers);
+    webhookQueue.on('webhook:batch-complete', (batch) => {
+      void outboundManager.triggerAll(batch);
+    });
+    console.log(
+      `📤 Outbound webhooks configured: ${outboundTriggers.length} endpoint(s)`
+    );
   }
 
   console.log(
