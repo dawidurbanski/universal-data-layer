@@ -12,6 +12,13 @@ import { dirname, resolve } from 'node:path';
 import { defaultStore } from '@/nodes/defaultStore.js';
 import { loadManualTestConfigs, type FeatureCodegenInfo } from '@/features.js';
 import { setShuttingDown } from '@/shutdown.js';
+import {
+  defaultWebhookQueue,
+  setDefaultWebhookQueue,
+  WebhookQueue,
+  setWebhookHooks,
+  processWebhookBatch,
+} from '@/webhooks/index.js';
 
 export interface StartServerOptions {
   port?: number;
@@ -53,6 +60,24 @@ export async function startServer(options: StartServerOptions = {}) {
     host,
     endpoint,
   });
+
+  // Configure webhook queue with settings from config
+  const webhookConfig = userConfig.remote?.webhooks ?? {};
+  const webhookQueue = new WebhookQueue({
+    debounceMs: webhookConfig.debounceMs ?? 5000,
+    maxQueueSize: webhookConfig.maxQueueSize ?? 100,
+    batchProcessor: processWebhookBatch,
+  });
+  setDefaultWebhookQueue(webhookQueue);
+
+  // Set webhook lifecycle hooks if configured
+  if (webhookConfig.hooks) {
+    setWebhookHooks(webhookConfig.hooks);
+  }
+
+  console.log(
+    `🔗 Webhook queue configured (debounce: ${webhookQueue.getDebounceMs()}ms, maxSize: ${webhookQueue.getMaxQueueSize()})`
+  );
 
   // Collect codegen configs to run after schema is built
   const codegenConfigs: FeatureCodegenInfo[] = [];
@@ -349,26 +374,32 @@ export async function startServer(options: StartServerOptions = {}) {
     // Unref the timeout so it doesn't keep the process alive
     forceExitTimeout.unref();
 
-    // Stop accepting new connections and wait for in-flight requests
-    server.close(() => {
-      console.log('✅ HTTP server closed');
+    // Flush webhook queue before closing server
+    console.log('📤 Flushing webhook queue...');
+    void defaultWebhookQueue.flush().then(() => {
+      console.log('📤 Webhook queue flushed');
 
-      // Clear the force exit timeout
-      clearTimeout(forceExitTimeout);
+      // Stop accepting new connections and wait for in-flight requests
+      server.close(() => {
+        console.log('✅ HTTP server closed');
 
-      // Clean up debounce timer if active
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-        debounceTimer = null;
-      }
+        // Clear the force exit timeout
+        clearTimeout(forceExitTimeout);
 
-      // Clean up file watcher
-      if (fileWatcher) {
-        fileWatcher.close();
-      }
+        // Clean up debounce timer if active
+        if (debounceTimer) {
+          clearTimeout(debounceTimer);
+          debounceTimer = null;
+        }
 
-      console.log('👋 Shutdown complete');
-      process.exit(0);
+        // Clean up file watcher
+        if (fileWatcher) {
+          fileWatcher.close();
+        }
+
+        console.log('👋 Shutdown complete');
+        process.exit(0);
+      });
     });
   };
 

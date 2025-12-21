@@ -8,6 +8,10 @@ import { isWebhookRequest, webhookHandler } from '@/handlers/webhook.js';
 import {
   WebhookRegistry,
   setDefaultWebhookRegistry,
+  WebhookQueue,
+  setDefaultWebhookQueue,
+  resetWebhookHooks,
+  processWebhookBatch,
   type WebhookRegistration,
   type WebhookHandlerContext,
 } from '@/webhooks/index.js';
@@ -108,11 +112,20 @@ describe('webhook routing integration', () => {
     });
   });
 
+  let queue: WebhookQueue;
+
   beforeEach(() => {
     registry = new WebhookRegistry();
     setDefaultWebhookRegistry(registry);
     store = new NodeStore();
     setDefaultStore(store);
+    // Create queue with batch processor that processes immediately
+    queue = new WebhookQueue({
+      debounceMs: 0, // No debounce for tests
+      batchProcessor: processWebhookBatch,
+    });
+    setDefaultWebhookQueue(queue);
+    resetWebhookHooks();
   });
 
   describe('webhook endpoint routing', () => {
@@ -151,7 +164,12 @@ describe('webhook routing integration', () => {
         }
       );
 
-      expect(response.statusCode).toBe(200);
+      // Webhook is queued with 202 response
+      expect(response.statusCode).toBe(202);
+
+      // Flush queue to process the webhook
+      await queue.flush();
+
       expect(handlerCalled).toBe(true);
       expect(receivedBody).toEqual(payload);
     });
@@ -169,7 +187,10 @@ describe('webhook routing integration', () => {
         body: '{}',
       });
 
+      // CORS headers are set by server, not webhook handler
       expect(response.headers['access-control-allow-origin']).toBe('*');
+      // Webhook returns 202 for queued processing
+      expect(response.statusCode).toBe(202);
     });
 
     it('should return 405 for GET requests to webhook endpoints', async () => {
@@ -206,6 +227,9 @@ describe('webhook routing integration', () => {
         body: '{}',
       });
 
+      // Flush queue to process webhook
+      await queue.flush();
+
       expect(receivedContext).toBeDefined();
       expect(receivedContext?.store).toBe(store);
       expect(receivedContext?.actions).toBeDefined();
@@ -230,6 +254,9 @@ describe('webhook routing integration', () => {
       await makeRequest(server, '/_webhooks/plugin/test', {
         body: JSON.stringify(payload),
       });
+
+      // Flush queue to process webhook
+      await queue.flush();
 
       expect(receivedRawBody).toBeInstanceOf(Buffer);
       expect(receivedRawBody?.toString()).toBe(JSON.stringify(payload));
@@ -267,7 +294,11 @@ describe('webhook routing integration', () => {
         }
       );
 
-      expect(response.statusCode).toBe(200);
+      // Webhook is queued
+      expect(response.statusCode).toBe(202);
+
+      // Flush queue to process webhook
+      await queue.flush();
 
       // Verify node was created in store
       const nodes = store.getAll();
@@ -310,6 +341,9 @@ describe('webhook routing integration', () => {
         body: JSON.stringify({ nodeId: 'node-to-delete' }),
       });
 
+      // Flush queue to process webhook
+      await queue.flush();
+
       // Verify node was deleted
       expect(store.get('node-to-delete')).toBeUndefined();
     });
@@ -341,7 +375,7 @@ describe('webhook routing integration', () => {
       expect(body.error).toBe('Invalid signature');
     });
 
-    it('should call handler when signature is valid', async () => {
+    it('should queue webhook when signature is valid', async () => {
       let handlerCalled = false;
 
       registry.register('secure-plugin', {
@@ -368,7 +402,12 @@ describe('webhook routing integration', () => {
         }
       );
 
-      expect(response.statusCode).toBe(200);
+      // Webhook is queued
+      expect(response.statusCode).toBe(202);
+
+      // Flush queue to process webhook
+      await queue.flush();
+
       expect(handlerCalled).toBe(true);
     });
   });
@@ -395,7 +434,7 @@ describe('webhook routing integration', () => {
       expect(body.error).toBe('Invalid JSON body');
     });
 
-    it('should return 500 when handler throws', async () => {
+    it('should queue webhook even if handler will throw (error happens during batch processing)', async () => {
       registry.register('plugin', {
         path: 'error',
         handler: async () => {
@@ -407,9 +446,13 @@ describe('webhook routing integration', () => {
         body: '{}',
       });
 
-      expect(response.statusCode).toBe(500);
+      // Webhook is queued with 202 - error happens later during batch processing
+      expect(response.statusCode).toBe(202);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Internal server error');
+      expect(body.queued).toBe(true);
+
+      // Error is logged during batch processing, not returned to caller
+      // This is expected behavior for async batch processing
     });
   });
 
@@ -437,10 +480,12 @@ describe('webhook routing integration', () => {
 
       // Call plugin-a
       await makeRequest(server, '/_webhooks/plugin-a/update', { body: '{}' });
+      await queue.flush();
       expect(calls).toEqual(['plugin-a']);
 
       // Call plugin-b
       await makeRequest(server, '/_webhooks/plugin-b/update', { body: '{}' });
+      await queue.flush();
       expect(calls).toEqual(['plugin-a', 'plugin-b']);
     });
   });

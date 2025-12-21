@@ -17,6 +17,7 @@ import {
   defaultWebhookRegistry,
   type WebhookRegistry,
   type WebhookRegistration,
+  type WebhookHooksConfig,
 } from '@/webhooks/index.js';
 
 export const pluginTypes = ['core', 'source', 'other'] as const;
@@ -84,6 +85,40 @@ export interface CodegenConfig {
 }
 
 /**
+ * Configuration for remote webhook handling.
+ */
+export interface RemoteWebhooksConfig {
+  /**
+   * Debounce period in milliseconds.
+   * After each webhook, the queue waits this long for more webhooks before processing.
+   * @default 5000
+   */
+  debounceMs?: number;
+
+  /**
+   * Maximum queue size before forced processing.
+   * When the queue reaches this size, it will process immediately regardless of debounce.
+   * @default 100
+   */
+  maxQueueSize?: number;
+
+  /**
+   * Lifecycle hooks for webhook processing.
+   */
+  hooks?: WebhookHooksConfig;
+}
+
+/**
+ * Configuration for remote data synchronization.
+ */
+export interface RemoteConfig {
+  /**
+   * Webhook queue and processing configuration.
+   */
+  webhooks?: RemoteWebhooksConfig;
+}
+
+/**
  * Core UDL configuration object
  */
 export interface UDLConfig {
@@ -114,6 +149,10 @@ export interface UDLConfig {
    * - Custom `CacheStorage`: Use a custom cache implementation (e.g., Redis, SQLite)
    */
   cache?: CacheStorage | false;
+  /**
+   * Configuration for remote data synchronization (webhooks, etc.).
+   */
+  remote?: RemoteConfig;
 }
 
 /**

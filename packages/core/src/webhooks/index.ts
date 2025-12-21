@@ -21,3 +21,40 @@ export {
   defaultWebhookRegistry,
   setDefaultWebhookRegistry,
 } from './registry.js';
+
+// Queue
+export type {
+  QueuedWebhook,
+  WebhookBatch,
+  WebhookQueueConfig,
+  WebhookQueueEvents,
+  BatchProcessorFn,
+} from './queue.js';
+
+export {
+  WebhookQueue,
+  defaultWebhookQueue,
+  setDefaultWebhookQueue,
+} from './queue.js';
+
+// Hooks
+export type {
+  WebhookReceivedContext,
+  WebhookBatchContext,
+  OnWebhookReceivedFn,
+  OnBeforeWebhookTriggeredFn,
+  OnAfterWebhookTriggeredFn,
+  WebhookHooksConfig,
+} from './hooks.js';
+
+export {
+  getWebhookHooks,
+  setWebhookHooks,
+  resetWebhookHooks,
+} from './hooks.js';
+
+// Processor
+export {
+  initializeWebhookProcessor,
+  processWebhookBatch,
+} from './processor.js';
