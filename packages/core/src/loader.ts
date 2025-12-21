@@ -13,6 +13,11 @@ import type {
   ReferenceResolverConfig,
   EntityKeyConfig,
 } from '@/references/types.js';
+import {
+  defaultWebhookRegistry,
+  type WebhookRegistry,
+  type WebhookRegistration,
+} from '@/webhooks/index.js';
 
 export const pluginTypes = ['core', 'source', 'other'] as const;
 
@@ -202,6 +207,11 @@ export interface LoadConfigFileOptions {
   store?: NodeStore;
   /** Context to pass to registerTypes hook (from SchemaRegistry) */
   registerTypesContext?: RegisterTypesContext;
+  /**
+   * Webhook registry for plugins to register webhook handlers.
+   * If not provided, uses the defaultWebhookRegistry singleton.
+   */
+  webhookRegistry?: WebhookRegistry;
 }
 
 /**
@@ -231,12 +241,19 @@ export async function loadConfigFile(
     // Execute sourceNodes hook with node actions bound to this plugin
     if (module.sourceNodes && options?.pluginName && options?.store) {
       const actions = createNodeActions(options.store, options.pluginName);
+      const webhookRegistry = options.webhookRegistry ?? defaultWebhookRegistry;
+
+      // Create a bound registerWebhook function for this plugin
+      const registerWebhook = (webhook: WebhookRegistration): void => {
+        webhookRegistry.register(options.pluginName!, webhook);
+      };
 
       await module.sourceNodes({
         actions,
         createNodeId,
         createContentDigest,
         options: options.context?.options,
+        registerWebhook,
       });
     }
 
@@ -356,6 +373,11 @@ export interface LoadPluginsOptions {
    * Each plugin will store its cache in `cacheDir/.udl-cache/`.
    */
   cacheDir?: string;
+  /**
+   * Webhook registry for plugins to register webhook handlers.
+   * If not provided, uses the defaultWebhookRegistry singleton.
+   */
+  webhookRegistry?: WebhookRegistry;
 }
 
 /** Maximum recursion depth for nested plugins */
@@ -484,6 +506,7 @@ export async function loadPlugins(
     _depth = 0,
     cache: cacheEnabled = true,
     cacheDir,
+    webhookRegistry = defaultWebhookRegistry,
   } = options ?? {};
   const nodeStore = store ?? defaultStore;
   const codegenConfigs: PluginCodegenInfo[] = [];
@@ -592,12 +615,19 @@ export async function loadPlugins(
           }
 
           const actions = createNodeActions(nodeStore, actualPluginName);
+
+          // Create a bound registerWebhook function for this plugin
+          const registerWebhook = (webhook: WebhookRegistration): void => {
+            webhookRegistry.register(actualPluginName, webhook);
+          };
+
           await module.sourceNodes({
             actions,
             createNodeId,
             createContentDigest,
             options: context?.options,
             cacheDir: cacheLocation,
+            registerWebhook,
           });
 
           registerPluginIndexes(nodeStore, actualPluginName, allIndexes);
@@ -672,6 +702,7 @@ export async function loadPlugins(
             cache: cacheEnabled,
             // Nested plugins store their cache in the parent plugin's directory
             cacheDir: pluginPath,
+            webhookRegistry,
           });
 
           codegenConfigs.push(...nestedResult.codegenConfigs);
