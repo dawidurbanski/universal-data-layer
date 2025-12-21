@@ -2,6 +2,7 @@ import { loadAppConfig, loadPlugins } from '@/loader.js';
 import { createConfig } from '@/config.js';
 import server from '@/server.js';
 import { rebuildHandler, getCurrentSchema } from '@/handlers/graphql.js';
+import { setReady } from '@/handlers/readiness.js';
 import { runCodegen } from '@/codegen.js';
 import { loadEnv } from '@/env.js';
 import { startMockServer } from '@/mocks/index.js';
@@ -88,6 +89,9 @@ export async function startServer(options: StartServerOptions = {}) {
     }
   }
 
+  // Mark node store as ready after plugins have loaded
+  setReady('nodeStore', true);
+
   // Track main app codegen config if present (after collecting plugin names)
   if (userConfig.codegen) {
     codegenConfigs.push({
@@ -114,6 +118,9 @@ export async function startServer(options: StartServerOptions = {}) {
   // Rebuild the GraphQL schema after all plugins have sourced their nodes
   console.log('🔨 Building GraphQL schema from sourced nodes...');
   await rebuildHandler();
+
+  // Mark GraphQL as ready after schema is built
+  setReady('graphql', true);
 
   // Get the current schema for query generation
   const schema = await getCurrentSchema();

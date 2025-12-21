@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import staticHandler from '@/handlers/static.js';
 import graphqlHandler from '@/handlers/graphql.js';
 import graphiqlHandler from '@/handlers/graphiql.js';
+import { healthHandler, readyHandler } from '@/handlers/health.js';
 
 const server = createServer((req, res) => {
   // Add CORS headers for all requests
@@ -14,6 +15,13 @@ const server = createServer((req, res) => {
     res.writeHead(204);
     res.end();
     return;
+  }
+
+  // Health check endpoints (no auth required)
+  if (req.url === '/health') {
+    return healthHandler(req, res);
+  } else if (req.url === '/ready') {
+    return readyHandler(req, res);
   }
 
   if (req.url === '/graphql') {
