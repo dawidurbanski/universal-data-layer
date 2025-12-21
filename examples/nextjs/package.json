@@ -4,14 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "udl-next dev",
+    "build": "udl-next build",
+    "start": "udl-next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "udl": "universal-data-layer"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@universal-data-layer/adapter-nextjs": "file:../../packages/adapter-nextjs",
     "@universal-data-layer/codegen-typed-queries": "file:../../packages/codegen-typed-queries",
     "@universal-data-layer/plugin-source-contentful": "file:../../packages/plugin-source-contentful",
     "next": "^15.1.0",
