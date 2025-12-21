@@ -404,7 +404,7 @@ describe('QueryDocumentGenerator', () => {
       );
       expect(code).toContain('DO NOT EDIT MANUALLY');
       expect(code).toContain(
-        "import type { TypedDocumentNode } from '@graphql-typed-document-node/core';"
+        "import type { TypedDocumentNode } from '@universal-data-layer/codegen-typed-queries';"
       );
     });
 
