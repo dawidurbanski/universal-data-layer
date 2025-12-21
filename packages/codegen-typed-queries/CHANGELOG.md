@@ -1,5 +1,17 @@
 # @universal-data-layer/codegen-typed-queries
 
+## 1.0.6
+
+### Patch Changes
+
+- [`5eaefc1`](https://github.com/dawidurbanski/universal-data-layer/commit/5eaefc1617444522b90b6fff28247ee107f6ba6f) Thanks [@dawidurbanski](https://github.com/dawidurbanski)! - Fix pnpm phantom dependency issue with TypedDocumentNode
+  - Re-export `TypedDocumentNode` type from the package so users don't need to install `@graphql-typed-document-node/core` directly
+  - Generated code now imports from `@universal-data-layer/codegen-typed-queries` instead of `@graphql-typed-document-node/core`
+  - Works correctly with pnpm's strict dependency resolution
+
+- Updated dependencies [[`4ea4d39`](https://github.com/dawidurbanski/universal-data-layer/commit/4ea4d39fecfe5304d6d830ed0d9fc20ea35fafdf)]:
+  - universal-data-layer@1.0.6
+
 ## 1.0.5
 
 ### Patch Changes

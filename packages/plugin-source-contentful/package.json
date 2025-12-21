@@ -1,6 +1,6 @@
 {
   "name": "@universal-data-layer/plugin-source-contentful",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Contentful source plugin for Universal Data Layer",
   "type": "module",
   "main": "dist/index.js",
@@ -50,7 +50,7 @@
     "contentful": "^11.5.0"
   },
   "peerDependencies": {
-    "universal-data-layer": "^1.0.5"
+    "universal-data-layer": "^1.0.6"
   },
   "devDependencies": {
     "msw": "^2.7.0",
