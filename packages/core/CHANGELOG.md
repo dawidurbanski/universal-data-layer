@@ -1,5 +1,16 @@
 # universal-data-layer
 
+## 1.0.6
+
+### Patch Changes
+
+- [`4ea4d39`](https://github.com/dawidurbanski/universal-data-layer/commit/4ea4d39fecfe5304d6d830ed0d9fc20ea35fafdf) Thanks [@dawidurbanski](https://github.com/dawidurbanski)! - Fix `udl-codegen` CLI to work correctly when run standalone
+  - Pass `cacheDir` to `loadPlugins()` so cached nodes are found in the app's `.udl-cache` directory instead of the plugin's node_modules
+  - Use full plugin names instead of `basename()` for owner matching, fixing "No nodes found in store" errors
+  - Only load manual test configs when running within the UDL monorepo development environment
+  - Pass GraphQL schema to `runCodegen()` so extensions like `codegen-typed-queries` work correctly
+  - Make reference resolver registration idempotent to prevent errors when plugins are loaded multiple times
+
 ## 1.0.5
 
 ### Patch Changes
