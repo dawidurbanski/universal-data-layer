@@ -14,5 +14,6 @@ export {
   fetchRemoteNodes,
   tryConnectRemoteWebSocket,
   initRemoteSync,
+  isSelfUrl,
   type RemoteSyncConfig,
 } from './remote.js';
