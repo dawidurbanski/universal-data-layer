@@ -96,7 +96,12 @@ export {
   type DeletionLogEntry,
   type DeletionLogData,
   type DeletionNodeInfo,
+  defaultDeletionLog,
+  setDefaultDeletionLog,
 } from './sync/index.js';
+
+// Re-export sync handler types
+export { type SyncResponse } from './handlers/sync.js';
 
 // Re-export env utilities
 export { loadEnv, type LoadEnvOptions, type LoadEnvResult } from './env.js';

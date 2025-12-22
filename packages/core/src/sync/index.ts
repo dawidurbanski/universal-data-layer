@@ -3,4 +3,9 @@ export {
   type DeletionLogEntry,
   type DeletionLogData,
   type DeletionNodeInfo,
-} from './deletion-log.js';
+} from './deletionLog.js';
+
+export {
+  defaultDeletionLog,
+  setDefaultDeletionLog,
+} from './defaultDeletionLog.js';
