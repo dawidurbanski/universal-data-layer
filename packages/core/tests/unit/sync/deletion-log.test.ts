@@ -3,7 +3,7 @@ import {
   DeletionLog,
   type DeletionLogData,
   type DeletionNodeInfo,
-} from '@/sync/deletion-log.js';
+} from '@/sync/deletionLog.js';
 
 /** Helper to create a mock node for testing */
 function createMockNode(

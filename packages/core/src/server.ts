@@ -4,6 +4,7 @@ import graphqlHandler from '@/handlers/graphql.js';
 import graphiqlHandler from '@/handlers/graphiql.js';
 import { healthHandler, readyHandler } from '@/handlers/health.js';
 import { isWebhookRequest, webhookHandler } from '@/handlers/webhook.js';
+import { syncHandler } from '@/handlers/sync.js';
 
 const server = createServer((req, res) => {
   // Add CORS headers for all requests
@@ -23,6 +24,11 @@ const server = createServer((req, res) => {
     return healthHandler(req, res);
   } else if (req.url === '/ready') {
     return readyHandler(req, res);
+  }
+
+  // Sync endpoint for partial updates
+  if (req.url?.startsWith('/_sync')) {
+    return syncHandler(req, res);
   }
 
   // Webhook endpoints
