@@ -6,6 +6,60 @@ import {
 import type { SyncResponse } from '@/handlers/sync.js';
 
 /**
+ * Local host aliases that all refer to the same machine.
+ */
+const LOCAL_HOST_ALIASES = new Set(['localhost', '127.0.0.1', '0.0.0.0']);
+
+/**
+ * Check if a remote URL points to the current server.
+ *
+ * This is used to detect when the config file is shared between
+ * production and local development. If the remote URL points to
+ * ourselves, we should load plugins instead of syncing from remote.
+ *
+ * @param remoteUrl - The remote UDL URL from config
+ * @param localHost - The local server host
+ * @param localPort - The local server port
+ * @returns true if the remote URL points to this server
+ */
+export function isSelfUrl(
+  remoteUrl: string,
+  localHost: string,
+  localPort: number
+): boolean {
+  try {
+    const remote = new URL(remoteUrl);
+    const remotePort =
+      remote.port || (remote.protocol === 'https:' ? '443' : '80');
+
+    // Ports must match
+    if (String(localPort) !== String(remotePort)) {
+      return false;
+    }
+
+    const remoteHost = remote.hostname.toLowerCase();
+    const normalizedLocalHost = localHost.toLowerCase();
+
+    // Direct match
+    if (remoteHost === normalizedLocalHost) {
+      return true;
+    }
+
+    // Both are local aliases (localhost, 127.0.0.1, 0.0.0.0)
+    if (
+      LOCAL_HOST_ALIASES.has(remoteHost) &&
+      LOCAL_HOST_ALIASES.has(normalizedLocalHost)
+    ) {
+      return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Configuration for remote sync.
  */
 export interface RemoteSyncConfig {

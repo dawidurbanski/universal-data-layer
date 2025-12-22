@@ -25,7 +25,7 @@ import {
   setDefaultWebSocketServer,
   getDefaultWebSocketServer,
 } from '@/websocket/index.js';
-import { initRemoteSync } from '@/sync/remote.js';
+import { initRemoteSync, isSelfUrl } from '@/sync/remote.js';
 import type { UDLWebSocketClient } from '@/websocket/client.js';
 
 export interface StartServerOptions {
@@ -112,13 +112,24 @@ export async function startServer(options: StartServerOptions = {}) {
   let remoteWsClient: UDLWebSocketClient | null = null;
 
   // Check if we should sync from a remote UDL server
-  if (userConfig.remote?.url) {
+  // Skip remote sync if the URL points to ourselves (shared config between prod and local)
+  const remoteUrl = userConfig.remote?.url;
+  const shouldSyncFromRemote = remoteUrl && !isSelfUrl(remoteUrl, host, port);
+
+  if (remoteUrl && !shouldSyncFromRemote) {
+    // Remote URL points to ourselves - this is the production server
+    console.log(
+      `📡 Remote URL points to self (${remoteUrl}), loading plugins instead`
+    );
+  }
+
+  if (shouldSyncFromRemote) {
     // Remote mode: fetch data from remote UDL instead of loading plugins
-    console.log(`📡 Remote mode: syncing from ${userConfig.remote.url}`);
+    console.log(`📡 Remote mode: syncing from ${remoteUrl}`);
 
     remoteWsClient = await initRemoteSync(
       {
-        url: userConfig.remote.url,
+        url: remoteUrl,
         // Note: WebSocket client uses sensible defaults (5s reconnect, 30s ping)
         // Custom client config can be added to RemoteSyncConfig if needed
       },
