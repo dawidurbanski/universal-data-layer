@@ -10,7 +10,6 @@ const CYAN = '\x1b[36m';
 const MAGENTA = '\x1b[35m';
 const RESET = '\x1b[0m';
 
-const DEFAULT_UDL_PORT = 4000;
 const DEFAULT_NEXT_PORT = 3000;
 
 /**
@@ -32,7 +31,6 @@ export async function runStart(
   config?: RunStartConfig
 ): Promise<void> {
   const exit = config?.exit ?? ((code: number) => process.exit(code));
-  const udlPort = options.port ?? DEFAULT_UDL_PORT;
   const nextPort = options.nextPort ?? DEFAULT_NEXT_PORT;
 
   const processes: SpawnedProcess[] = [];
@@ -57,11 +55,11 @@ export async function runStart(
   process.on('SIGTERM', handleSignal);
 
   // Spawn UDL server
-  const udlProcess = spawnWithPrefix(
-    'npx',
-    ['universal-data-layer', '--port', String(udlPort)],
-    `${CYAN}[udl]${RESET}`
-  );
+  const udlArgs = ['universal-data-layer'];
+  if (options.port !== undefined) {
+    udlArgs.push('--port', String(options.port));
+  }
+  const udlProcess = spawnWithPrefix('npx', udlArgs, `${CYAN}[udl]${RESET}`);
   processes.push(udlProcess);
 
   // Spawn Next.js production server
