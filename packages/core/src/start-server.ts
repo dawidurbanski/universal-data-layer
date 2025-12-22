@@ -25,7 +25,7 @@ import {
   setDefaultWebSocketServer,
   getDefaultWebSocketServer,
 } from '@/websocket/index.js';
-import { initRemoteSync, isSelfUrl } from '@/sync/remote.js';
+import { initRemoteSync, isRemoteReachable } from '@/sync/remote.js';
 import type { UDLWebSocketClient } from '@/websocket/client.js';
 
 export interface StartServerOptions {
@@ -112,34 +112,42 @@ export async function startServer(options: StartServerOptions = {}) {
   let remoteWsClient: UDLWebSocketClient | null = null;
 
   // Check if we should sync from a remote UDL server
-  // Skip remote sync if the URL points to ourselves (shared config between prod and local)
+  // If remote.url is set, try to reach it first - if unreachable, we are production
   const remoteUrl = userConfig.remote?.url;
-  const shouldSyncFromRemote = remoteUrl && !isSelfUrl(remoteUrl, host, port);
+  let shouldSyncFromRemote = false;
 
-  if (remoteUrl && !shouldSyncFromRemote) {
-    // Remote URL points to ourselves - this is the production server
-    console.log(
-      `📡 Remote URL points to self (${remoteUrl}), loading plugins instead`
-    );
+  if (remoteUrl) {
+    console.log(`📡 Checking if remote UDL is reachable: ${remoteUrl}`);
+    const remoteReachable = await isRemoteReachable(remoteUrl);
+
+    if (remoteReachable) {
+      shouldSyncFromRemote = true;
+      console.log(`📡 Remote mode: syncing from ${remoteUrl}`);
+
+      remoteWsClient = await initRemoteSync(
+        {
+          url: remoteUrl,
+          // Note: WebSocket client uses sensible defaults (5s reconnect, 30s ping)
+          // Custom client config can be added to RemoteSyncConfig if needed
+        },
+        defaultStore
+      );
+
+      if (remoteWsClient) {
+        console.log('📡 Connected to remote WebSocket for real-time updates');
+      }
+    } else {
+      console.log(
+        `📡 Remote not reachable, loading plugins instead (we are production)`
+      );
+    }
   }
 
-  if (shouldSyncFromRemote) {
-    // Remote mode: fetch data from remote UDL instead of loading plugins
-    console.log(`📡 Remote mode: syncing from ${remoteUrl}`);
-
-    remoteWsClient = await initRemoteSync(
-      {
-        url: remoteUrl,
-        // Note: WebSocket client uses sensible defaults (5s reconnect, 30s ping)
-        // Custom client config can be added to RemoteSyncConfig if needed
-      },
-      defaultStore
-    );
-
-    if (remoteWsClient) {
-      console.log('📡 Connected to remote WebSocket for real-time updates');
-    }
-  } else if (userConfig.plugins && userConfig.plugins.length > 0) {
+  if (
+    !shouldSyncFromRemote &&
+    userConfig.plugins &&
+    userConfig.plugins.length > 0
+  ) {
     // Normal mode: load plugins and source nodes locally
     console.log('Loading plugins...');
     // Track plugin names before loading
