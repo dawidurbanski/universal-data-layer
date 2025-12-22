@@ -1,5 +1,6 @@
 import type { Node } from '@/nodes/types.js';
 import type { NodeStore } from '@/nodes/store.js';
+import type { DeletionLog } from '@/sync/index.js';
 
 /**
  * Input for deleting a node - accepts either a node object or node ID
@@ -14,6 +15,8 @@ export interface DeleteNodeOptions {
   store: NodeStore;
   /** Whether to cascade delete all children (default: false) */
   cascade?: boolean;
+  /** Optional deletion log to record deletions for partial sync */
+  deletionLog?: DeletionLog;
 }
 
 /**
@@ -48,7 +51,7 @@ export async function deleteNode(
   input: DeleteNodeInput,
   options: DeleteNodeOptions
 ): Promise<boolean> {
-  const { store, cascade = false } = options;
+  const { store, cascade = false, deletionLog } = options;
 
   // Validate input type
   if (input === null || input === undefined) {
@@ -81,7 +84,11 @@ export async function deleteNode(
     // Create copy of children array to avoid mutation during iteration
     const childrenToDelete = [...node.children];
     for (const childId of childrenToDelete) {
-      await deleteNode(childId, { store, cascade: true });
+      const childOptions: DeleteNodeOptions = { store, cascade: true };
+      if (deletionLog) {
+        childOptions.deletionLog = deletionLog;
+      }
+      await deleteNode(childId, childOptions);
     }
   } else if (node.children && node.children.length > 0) {
     // Remove parent reference from children if not cascading
@@ -103,6 +110,9 @@ export async function deleteNode(
       store.set(parent);
     }
   }
+
+  // Record deletion before removing from store
+  deletionLog?.recordDeletion(node);
 
   // Delete the node from store
   return store.delete(nodeId);

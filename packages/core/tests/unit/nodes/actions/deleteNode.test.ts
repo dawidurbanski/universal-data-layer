@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
 import { NodeStore } from '@/nodes/store.js';
 import {
   createNode,
   deleteNode,
   type CreateNodeInput,
 } from '@/nodes/actions/index.js';
+import { DeletionLog } from '@/sync/index.js';
 
 describe('deleteNode', () => {
   let store: NodeStore;
@@ -535,6 +536,106 @@ describe('deleteNode', () => {
         const child = store.get(`child-${i}`);
         expect(child?.parent).toBeUndefined();
       }
+    });
+  });
+
+  describe('deletion logging', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2024-06-15T12:00:00.000Z'));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('records deletion entry when deletionLog is provided', async () => {
+      const deletionLog = new DeletionLog();
+      const input: CreateNodeInput = {
+        internal: {
+          id: 'test-1',
+          type: 'Product',
+          owner: 'shopify-plugin',
+        },
+      };
+
+      await createNode(input, { store });
+      await deleteNode('test-1', { store, deletionLog });
+
+      expect(deletionLog.size()).toBe(1);
+      const entries = deletionLog.getDeletedSince(new Date(0));
+      expect(entries[0]).toEqual({
+        nodeId: 'test-1',
+        nodeType: 'Product',
+        owner: 'shopify-plugin',
+        deletedAt: '2024-06-15T12:00:00.000Z',
+      });
+    });
+
+    it('does not throw when deletionLog is undefined', async () => {
+      const input: CreateNodeInput = {
+        internal: {
+          id: 'test-1',
+          type: 'TestNode',
+          owner: 'test-plugin',
+        },
+      };
+
+      await createNode(input, { store });
+
+      // Should not throw
+      await expect(deleteNode('test-1', { store })).resolves.toBe(true);
+    });
+
+    it('records all children when cascade deleting', async () => {
+      const deletionLog = new DeletionLog();
+
+      // Create parent
+      const parent: CreateNodeInput = {
+        internal: {
+          id: 'parent-1',
+          type: 'Parent',
+          owner: 'test-plugin',
+        },
+      };
+      await createNode(parent, { store });
+
+      // Create children
+      const child1: CreateNodeInput = {
+        internal: {
+          id: 'child-1',
+          type: 'Child',
+          owner: 'test-plugin',
+        },
+        parent: 'parent-1',
+      };
+      const child2: CreateNodeInput = {
+        internal: {
+          id: 'child-2',
+          type: 'Child',
+          owner: 'test-plugin',
+        },
+        parent: 'parent-1',
+      };
+      await createNode(child1, { store });
+      await createNode(child2, { store });
+
+      // Delete parent with cascade
+      await deleteNode('parent-1', { store, cascade: true, deletionLog });
+
+      // Should record all 3 deletions
+      expect(deletionLog.size()).toBe(3);
+      const entries = deletionLog.getDeletedSince(new Date(0));
+      const nodeIds = entries.map((e) => e.nodeId).sort();
+      expect(nodeIds).toEqual(['child-1', 'child-2', 'parent-1']);
+    });
+
+    it('does not record deletion for non-existent node', async () => {
+      const deletionLog = new DeletionLog();
+
+      await deleteNode('non-existent', { store, deletionLog });
+
+      expect(deletionLog.size()).toBe(0);
     });
   });
 });
