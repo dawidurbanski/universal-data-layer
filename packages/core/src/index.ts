@@ -90,6 +90,14 @@ export {
   type SerializedNode,
 } from './cache/index.js';
 
+// Re-export sync utilities (deletion log for partial sync)
+export {
+  DeletionLog,
+  type DeletionLogEntry,
+  type DeletionLogData,
+  type DeletionNodeInfo,
+} from './sync/index.js';
+
 // Re-export env utilities
 export { loadEnv, type LoadEnvOptions, type LoadEnvResult } from './env.js';
 
