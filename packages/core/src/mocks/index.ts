@@ -15,6 +15,24 @@ async function loadContentfulHandlers(): Promise<RequestHandler[]> {
   }
 }
 
+// Load remote-todo handlers for the manual test feature
+// Uses string concatenation to prevent TypeScript from resolving at compile time
+async function loadRemoteTodoHandlers(): Promise<RequestHandler[]> {
+  try {
+    // Only load in development mode for manual testing
+    if (process.env['NODE_ENV'] !== 'development') return [];
+
+    const modulePath =
+      '../../tests/manual/features/remote-udl-webhooks/mocks/' +
+      'remote-todos.js';
+    const mod = await import(/* webpackIgnore: true */ modulePath);
+    return mod.remoteTodoHandlers || [];
+  } catch {
+    // Feature not available or handlers not found
+    return [];
+  }
+}
+
 /**
  * Check if real Contentful credentials are provided
  */
@@ -100,8 +118,13 @@ export async function startMockServer() {
   }
 
   const contentfulHandlers = await loadContentfulHandlers();
+  const remoteTodoHandlers = await loadRemoteTodoHandlers();
 
-  mockServer = setupServer(...contentfulHandlers, ...jsonplaceholderHandlers);
+  mockServer = setupServer(
+    ...contentfulHandlers,
+    ...jsonplaceholderHandlers,
+    ...remoteTodoHandlers
+  );
 
   mockServer.listen({ onUnhandledRequest: 'bypass' });
   console.log(`🔶 MSW Mock Server started (${reason})`);
