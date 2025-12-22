@@ -1,6 +1,7 @@
 import type { Node } from '@/nodes/types.js';
 import type { NodeStore } from '@/nodes/store.js';
 import type { DeletionLog } from '@/sync/index.js';
+import { emitNodeChange } from '@/nodes/events.js';
 
 /**
  * Input for deleting a node - accepts either a node object or node ID
@@ -113,6 +114,15 @@ export async function deleteNode(
 
   // Record deletion before removing from store
   deletionLog?.recordDeletion(node);
+
+  // Emit node deleted event before removing from store
+  emitNodeChange({
+    type: 'node:deleted',
+    nodeId: node.internal.id,
+    nodeType: node.internal.type,
+    node: null,
+    timestamp: new Date().toISOString(),
+  });
 
   // Delete the node from store
   return store.delete(nodeId);

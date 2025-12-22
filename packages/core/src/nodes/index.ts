@@ -38,6 +38,15 @@ export {
 // Utilities
 export { createNodeId, createContentDigest } from './utils/index.js';
 
+// Events
+export {
+  nodeEvents,
+  emitNodeChange,
+  type NodeChangeEvent,
+  type NodeChangeEventType,
+  type NodeEventEmitter,
+} from './events.js';
+
 // Context for sourceNodes hook
 import type { NodeActions } from './actions/index.js';
 import type { WebhookRegistration } from '@/webhooks/types.js';

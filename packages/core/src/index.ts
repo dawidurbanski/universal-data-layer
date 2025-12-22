@@ -157,5 +157,24 @@ export {
   registerDefaultWebhooks,
 } from './webhooks/index.js';
 
+// Re-export WebSocket server utilities
+export {
+  UDLWebSocketServer,
+  getDefaultWebSocketServer,
+  setDefaultWebSocketServer,
+  type ServerMessage,
+  type NodeChangeMessage,
+  type SubscribedMessage,
+  type PongMessage,
+  type ConnectedMessage,
+  type ClientMessage,
+  type SubscribeMessage,
+  type PingMessage,
+  type ClientSubscription,
+} from './websocket/index.js';
+
+// Re-export WebSocket config type from loader
+export type { WebSocketConfig } from './loader.js';
+
 // Export the default server for programmatic usage
 export { default } from './server.js';

@@ -20,6 +20,11 @@ import {
   processWebhookBatch,
   OutboundWebhookManager,
 } from '@/webhooks/index.js';
+import {
+  UDLWebSocketServer,
+  setDefaultWebSocketServer,
+  getDefaultWebSocketServer,
+} from '@/websocket/index.js';
 
 export interface StartServerOptions {
   port?: number;
@@ -389,8 +394,17 @@ export async function startServer(options: StartServerOptions = {}) {
 
     // Flush webhook queue before closing server
     console.log('📤 Flushing webhook queue...');
-    void defaultWebhookQueue.flush().then(() => {
+    void defaultWebhookQueue.flush().then(async () => {
       console.log('📤 Webhook queue flushed');
+
+      // Close WebSocket server if running
+      const wsServer = getDefaultWebSocketServer();
+      if (wsServer) {
+        console.log('🔌 Closing WebSocket server...');
+        await wsServer.close();
+        setDefaultWebSocketServer(null);
+        console.log('🔌 WebSocket server closed');
+      }
 
       // Stop accepting new connections and wait for in-flight requests
       server.close(() => {
@@ -426,6 +440,19 @@ export async function startServer(options: StartServerOptions = {}) {
   console.log(
     `✨ GraphiQL interface available at http://${host}:${port}/graphiql`
   );
+
+  // Initialize WebSocket server if enabled
+  const wsConfig = userConfig.remote?.websockets;
+  if (wsConfig?.enabled) {
+    const wsServer = new UDLWebSocketServer(server, wsConfig);
+    setDefaultWebSocketServer(wsServer);
+
+    const wsPort = wsConfig.port ?? port;
+    const wsPath = wsConfig.path ?? '/ws';
+    console.log(
+      `🔌 WebSocket server available at ws://${host}:${wsPort}${wsPath}`
+    );
+  }
 
   return { server, config };
 }

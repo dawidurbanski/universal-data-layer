@@ -2,6 +2,7 @@ import type { Node } from '@/nodes/types.js';
 import type { NodeStore } from '@/nodes/store.js';
 import { createContentDigest } from '@/nodes/utils/index.js';
 import type { SchemaOption } from '@/schema-builder.js';
+import { emitNodeChange } from '@/nodes/events.js';
 
 /**
  * Input for creating a node - allows partial internal metadata
@@ -146,6 +147,15 @@ export async function createNode(
   if (options.schema) {
     store.setTypeSchema(node.internal.type, options.schema);
   }
+
+  // Emit node change event
+  emitNodeChange({
+    type: existingNode ? 'node:updated' : 'node:created',
+    nodeId: node.internal.id,
+    nodeType: node.internal.type,
+    node,
+    timestamp: new Date().toISOString(),
+  });
 
   return node;
 }

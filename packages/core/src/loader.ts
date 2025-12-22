@@ -21,6 +21,7 @@ import {
   type WebhookHooksConfig,
   type DefaultWebhookHandlerConfig,
 } from '@/webhooks/index.js';
+import type { ServerOptions as WebSocketServerOptions } from 'ws';
 
 export const pluginTypes = ['core', 'source', 'other'] as const;
 
@@ -156,6 +157,50 @@ export interface RemoteWebhooksConfig {
 }
 
 /**
+ * Configuration for WebSocket server for real-time node change notifications.
+ */
+export interface WebSocketConfig {
+  /**
+   * Whether to enable the WebSocket server.
+   * @default false
+   */
+  enabled?: boolean;
+
+  /**
+   * Port for the WebSocket server. If not specified, WebSocket attaches
+   * to the HTTP server and is accessible at ws://host:httpPort/path.
+   * If specified, WebSocket runs on a separate port: ws://host:wsPort/path.
+   */
+  port?: number;
+
+  /**
+   * Path for WebSocket connections.
+   * @default '/ws'
+   */
+  path?: string;
+
+  /**
+   * Heartbeat interval in milliseconds for keeping connections alive.
+   * @default 30000
+   */
+  heartbeatIntervalMs?: number;
+
+  /**
+   * Advanced pass-through options for the ws.WebSocketServer constructor.
+   * `server`, `port`, and `path` are controlled by UDL and cannot be overridden.
+   *
+   * @example
+   * ```typescript
+   * options: {
+   *   maxPayload: 1024 * 1024, // 1MB
+   *   perMessageDeflate: true,
+   * }
+   * ```
+   */
+  options?: Omit<WebSocketServerOptions, 'server' | 'port' | 'path'>;
+}
+
+/**
  * Configuration for remote data synchronization.
  */
 export interface RemoteConfig {
@@ -163,6 +208,21 @@ export interface RemoteConfig {
    * Webhook queue and processing configuration.
    */
   webhooks?: RemoteWebhooksConfig;
+
+  /**
+   * WebSocket server configuration for real-time node change notifications.
+   * When enabled, broadcasts node changes to connected clients immediately.
+   *
+   * @example
+   * ```typescript
+   * websockets: {
+   *   enabled: true,
+   *   path: '/ws',
+   *   heartbeatIntervalMs: 30000,
+   * }
+   * ```
+   */
+  websockets?: WebSocketConfig;
 }
 
 /**
