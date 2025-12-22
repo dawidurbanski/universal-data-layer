@@ -25,6 +25,8 @@ import {
   setDefaultWebSocketServer,
   getDefaultWebSocketServer,
 } from '@/websocket/index.js';
+import { initRemoteSync } from '@/sync/remote.js';
+import type { UDLWebSocketClient } from '@/websocket/client.js';
 
 export interface StartServerOptions {
   port?: number;
@@ -106,8 +108,28 @@ export async function startServer(options: StartServerOptions = {}) {
   // Determine if caching is enabled (per-plugin caching is handled in loadPlugins)
   const cacheEnabled = userConfig.cache !== false;
 
-  // Load main app config plugins
-  if (userConfig.plugins && userConfig.plugins.length > 0) {
+  // Track remote WebSocket client for cleanup
+  let remoteWsClient: UDLWebSocketClient | null = null;
+
+  // Check if we should sync from a remote UDL server
+  if (userConfig.remote?.url) {
+    // Remote mode: fetch data from remote UDL instead of loading plugins
+    console.log(`📡 Remote mode: syncing from ${userConfig.remote.url}`);
+
+    remoteWsClient = await initRemoteSync(
+      {
+        url: userConfig.remote.url,
+        // Note: WebSocket client uses sensible defaults (5s reconnect, 30s ping)
+        // Custom client config can be added to RemoteSyncConfig if needed
+      },
+      defaultStore
+    );
+
+    if (remoteWsClient) {
+      console.log('📡 Connected to remote WebSocket for real-time updates');
+    }
+  } else if (userConfig.plugins && userConfig.plugins.length > 0) {
+    // Normal mode: load plugins and source nodes locally
     console.log('Loading plugins...');
     // Track plugin names before loading
     // Note: The actual owner name is determined by the plugin's config.name or basename
@@ -138,7 +160,7 @@ export async function startServer(options: StartServerOptions = {}) {
     }
   }
 
-  // Mark node store as ready after plugins have loaded
+  // Mark node store as ready after plugins have loaded or remote sync completed
   setReady('nodeStore', true);
 
   // Track main app codegen config if present (after collecting plugin names)
@@ -404,6 +426,13 @@ export async function startServer(options: StartServerOptions = {}) {
         await wsServer.close();
         setDefaultWebSocketServer(null);
         console.log('🔌 WebSocket server closed');
+      }
+
+      // Close remote WebSocket client if connected
+      if (remoteWsClient) {
+        console.log('📡 Closing remote WebSocket client...');
+        remoteWsClient.close();
+        console.log('📡 Remote WebSocket client closed');
       }
 
       // Stop accepting new connections and wait for in-flight requests

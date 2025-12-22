@@ -98,6 +98,11 @@ export {
   type DeletionNodeInfo,
   defaultDeletionLog,
   setDefaultDeletionLog,
+  // Remote sync utilities
+  fetchRemoteNodes,
+  tryConnectRemoteWebSocket,
+  initRemoteSync,
+  type RemoteSyncConfig,
 } from './sync/index.js';
 
 // Re-export sync handler types
@@ -171,6 +176,9 @@ export {
   type SubscribeMessage,
   type PingMessage,
   type ClientSubscription,
+  // WebSocket client for connecting to remote UDL
+  UDLWebSocketClient,
+  type WebSocketClientConfig,
 } from './websocket/index.js';
 
 // Re-export WebSocket config type from loader

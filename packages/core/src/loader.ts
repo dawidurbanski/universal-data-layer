@@ -205,6 +205,20 @@ export interface WebSocketConfig {
  */
 export interface RemoteConfig {
   /**
+   * URL of a remote UDL server to sync data from.
+   * When set, the local server fetches data from the remote server
+   * instead of sourcing from plugins directly.
+   *
+   * @example
+   * ```typescript
+   * remote: {
+   *   url: 'https://production-udl.example.com',
+   * }
+   * ```
+   */
+  url?: string;
+
+  /**
    * Webhook queue and processing configuration.
    */
   webhooks?: RemoteWebhooksConfig;
