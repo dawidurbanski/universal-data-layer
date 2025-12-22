@@ -12,6 +12,9 @@ export type {
   WebhookHandlerFn,
   WebhookHandlerContext,
   WebhookHandler,
+  DefaultWebhookPayload,
+  DefaultWebhookHandlerConfig,
+  PluginDefaultWebhookConfig,
 } from './types.js';
 
 // Registry
@@ -67,3 +70,15 @@ export type {
 } from './outbound.js';
 
 export { OutboundWebhookManager } from './outbound.js';
+
+// Default Handler
+export type { DefaultWebhookHandlerOptions } from './default-handler.js';
+export {
+  createDefaultWebhookHandler,
+  DEFAULT_WEBHOOK_PATH,
+} from './default-handler.js';
+
+export {
+  registerDefaultWebhook,
+  registerDefaultWebhooks,
+} from './register-default.js';

@@ -122,3 +122,88 @@ export interface WebhookHandler extends WebhookRegistration {
   /** Name of the plugin that registered this webhook */
   pluginName: string;
 }
+
+/**
+ * Standardized webhook payload for default handlers.
+ * This payload format is used by the auto-registered default webhook handlers.
+ */
+export interface DefaultWebhookPayload {
+  /**
+   * The operation to perform on the node.
+   * - 'create': Create a new node (fails if exists)
+   * - 'update': Update an existing node (fails if doesn't exist)
+   * - 'delete': Delete a node
+   * - 'upsert': Create or update a node (always succeeds)
+   */
+  operation: 'create' | 'update' | 'delete' | 'upsert';
+
+  /**
+   * The unique identifier for the node.
+   */
+  nodeId: string;
+
+  /**
+   * The type of node (e.g., 'Product', 'Article').
+   */
+  nodeType: string;
+
+  /**
+   * The node data for create/update/upsert operations.
+   * Not required for delete operations.
+   */
+  data?: Record<string, unknown>;
+}
+
+/**
+ * Per-plugin configuration for default webhook handler.
+ */
+export interface PluginDefaultWebhookConfig {
+  /**
+   * Custom path for this plugin's default webhook.
+   * If not specified, uses the global default path.
+   */
+  path?: string;
+}
+
+/**
+ * Configuration for the default webhook handler feature.
+ * When enabled, automatically registers a standardized webhook endpoint
+ * for each loaded plugin that has an `idField` configured.
+ *
+ * The webhook handler uses the plugin's `idField` config to look up existing
+ * nodes when processing update/delete operations.
+ *
+ * @example
+ * ```typescript
+ * defineConfig({
+ *   defaultWebhook: {
+ *     enabled: true,
+ *     path: 'sync',
+ *     plugins: {
+ *       'contentful': { path: 'content-sync' },
+ *       'legacy-plugin': false,  // Disable for this plugin
+ *     },
+ *   },
+ * });
+ * ```
+ */
+export interface DefaultWebhookHandlerConfig {
+  /**
+   * Whether default handlers are enabled.
+   * @default true (when this config object is present)
+   */
+  enabled?: boolean;
+
+  /**
+   * The default path for all plugin webhooks.
+   * @default 'sync'
+   */
+  path?: string;
+
+  /**
+   * Per-plugin configuration overrides.
+   * Set to `false` to disable default handler for a specific plugin.
+   * Set to `{ path: 'custom' }` to use a custom path for that plugin.
+   */
+  plugins?: Record<string, PluginDefaultWebhookConfig | false>;
+}
