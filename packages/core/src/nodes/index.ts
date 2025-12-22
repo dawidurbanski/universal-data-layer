@@ -17,6 +17,7 @@ export {
   extendNode,
   createNodeActions,
   type NodeActions,
+  type CreateNodeActionsOptions,
   type CreateNodeInput,
   type CreateNodeOptions,
   type DeleteNodeInput,

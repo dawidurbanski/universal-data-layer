@@ -4,6 +4,7 @@ import type { CreateNodeInput, CreateNodeOptions } from './createNode.js';
 import type { DeleteNodeInput, DeleteNodeOptions } from './deleteNode.js';
 import type { ExtendNodeData, ExtendNodeOptions } from './extendNode.js';
 import type { NodePredicate } from '@/nodes/queries.js';
+import type { DeletionLog } from '@/sync/index.js';
 import { createNode } from './createNode.js';
 import { deleteNode } from './deleteNode.js';
 import { extendNode } from './extendNode.js';
@@ -41,7 +42,7 @@ export interface NodeActions {
    */
   deleteNode: (
     input: DeleteNodeInput,
-    options?: Omit<DeleteNodeOptions, 'store'>
+    options?: Omit<DeleteNodeOptions, 'store' | 'deletionLog'>
   ) => Promise<boolean>;
 
   /**
@@ -73,27 +74,45 @@ export interface NodeActions {
 }
 
 /**
+ * Options for creating node actions
+ */
+export interface CreateNodeActionsOptions {
+  /** The node store to use for all operations */
+  store: NodeStore;
+  /** The plugin name that owns these actions */
+  owner: string;
+  /** Optional deletion log for tracking deletions */
+  deletionLog?: DeletionLog;
+}
+
+/**
  * Creates a NodeActions object bound to a specific store and owner
  * This ensures actions automatically track which plugin created which nodes
  *
- * @param store - The node store to use for all operations
- * @param owner - The plugin name that owns these actions
+ * @param options - Configuration including store, owner, and optional deletionLog
  * @returns NodeActions bound to the provided store and owner
  */
 export function createNodeActions(
-  store: NodeStore,
-  owner: string
+  options: CreateNodeActionsOptions
 ): NodeActions {
+  const { store, owner, deletionLog } = options;
+
   return {
     createNode: (
       input: CreateNodeInput,
-      options?: Omit<CreateNodeOptions, 'store' | 'owner'>
-    ) => createNode(input, { store, owner, ...options }),
+      createOptions?: Omit<CreateNodeOptions, 'store' | 'owner'>
+    ) => createNode(input, { store, owner, ...createOptions }),
 
     deleteNode: (
       input: DeleteNodeInput,
-      options?: Omit<DeleteNodeOptions, 'store'>
-    ) => deleteNode(input, { store, ...options }),
+      deleteOptions?: Omit<DeleteNodeOptions, 'store' | 'deletionLog'>
+    ) => {
+      const opts: DeleteNodeOptions = { store, ...deleteOptions };
+      if (deletionLog) {
+        opts.deletionLog = deletionLog;
+      }
+      return deleteNode(input, opts);
+    },
 
     extendNode: (nodeId: string, data: ExtendNodeData, options?) =>
       extendNode(nodeId, data, { store, ...options }),
