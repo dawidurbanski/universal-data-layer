@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FileCacheStorage } from '@/cache/file-cache.js';
 import type { CachedData, SerializedNode } from '@/cache/types.js';
+import type { DeletionLogData } from '@/sync/index.js';
 import * as fs from 'node:fs';
 
 /** Helper to create a valid test node */
@@ -475,5 +476,104 @@ describe('safeStringify (via FileCacheStorage.save)', () => {
       string,
     ];
     expect(content).toContain('[Circular]');
+  });
+});
+
+describe('FileCacheStorage deletion log persistence', () => {
+  const mockBasePath = '/test/project';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should save deletion log when present in data', async () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+
+    const deletionLog: DeletionLogData = {
+      entries: [
+        {
+          nodeId: 'node-1',
+          nodeType: 'Product',
+          owner: 'shopify-plugin',
+          deletedAt: '2024-06-15T12:00:00.000Z',
+        },
+      ],
+      lastCleanup: '2024-06-15T12:00:00.000Z',
+    };
+
+    const cache = new FileCacheStorage(mockBasePath);
+    const data: CachedData = {
+      nodes: [],
+      indexes: {},
+      deletionLog,
+      meta: { version: 1, createdAt: 1000, updatedAt: 2000 },
+    };
+
+    await cache.save(data);
+
+    const [, content] = vi.mocked(fs.writeFileSync).mock.calls[0] as [
+      string,
+      string,
+    ];
+    const savedData = JSON.parse(content) as CachedData;
+    expect(savedData.deletionLog).toEqual(deletionLog);
+  });
+
+  it('should load deletion log when present in cached data', async () => {
+    const deletionLog: DeletionLogData = {
+      entries: [
+        {
+          nodeId: 'node-1',
+          nodeType: 'Product',
+          owner: 'shopify-plugin',
+          deletedAt: '2024-06-15T12:00:00.000Z',
+        },
+        {
+          nodeId: 'node-2',
+          nodeType: 'BlogPost',
+          owner: 'contentful-plugin',
+          deletedAt: '2024-06-15T13:00:00.000Z',
+        },
+      ],
+      lastCleanup: '2024-06-15T12:00:00.000Z',
+    };
+
+    const cachedData: CachedData = {
+      nodes: [],
+      indexes: {},
+      deletionLog,
+      meta: { version: 1, createdAt: 1000, updatedAt: 2000 },
+    };
+
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(cachedData));
+
+    const cache = new FileCacheStorage(mockBasePath);
+    const result = await cache.load();
+
+    expect(result?.deletionLog).toEqual(deletionLog);
+  });
+
+  it('should return undefined deletionLog when not present (backwards compatibility)', async () => {
+    const cachedData: CachedData = {
+      nodes: [],
+      indexes: {},
+      // deletionLog is not present
+      meta: { version: 1, createdAt: 1000, updatedAt: 2000 },
+    };
+
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(cachedData));
+
+    const cache = new FileCacheStorage(mockBasePath);
+    const result = await cache.load();
+
+    expect(result?.deletionLog).toBeUndefined();
   });
 });
