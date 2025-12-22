@@ -105,7 +105,10 @@ async function processWebhook(webhook: QueuedWebhook): Promise<void> {
   }
 
   // Create context for the handler
-  const actions = createNodeActions(defaultStore, webhook.pluginName);
+  const actions = createNodeActions({
+    store: defaultStore,
+    owner: webhook.pluginName,
+  });
   const context: WebhookHandlerContext = {
     store: defaultStore,
     actions,

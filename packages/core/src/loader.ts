@@ -324,7 +324,10 @@ export async function loadConfigFile(
 
     // Execute sourceNodes hook with node actions bound to this plugin
     if (module.sourceNodes && options?.pluginName && options?.store) {
-      const actions = createNodeActions(options.store, options.pluginName);
+      const actions = createNodeActions({
+        store: options.store,
+        owner: options.pluginName,
+      });
       const webhookRegistry = options.webhookRegistry ?? defaultWebhookRegistry;
 
       // Create a bound registerWebhook function for this plugin
@@ -698,7 +701,10 @@ export async function loadPlugins(
             }
           }
 
-          const actions = createNodeActions(nodeStore, actualPluginName);
+          const actions = createNodeActions({
+            store: nodeStore,
+            owner: actualPluginName,
+          });
 
           // Create a bound registerWebhook function for this plugin
           const registerWebhook = (webhook: WebhookRegistration): void => {

@@ -16,4 +16,8 @@ export {
   type ExtendNodeOptions,
 } from './extendNode.js';
 
-export { createNodeActions, type NodeActions } from './nodeActions.js';
+export {
+  createNodeActions,
+  type NodeActions,
+  type CreateNodeActionsOptions,
+} from './nodeActions.js';
