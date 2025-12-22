@@ -1,6 +1,7 @@
 import type { Node } from '@/nodes/types.js';
 import type { NodeStore } from '@/nodes/store.js';
 import { createContentDigest } from '@/nodes/utils/index.js';
+import { emitNodeChange } from '@/nodes/events.js';
 
 /**
  * Data to extend a node with
@@ -97,6 +98,15 @@ export async function extendNode<T extends Node = Node>(
 
   // Store the updated node
   store.set(extendedNode);
+
+  // Emit node updated event
+  emitNodeChange({
+    type: 'node:updated',
+    nodeId: extendedNode.internal.id,
+    nodeType: extendedNode.internal.type,
+    node: extendedNode,
+    timestamp: new Date().toISOString(),
+  });
 
   return extendedNode as T;
 }
