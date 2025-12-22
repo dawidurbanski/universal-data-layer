@@ -142,6 +142,14 @@ export {
   type WebhookHandlerFn,
   type WebhookHandlerContext,
   type WebhookHandler,
+  // Default webhook handler
+  type DefaultWebhookPayload,
+  type DefaultWebhookHandlerConfig,
+  type PluginDefaultWebhookConfig,
+  createDefaultWebhookHandler,
+  DEFAULT_WEBHOOK_PATH,
+  registerDefaultWebhook,
+  registerDefaultWebhooks,
 } from './webhooks/index.js';
 
 // Export the default server for programmatic usage
