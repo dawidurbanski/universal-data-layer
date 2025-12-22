@@ -102,7 +102,7 @@ export {
   fetchRemoteNodes,
   tryConnectRemoteWebSocket,
   initRemoteSync,
-  isSelfUrl,
+  isRemoteReachable,
   type RemoteSyncConfig,
 } from './sync/index.js';
 
