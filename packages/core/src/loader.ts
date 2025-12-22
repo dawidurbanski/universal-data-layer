@@ -15,9 +15,11 @@ import type {
 } from '@/references/types.js';
 import {
   defaultWebhookRegistry,
+  registerDefaultWebhook,
   type WebhookRegistry,
   type WebhookRegistration,
   type WebhookHooksConfig,
+  type DefaultWebhookHandlerConfig,
 } from '@/webhooks/index.js';
 
 export const pluginTypes = ['core', 'source', 'other'] as const;
@@ -183,7 +185,20 @@ export interface UDLConfig {
   staticPath?: string;
   /** List of plugins to load */
   plugins?: PluginSpec[];
-  /** Default indexed fields for this plugin (for source plugins) */
+  /**
+   * The unique identifier field for nodes from this source plugin.
+   * This field is used by the default webhook handler to look up existing nodes
+   * when processing update/delete operations from external systems.
+   *
+   * The idField is automatically indexed for O(1) lookups.
+   *
+   * @example 'externalId' - for generic external IDs
+   * @example 'contentfulId' - for Contentful entries
+   * @example 'shopifyId' - for Shopify resources
+   */
+  idField?: string;
+
+  /** Additional indexed fields for this plugin (for source plugins) */
   indexes?: string[];
   /** Code generation configuration - when set, automatically generates types after sourceNodes */
   codegen?: CodegenConfig;
@@ -198,6 +213,28 @@ export interface UDLConfig {
    * Configuration for remote data synchronization (webhooks, etc.).
    */
   remote?: RemoteConfig;
+  /**
+   * Configuration for automatic default webhook handlers.
+   * When enabled, registers a default 'sync' webhook endpoint for each loaded plugin
+   * that accepts standardized create/update/delete/upsert payloads.
+   *
+   * @example
+   * ```typescript
+   * defineConfig({
+   *   defaultWebhook: {
+   *     enabled: true,
+   *     path: 'sync', // Default endpoint path for all plugins
+   *     plugins: {
+   *       // Customize path for specific plugin
+   *       'contentful': { path: 'content-sync' },
+   *       // Disable for a specific plugin
+   *       'legacy-plugin': false,
+   *     },
+   *   },
+   * });
+   * ```
+   */
+  defaultWebhook?: DefaultWebhookHandlerConfig;
 }
 
 /**
@@ -657,11 +694,19 @@ export async function loadPlugins(
 
         // Execute sourceNodes hook and register indexes
         if (module.sourceNodes && nodeStore) {
+          // Get the idField from plugin config (used for webhook lookups)
+          const pluginIdField = module.config?.idField;
+
+          // Build indexes: idField is always indexed if specified
           const pluginDefaultIndexes = module.config?.indexes || [];
           const userIndexes =
             (pluginOptions as { indexes?: string[] })?.indexes || [];
           const allIndexes = [
-            ...new Set([...pluginDefaultIndexes, ...userIndexes]),
+            ...new Set([
+              ...(pluginIdField ? [pluginIdField] : []),
+              ...pluginDefaultIndexes,
+              ...userIndexes,
+            ]),
           ];
 
           // Determine if caching is enabled for this plugin
@@ -721,6 +766,16 @@ export async function loadPlugins(
           });
 
           registerPluginIndexes(nodeStore, actualPluginName, allIndexes);
+
+          // Register default webhook handler if enabled in config
+          if (appConfig?.defaultWebhook) {
+            registerDefaultWebhook(
+              webhookRegistry,
+              actualPluginName,
+              appConfig.defaultWebhook,
+              pluginIdField
+            );
+          }
 
           // Save plugin's nodes after sourceNodes
           if (shouldCache && pluginCache) {
