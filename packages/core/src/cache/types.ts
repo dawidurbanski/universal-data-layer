@@ -1,4 +1,5 @@
 import type { Node } from '../nodes/types.js';
+import type { DeletionLogData } from '../sync/index.js';
 
 /** Serializable representation of a node for cache storage */
 export type SerializedNode = Node;
@@ -9,6 +10,8 @@ export interface CachedData {
   nodes: SerializedNode[];
   /** Registered indexes: nodeType -> fieldNames[] */
   indexes: Record<string, string[]>;
+  /** Deletion log for partial sync support */
+  deletionLog?: DeletionLogData;
   /** Cache metadata */
   meta: {
     version: number;
