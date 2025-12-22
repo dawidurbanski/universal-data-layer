@@ -11,6 +11,8 @@ export {
   type ClientSubscription,
 } from './server.js';
 
+export { UDLWebSocketClient, type WebSocketClientConfig } from './client.js';
+
 import { UDLWebSocketServer } from './server.js';
 
 /**
