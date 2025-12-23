@@ -1,5 +1,38 @@
 # @universal-data-layer/plugin-source-contentful
 
+## 2.0.0
+
+### Patch Changes
+
+- [#70](https://github.com/dawidurbanski/universal-data-layer/pull/70) [`0ea71da`](https://github.com/dawidurbanski/universal-data-layer/commit/0ea71da18234161ce8a09fdefcbae8731d7dba8c) Thanks [@dawidurbanski](https://github.com/dawidurbanski)! - # Add `updateStrategy` config option for sync-based source plugins
+
+  Plugins can now specify how incremental updates from webhooks should be handled:
+  - `'webhook'` (default): Process webhook payload directly via `registerWebhookHandler` or the default CRUD handler
+  - `'sync'`: Treat webhooks as notifications only and re-run `sourceNodes` to fetch changes via the plugin's sync API
+
+  This enables plugins with native sync APIs (like Contentful) to reuse their existing `sourceNodes` logic for incremental updates, eliminating the need to maintain separate webhook transformation code.
+
+  ## Usage
+
+  ```typescript
+  // For sources with sync APIs (like Contentful)
+  export const config = defineConfig({
+    name: 'my-source-plugin',
+    updateStrategy: 'sync',
+  });
+  ```
+
+  When webhooks arrive for a plugin with `updateStrategy: 'sync'`:
+  1. Webhooks are batched as usual (debounced)
+  2. After the batch, `sourceNodes` is called once per affected plugin
+  3. The plugin's delta sync fetches only changed data
+  4. Cache is saved after sync completes
+
+  The Contentful plugin now uses `updateStrategy: 'sync'` by default, leveraging the Contentful Sync API for efficient incremental updates.
+
+- Updated dependencies [[`dfc7d90`](https://github.com/dawidurbanski/universal-data-layer/commit/dfc7d9054b761b951995dc5ceba467c2aa560d1a), [`6430a55`](https://github.com/dawidurbanski/universal-data-layer/commit/6430a55a4f1054fd0397f8ec1e21cf6a4e359e81), [`b376bed`](https://github.com/dawidurbanski/universal-data-layer/commit/b376bed4ad8398de74dcbc4fa05a960412f820af), [`5ff7110`](https://github.com/dawidurbanski/universal-data-layer/commit/5ff7110e4e80e0c6d84d7924b078200e69d07949), [`5ff7110`](https://github.com/dawidurbanski/universal-data-layer/commit/5ff7110e4e80e0c6d84d7924b078200e69d07949), [`2e01999`](https://github.com/dawidurbanski/universal-data-layer/commit/2e0199904518814cd899385ec29dbf8b002cb06b), [`aba060e`](https://github.com/dawidurbanski/universal-data-layer/commit/aba060e79217bd4c2bca8b8a56c7835296c74c02), [`8ec4f2b`](https://github.com/dawidurbanski/universal-data-layer/commit/8ec4f2b4f20825e597c52f1420b7f61a63264d02), [`5ff7110`](https://github.com/dawidurbanski/universal-data-layer/commit/5ff7110e4e80e0c6d84d7924b078200e69d07949), [`6ffae50`](https://github.com/dawidurbanski/universal-data-layer/commit/6ffae500b103c2a59b68c79bff01d11ac6fce5ef), [`051192e`](https://github.com/dawidurbanski/universal-data-layer/commit/051192e17361e0cb9661ce86ee46f938d88b96b6), [`6fe6408`](https://github.com/dawidurbanski/universal-data-layer/commit/6fe6408bca8f0924670c989318a3564b52257660), [`2e01999`](https://github.com/dawidurbanski/universal-data-layer/commit/2e0199904518814cd899385ec29dbf8b002cb06b), [`0ea71da`](https://github.com/dawidurbanski/universal-data-layer/commit/0ea71da18234161ce8a09fdefcbae8731d7dba8c), [`5920046`](https://github.com/dawidurbanski/universal-data-layer/commit/59200465efa9600155f8047157a674303912d547), [`2e01999`](https://github.com/dawidurbanski/universal-data-layer/commit/2e0199904518814cd899385ec29dbf8b002cb06b)]:
+  - universal-data-layer@2.0.0
+
 ## 1.0.6
 
 ### Patch Changes
