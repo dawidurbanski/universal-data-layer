@@ -11,8 +11,8 @@ generated/
 .data/
 .cache/
 
-# Cache
-.udl-cache/
+# UDL internal files (cache, etc.)
+.udl/
 
 # Coverage reports
 coverage/

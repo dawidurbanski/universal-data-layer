@@ -65,7 +65,7 @@ The plugin uses Contentful's Sync API for efficient incremental updates:
 1. **Initial sync**: Fetches all entries and assets
 2. **Delta sync**: Only fetches changes since the last sync
 
-Sync tokens are stored in `.udl-cache/contentful-sync-tokens.json` by default. You can provide custom storage:
+Sync tokens are stored in `.udl/cache/contentful-sync-tokens.json` by default. You can provide custom storage:
 
 ```typescript
 {

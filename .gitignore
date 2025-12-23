@@ -19,7 +19,7 @@ packages/*/coverage/
 # Codegen
 generated/
 
-.udl-cache/
+.udl/
 .next/
 next-env.d.ts
 tsconfig.tsbuildinfo

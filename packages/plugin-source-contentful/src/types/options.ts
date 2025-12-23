@@ -107,7 +107,7 @@ export interface ContentfulPluginOptions {
   /**
    * Custom sync token storage implementation.
    * If not provided, uses the default file-based storage
-   * that stores tokens in `.udl-cache/contentful-sync-tokens.json`.
+   * that stores tokens in `.udl/cache/contentful-sync-tokens.json`.
    */
   syncTokenStorage?: SyncTokenStorage;
 }

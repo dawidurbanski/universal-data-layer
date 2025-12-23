@@ -44,7 +44,7 @@ describe('FileSyncTokenStorage', () => {
 
       // Should check for file in default cwd path
       expect(mockExistsSync).toHaveBeenCalledWith(
-        expect.stringContaining('.udl-cache/contentful-sync-tokens.json')
+        expect.stringContaining('.udl/cache/contentful-sync-tokens.json')
       );
     });
 
@@ -55,7 +55,7 @@ describe('FileSyncTokenStorage', () => {
       storage.getSyncToken('test');
 
       expect(mockExistsSync).toHaveBeenCalledWith(
-        '/custom/path/.udl-cache/contentful-sync-tokens.json'
+        '/custom/path/.udl/cache/contentful-sync-tokens.json'
       );
     });
   });
@@ -124,7 +124,7 @@ describe('FileSyncTokenStorage', () => {
       await storage.setSyncToken('space1:master', 'newtoken');
 
       expect(mockWriteFileSync).toHaveBeenCalledWith(
-        '/base/.udl-cache/contentful-sync-tokens.json',
+        '/base/.udl/cache/contentful-sync-tokens.json',
         JSON.stringify({ 'space1:master': 'newtoken' }, null, 2)
       );
     });
@@ -138,7 +138,7 @@ describe('FileSyncTokenStorage', () => {
 
       await storage.setSyncToken('space1:master', 'newtoken');
 
-      expect(mockMkdirSync).toHaveBeenCalledWith('/base/.udl-cache', {
+      expect(mockMkdirSync).toHaveBeenCalledWith('/base/.udl/cache', {
         recursive: true,
       });
     });
@@ -164,7 +164,7 @@ describe('FileSyncTokenStorage', () => {
       await storage.setSyncToken('new:key', 'newtoken');
 
       expect(mockWriteFileSync).toHaveBeenCalledWith(
-        '/base/.udl-cache/contentful-sync-tokens.json',
+        '/base/.udl/cache/contentful-sync-tokens.json',
         JSON.stringify(
           { existing: 'existingtoken', 'new:key': 'newtoken' },
           null,
@@ -188,7 +188,7 @@ describe('FileSyncTokenStorage', () => {
       await storage.clearSyncToken('space1:master');
 
       expect(mockWriteFileSync).toHaveBeenCalledWith(
-        '/base/.udl-cache/contentful-sync-tokens.json',
+        '/base/.udl/cache/contentful-sync-tokens.json',
         JSON.stringify({ 'space2:master': 'token2' }, null, 2)
       );
     });
@@ -201,7 +201,7 @@ describe('FileSyncTokenStorage', () => {
       await storage.clearSyncToken('nonexistent');
 
       expect(mockWriteFileSync).toHaveBeenCalledWith(
-        '/base/.udl-cache/contentful-sync-tokens.json',
+        '/base/.udl/cache/contentful-sync-tokens.json',
         JSON.stringify({ other: 'token' }, null, 2)
       );
     });
