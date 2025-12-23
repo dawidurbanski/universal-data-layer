@@ -10,6 +10,26 @@ vi.mock('@/utils/spawn.js', () => ({
   killAll: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Mock the config module
+vi.mock('@/utils/config.js', () => ({
+  COLORS: {
+    CYAN: '\x1b[36m',
+    MAGENTA: '\x1b[35m',
+    GREEN: '\x1b[32m',
+    RESET: '\x1b[0m',
+  },
+  DEFAULT_NEXT_PORT: 3000,
+  DEFAULT_UDL_PORT: 4000,
+  UDL_ENDPOINT_ENV: 'UDL_ENDPOINT',
+  // Mock resolveUdlPort to return default port (simulating no config file)
+  resolveUdlPort: vi.fn(async (cliPort?: number) => cliPort ?? 4000),
+  buildUdlEndpoint: vi.fn((port: number) => `http://localhost:${port}/graphql`),
+  createNextEnv: vi.fn((udlEndpoint: string) => ({
+    ...process.env,
+    UDL_ENDPOINT: udlEndpoint,
+  })),
+}));
+
 const mockSpawnWithPrefix = vi.mocked(spawnModule.spawnWithPrefix);
 const mockKillAll = vi.mocked(spawnModule.killAll);
 
@@ -140,7 +160,12 @@ describe('runDev', () => {
     expect(mockSpawnWithPrefix).toHaveBeenCalledWith(
       'npx',
       ['next', 'dev', '--port', '3000'],
-      expect.stringContaining('[next]')
+      expect.stringContaining('[next]'),
+      expect.objectContaining({
+        env: expect.objectContaining({
+          UDL_ENDPOINT: 'http://localhost:4000/graphql',
+        }),
+      })
     );
   });
 
@@ -156,7 +181,12 @@ describe('runDev', () => {
     expect(mockSpawnWithPrefix).toHaveBeenCalledWith(
       'npx',
       ['next', 'dev', '--port', '3001'],
-      expect.stringContaining('[next]')
+      expect.stringContaining('[next]'),
+      expect.objectContaining({
+        env: expect.objectContaining({
+          UDL_ENDPOINT: 'http://localhost:4000/graphql',
+        }),
+      })
     );
   });
 
@@ -172,7 +202,12 @@ describe('runDev', () => {
     expect(mockSpawnWithPrefix).toHaveBeenCalledWith(
       'npx',
       ['next', 'dev', '--port', '3000', '--turbo', '--experimental-https'],
-      expect.stringContaining('[next]')
+      expect.stringContaining('[next]'),
+      expect.objectContaining({
+        env: expect.objectContaining({
+          UDL_ENDPOINT: 'http://localhost:4000/graphql',
+        }),
+      })
     );
   });
 
@@ -258,6 +293,11 @@ describe('runDev', () => {
       signal: abortController.signal,
     });
 
+    // Wait for spawn calls to complete (handlers to be registered)
+    await vi.waitFor(() =>
+      expect(mockSpawnWithPrefix).toHaveBeenCalledTimes(2)
+    );
+
     // Simulate UDL process exiting with code 1
     mockUdlProcess.emit('exit', 1, null);
     await devPromise;
@@ -275,6 +315,11 @@ describe('runDev', () => {
       signal: abortController.signal,
     });
 
+    // Wait for spawn calls to complete (handlers to be registered)
+    await vi.waitFor(() =>
+      expect(mockSpawnWithPrefix).toHaveBeenCalledTimes(2)
+    );
+
     // Simulate Next.js process exiting with code 2
     mockNextProcess.emit('exit', 2, null);
     await devPromise;
@@ -291,6 +336,11 @@ describe('runDev', () => {
       exit: mockExit,
       signal: abortController.signal,
     });
+
+    // Wait for spawn calls to complete (handlers to be registered)
+    await vi.waitFor(() =>
+      expect(mockSpawnWithPrefix).toHaveBeenCalledTimes(2)
+    );
 
     // Simulate process exiting with null code (killed by signal)
     mockUdlProcess.emit('exit', null, 'SIGKILL');
@@ -361,6 +411,11 @@ describe('runDev', () => {
       exit: mockExit,
       signal: abortController.signal,
     });
+
+    // Wait for spawn calls to complete
+    await vi.waitFor(() =>
+      expect(mockSpawnWithPrefix).toHaveBeenCalledTimes(2)
+    );
 
     // Abort directly without triggering exit
     abortController.abort();

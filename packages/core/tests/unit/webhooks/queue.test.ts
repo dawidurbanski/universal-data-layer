@@ -7,14 +7,9 @@ import {
 } from '@/webhooks/index.js';
 
 // Helper to create a mock webhook
-function createMockWebhook(
-  pluginName: string,
-  path: string,
-  body?: unknown
-): QueuedWebhook {
+function createMockWebhook(pluginName: string, body?: unknown): QueuedWebhook {
   return {
     pluginName,
-    path,
     rawBody: Buffer.from(JSON.stringify(body ?? {})),
     body: body ?? {},
     headers: { 'content-type': 'application/json' },
@@ -64,20 +59,41 @@ describe('WebhookQueue', () => {
 
   describe('enqueue', () => {
     it('should add webhook to queue', () => {
-      const webhook = createMockWebhook('plugin', 'path');
+      const webhook = createMockWebhook('plugin');
       queue.enqueue(webhook);
       expect(queue.size()).toBe(1);
     });
 
+    it('should emit webhook:queued immediately on enqueue', () => {
+      const queuedWebhooks: QueuedWebhook[] = [];
+      queue.on('webhook:queued', (webhook: QueuedWebhook) => {
+        queuedWebhooks.push(webhook);
+      });
+
+      const webhook1 = createMockWebhook('plugin', { id: 1 });
+      const webhook2 = createMockWebhook('plugin', { id: 2 });
+
+      queue.enqueue(webhook1);
+      expect(queuedWebhooks.length).toBe(1);
+      expect(queuedWebhooks[0]).toBe(webhook1);
+
+      queue.enqueue(webhook2);
+      expect(queuedWebhooks.length).toBe(2);
+      expect(queuedWebhooks[1]).toBe(webhook2);
+
+      // Events should fire immediately, not waiting for debounce
+      expect(queue.size()).toBe(2); // Webhooks still in queue
+    });
+
     it('should increment queue size with each enqueue', () => {
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
-      queue.enqueue(createMockWebhook('plugin', 'path-2'));
-      queue.enqueue(createMockWebhook('plugin', 'path-3'));
+      queue.enqueue(createMockWebhook('plugin'));
+      queue.enqueue(createMockWebhook('plugin'));
+      queue.enqueue(createMockWebhook('plugin'));
       expect(queue.size()).toBe(3);
     });
 
     it('should start debounce timer on first enqueue', () => {
-      const webhook = createMockWebhook('plugin', 'path');
+      const webhook = createMockWebhook('plugin');
       queue.enqueue(webhook);
 
       // Queue should not be processed yet
@@ -93,14 +109,14 @@ describe('WebhookQueue', () => {
     });
 
     it('should reset debounce timer on each enqueue', () => {
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
+      queue.enqueue(createMockWebhook('plugin'));
 
       // Advance timer by 4000ms
       vi.advanceTimersByTime(4000);
       expect(queue.size()).toBe(1);
 
       // Enqueue another webhook - should reset timer
-      queue.enqueue(createMockWebhook('plugin', 'path-2'));
+      queue.enqueue(createMockWebhook('plugin'));
 
       // Advance timer by 4000ms again (total 8000ms since first enqueue)
       vi.advanceTimersByTime(4000);
@@ -119,16 +135,16 @@ describe('WebhookQueue', () => {
         processedWebhooks.push(webhook);
       });
 
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
-      queue.enqueue(createMockWebhook('plugin', 'path-2'));
-      queue.enqueue(createMockWebhook('plugin', 'path-3'));
+      queue.enqueue(createMockWebhook('plugin', { id: 1 }));
+      queue.enqueue(createMockWebhook('plugin', { id: 2 }));
+      queue.enqueue(createMockWebhook('plugin', { id: 3 }));
 
       vi.advanceTimersByTime(5000);
 
       expect(processedWebhooks.length).toBe(3);
-      expect(processedWebhooks[0]?.path).toBe('path-1');
-      expect(processedWebhooks[1]?.path).toBe('path-2');
-      expect(processedWebhooks[2]?.path).toBe('path-3');
+      expect((processedWebhooks[0]?.body as { id: number }).id).toBe(1);
+      expect((processedWebhooks[1]?.body as { id: number }).id).toBe(2);
+      expect((processedWebhooks[2]?.body as { id: number }).id).toBe(3);
     });
 
     it('should emit webhook:batch-complete after processing', async () => {
@@ -137,8 +153,8 @@ describe('WebhookQueue', () => {
         completedBatch = batch;
       });
 
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
-      queue.enqueue(createMockWebhook('plugin', 'path-2'));
+      queue.enqueue(createMockWebhook('plugin'));
+      queue.enqueue(createMockWebhook('plugin'));
 
       vi.advanceTimersByTime(5000);
 
@@ -158,7 +174,7 @@ describe('WebhookQueue', () => {
 
       // Enqueue 10 webhooks rapidly
       for (let i = 0; i < 10; i++) {
-        queue.enqueue(createMockWebhook('plugin', `path-${i}`));
+        queue.enqueue(createMockWebhook('plugin'));
       }
 
       vi.advanceTimersByTime(5000);
@@ -180,7 +196,7 @@ describe('WebhookQueue', () => {
 
       // Enqueue 5 webhooks (max size)
       for (let i = 0; i < 5; i++) {
-        smallQueue.enqueue(createMockWebhook('plugin', `path-${i}`));
+        smallQueue.enqueue(createMockWebhook('plugin'));
       }
 
       // Should process immediately without waiting for debounce
@@ -191,8 +207,8 @@ describe('WebhookQueue', () => {
 
   describe('flush', () => {
     it('should process queued webhooks immediately', async () => {
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
-      queue.enqueue(createMockWebhook('plugin', 'path-2'));
+      queue.enqueue(createMockWebhook('plugin'));
+      queue.enqueue(createMockWebhook('plugin'));
 
       expect(queue.size()).toBe(2);
 
@@ -202,7 +218,7 @@ describe('WebhookQueue', () => {
     });
 
     it('should clear debounce timer', async () => {
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
+      queue.enqueue(createMockWebhook('plugin'));
 
       // Advance timer partially
       vi.advanceTimersByTime(2000);
@@ -222,7 +238,7 @@ describe('WebhookQueue', () => {
         completed = true;
       });
 
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
+      queue.enqueue(createMockWebhook('plugin'));
       await queue.flush();
 
       expect(completed).toBe(true);
@@ -242,8 +258,8 @@ describe('WebhookQueue', () => {
 
   describe('clear', () => {
     it('should remove all queued webhooks', () => {
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
-      queue.enqueue(createMockWebhook('plugin', 'path-2'));
+      queue.enqueue(createMockWebhook('plugin'));
+      queue.enqueue(createMockWebhook('plugin'));
 
       expect(queue.size()).toBe(2);
 
@@ -253,7 +269,7 @@ describe('WebhookQueue', () => {
     });
 
     it('should clear debounce timer', () => {
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
+      queue.enqueue(createMockWebhook('plugin'));
 
       queue.clear();
 
@@ -271,15 +287,15 @@ describe('WebhookQueue', () => {
     });
 
     it('should return correct count after enqueue', () => {
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
+      queue.enqueue(createMockWebhook('plugin'));
       expect(queue.size()).toBe(1);
 
-      queue.enqueue(createMockWebhook('plugin', 'path-2'));
+      queue.enqueue(createMockWebhook('plugin'));
       expect(queue.size()).toBe(2);
     });
 
     it('should return 0 after processing', () => {
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
+      queue.enqueue(createMockWebhook('plugin'));
       vi.advanceTimersByTime(5000);
       expect(queue.size()).toBe(0);
     });
@@ -308,7 +324,7 @@ describe('WebhookQueue', () => {
         },
       });
 
-      slowQueue.enqueue(createMockWebhook('plugin', 'path-1'));
+      slowQueue.enqueue(createMockWebhook('plugin'));
 
       // Trigger processing
       vi.advanceTimersByTime(1000);
@@ -334,8 +350,8 @@ describe('WebhookQueue', () => {
         };
       });
 
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
-      queue.enqueue(createMockWebhook('plugin', 'path-2'));
+      queue.enqueue(createMockWebhook('plugin'));
+      queue.enqueue(createMockWebhook('plugin'));
 
       await queue.flush();
 
@@ -354,7 +370,7 @@ describe('WebhookQueue', () => {
         completedAt: Date.now(),
       }));
 
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
+      queue.enqueue(createMockWebhook('plugin'));
       await queue.flush();
 
       // Custom processor handles processing, so no events emitted
@@ -383,7 +399,7 @@ describe('WebhookQueue', () => {
         }
       );
 
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
+      queue.enqueue(createMockWebhook('plugin'));
       await queue.flush();
 
       expect(receivedError).toBeDefined();
@@ -400,7 +416,7 @@ describe('WebhookQueue', () => {
         throw new Error('Processing failed');
       });
 
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
+      queue.enqueue(createMockWebhook('plugin'));
       await queue.flush();
 
       expect(queue.processing()).toBe(false);
@@ -424,7 +440,7 @@ describe('WebhookQueue', () => {
         }
       );
 
-      queue.enqueue(createMockWebhook('plugin', 'path-1'));
+      queue.enqueue(createMockWebhook('plugin'));
       await queue.flush();
 
       expect(receivedError).toBeDefined();

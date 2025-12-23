@@ -1,15 +1,23 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { createConfig, getConfig } from '@/config.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  createConfig,
+  getConfig,
+  resetConfig,
+  isConfigInitialized,
+  UDL_ENDPOINT_ENV,
+} from '@/config.js';
 
 describe('config', () => {
+  beforeEach(() => {
+    // Reset config state before each test
+    resetConfig();
+    // Clear the env var
+    delete process.env[UDL_ENDPOINT_ENV];
+  });
+
   afterEach(() => {
-    // Reset to default config after each test
-    createConfig({
-      staticPath: '/static/',
-      endpoint: 'http://localhost:4000/graphql',
-      port: 4000,
-      host: 'localhost',
-    });
+    // Clean up env var
+    delete process.env[UDL_ENDPOINT_ENV];
   });
 
   describe('createConfig', () => {
@@ -167,6 +175,65 @@ describe('config', () => {
       expect(config2.port).toBe(4000);
       expect(config2.host).toBe('localhost');
       expect(config2.endpoint).toBe('http://localhost:4000/graphql');
+    });
+  });
+
+  describe('UDL_ENDPOINT environment variable', () => {
+    it('should use UDL_ENDPOINT env var when config is not initialized', () => {
+      process.env[UDL_ENDPOINT_ENV] = 'http://localhost:5000/graphql';
+
+      const config = getConfig();
+
+      expect(config.endpoint).toBe('http://localhost:5000/graphql');
+    });
+
+    it('should ignore UDL_ENDPOINT env var when config is explicitly initialized', () => {
+      process.env[UDL_ENDPOINT_ENV] = 'http://localhost:5000/graphql';
+
+      // Explicitly initialize config
+      createConfig({ port: 4001 });
+
+      const config = getConfig();
+
+      expect(config.endpoint).toBe('http://localhost:4001/graphql');
+    });
+
+    it('should return default endpoint when env var is not set and config not initialized', () => {
+      const config = getConfig();
+
+      expect(config.endpoint).toBe('http://localhost:4000/graphql');
+    });
+  });
+
+  describe('isConfigInitialized', () => {
+    it('should return false before createConfig is called', () => {
+      expect(isConfigInitialized()).toBe(false);
+    });
+
+    it('should return true after createConfig is called', () => {
+      createConfig({ port: 5000 });
+
+      expect(isConfigInitialized()).toBe(true);
+    });
+
+    it('should return false after resetConfig is called', () => {
+      createConfig({ port: 5000 });
+      resetConfig();
+
+      expect(isConfigInitialized()).toBe(false);
+    });
+  });
+
+  describe('resetConfig', () => {
+    it('should reset config to default values', () => {
+      createConfig({ port: 5000, host: 'custom.host' });
+      resetConfig();
+
+      const config = getConfig();
+
+      expect(config.port).toBe(4000);
+      expect(config.host).toBe('localhost');
+      expect(config.endpoint).toBe('http://localhost:4000/graphql');
     });
   });
 });
