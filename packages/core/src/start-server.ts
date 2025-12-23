@@ -1,5 +1,5 @@
 import { loadAppConfig, loadPlugins } from '@/loader.js';
-import { createConfig } from '@/config.js';
+import { createConfig, UDL_ENDPOINT_ENV } from '@/config.js';
 import server from '@/server.js';
 import { rebuildHandler, getCurrentSchema } from '@/handlers/graphql.js';
 import { setReady } from '@/handlers/readiness.js';
@@ -19,7 +19,11 @@ import {
   setWebhookHooks,
   processWebhookBatch,
   OutboundWebhookManager,
+  defaultWebhookRegistry,
+  type QueuedWebhook,
 } from '@/webhooks/index.js';
+import { createNodeActions } from '@/nodes/actions/index.js';
+import type { WebhookHandlerContext } from '@/webhooks/types.js';
 import {
   UDLWebSocketServer,
   setDefaultWebSocketServer,
@@ -27,6 +31,7 @@ import {
 } from '@/websocket/index.js';
 import { initRemoteSync, isRemoteReachable } from '@/sync/remote.js';
 import type { UDLWebSocketClient } from '@/websocket/client.js';
+import { saveAffectedPlugins } from '@/cache/manager.js';
 
 export interface StartServerOptions {
   port?: number;
@@ -69,6 +74,10 @@ export async function startServer(options: StartServerOptions = {}) {
     endpoint,
   });
 
+  // Set UDL_ENDPOINT env var so child processes (e.g., Next.js) can use it
+  // This allows udl.query() to automatically use the correct endpoint
+  process.env[UDL_ENDPOINT_ENV] = endpoint;
+
   // Configure webhook queue with settings from config
   const webhookConfig = userConfig.remote?.webhooks ?? {};
   const webhookQueue = new WebhookQueue({
@@ -94,6 +103,15 @@ export async function startServer(options: StartServerOptions = {}) {
       `📤 Outbound webhooks configured: ${outboundWebhooks.length} endpoint(s)`
     );
   }
+
+  // Save affected plugin caches after webhook batch is processed
+  // This ensures webhook changes are persisted to disk for all instances
+  webhookQueue.on('webhook:batch-complete', (batch) => {
+    const affectedPluginNames = new Set<string>(
+      batch.webhooks.map((w: QueuedWebhook) => w.pluginName)
+    );
+    void saveAffectedPlugins(affectedPluginNames);
+  });
 
   console.log(
     `🔗 Webhook queue configured (debounce: ${webhookQueue.getDebounceMs()}ms, maxSize: ${webhookQueue.getMaxQueueSize()})`
@@ -124,11 +142,66 @@ export async function startServer(options: StartServerOptions = {}) {
       shouldSyncFromRemote = true;
       console.log(`📡 Remote mode: syncing from ${remoteUrl}`);
 
+      // Load plugins in local mode - registers webhook handlers but skips sourceNodes
+      // (data comes from remote, but we need handlers to process relayed webhooks)
+      if (userConfig.plugins && userConfig.plugins.length > 0) {
+        console.log('📡 Loading plugins for webhook handlers...');
+        await loadPlugins(userConfig.plugins, {
+          appConfig: userConfig,
+          store: defaultStore,
+          cacheDir: process.cwd(),
+          isLocal: true,
+        });
+      }
+
       remoteWsClient = await initRemoteSync(
         {
           url: remoteUrl,
           // Note: WebSocket client uses sensible defaults (5s reconnect, 30s ping)
           // Custom client config can be added to RemoteSyncConfig if needed
+          onWebhookReceived: async (event) => {
+            // Process the webhook locally for instant node updates
+            const handler = defaultWebhookRegistry.getHandler(event.pluginName);
+            if (!handler) {
+              console.warn(
+                `⚠️ No handler for relayed webhook: ${event.pluginName}`
+              );
+              return;
+            }
+
+            // Create context for local processing
+            const actions = createNodeActions({
+              store: defaultStore,
+              owner: event.pluginName,
+            });
+            const context: WebhookHandlerContext = {
+              store: defaultStore,
+              actions,
+              rawBody: Buffer.from(
+                typeof event.body === 'string'
+                  ? event.body
+                  : JSON.stringify(event.body)
+              ),
+              body: event.body,
+            };
+
+            // Create minimal mock req/res for handler compatibility
+            const mockReq = { headers: event.headers } as never;
+            const mockRes = {
+              writeHead: () => mockRes,
+              end: () => mockRes,
+            } as never;
+
+            try {
+              await handler.handler(mockReq, mockRes, context);
+              console.log(`⚡ Processed relayed webhook: ${event.pluginName}`);
+            } catch (error) {
+              console.error(
+                `❌ Error processing relayed webhook ${event.pluginName}:`,
+                error
+              );
+            }
+          },
         },
         defaultStore
       );
@@ -495,11 +568,18 @@ export async function startServer(options: StartServerOptions = {}) {
     const wsServer = new UDLWebSocketServer(server, wsConfig);
     setDefaultWebSocketServer(wsServer);
 
+    // Wire up instant webhook relay to WebSocket subscribers
+    // This broadcasts webhooks immediately when received, before batch debounce
+    webhookQueue.on('webhook:queued', (webhook) => {
+      wsServer.broadcastWebhookReceived(webhook);
+    });
+
     const wsPort = wsConfig.port ?? port;
     const wsPath = wsConfig.path ?? '/ws';
     console.log(
       `🔌 WebSocket server available at ws://${host}:${wsPort}${wsPath}`
     );
+    console.log(`📡 Instant webhook relay enabled for WebSocket subscribers`);
   }
 
   return { server, config };
