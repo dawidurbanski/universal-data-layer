@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import WebSocket from 'ws';
 import { UDLWebSocketClient } from '@/websocket/client.js';
 import type { NodeStore } from '@/nodes/store.js';
+import { savePluginCache } from '@/cache/manager.js';
 
 // WebSocket ready state constants
 const WS_OPEN = 1;
@@ -19,6 +20,11 @@ vi.mock('ws', () => {
     default: MockWebSocket,
   };
 });
+
+// Mock the cache manager
+vi.mock('@/cache/manager.js', () => ({
+  savePluginCache: vi.fn().mockResolvedValue(undefined),
+}));
 
 // Helper to create a mock WebSocket instance
 function createMockWs() {
@@ -282,6 +288,68 @@ describe('UDLWebSocketClient', () => {
       });
     });
 
+    it('should call savePluginCache when node has owner in internal', async () => {
+      const client = new UDLWebSocketClient({ url: 'ws://localhost:4000/ws' });
+      const store = createMockStore();
+
+      const connectPromise = client.connect(store);
+      mockWs.emit('open');
+      await connectPromise;
+
+      // Clear any previous calls
+      vi.mocked(savePluginCache).mockClear();
+
+      const message = {
+        type: 'node:created',
+        nodeId: 'prod-1',
+        nodeType: 'Product',
+        data: {
+          id: 'prod-1',
+          name: 'Test Product',
+          internal: {
+            id: 'prod-1',
+            type: 'Product',
+            owner: '@universal-data-layer/plugin-source-contentful',
+          },
+        },
+      };
+      mockWs.emit('message', Buffer.from(JSON.stringify(message)));
+
+      expect(savePluginCache).toHaveBeenCalledWith(
+        '@universal-data-layer/plugin-source-contentful'
+      );
+    });
+
+    it('should not call savePluginCache when owner is not a string', async () => {
+      const client = new UDLWebSocketClient({ url: 'ws://localhost:4000/ws' });
+      const store = createMockStore();
+
+      const connectPromise = client.connect(store);
+      mockWs.emit('open');
+      await connectPromise;
+
+      // Clear any previous calls
+      vi.mocked(savePluginCache).mockClear();
+
+      const message = {
+        type: 'node:created',
+        nodeId: 'prod-1',
+        nodeType: 'Product',
+        data: {
+          id: 'prod-1',
+          name: 'Test Product',
+          internal: {
+            id: 'prod-1',
+            type: 'Product',
+            owner: 123, // Not a string
+          },
+        },
+      };
+      mockWs.emit('message', Buffer.from(JSON.stringify(message)));
+
+      expect(savePluginCache).not.toHaveBeenCalled();
+    });
+
     it('should handle node:deleted message', async () => {
       const client = new UDLWebSocketClient({ url: 'ws://localhost:4000/ws' });
       const store = createMockStore();
@@ -303,6 +371,40 @@ describe('UDLWebSocketClient', () => {
       );
     });
 
+    it('should call savePluginCache when deleting node with owner', async () => {
+      const client = new UDLWebSocketClient({ url: 'ws://localhost:4000/ws' });
+      const store = createMockStore();
+
+      // Mock store.get to return a node with an owner
+      vi.mocked(store.get).mockReturnValue({
+        internal: {
+          id: 'prod-1',
+          type: 'Product',
+          owner: '@universal-data-layer/plugin-source-contentful',
+        },
+      } as unknown as import('@/nodes/types.js').Node);
+
+      const connectPromise = client.connect(store);
+      mockWs.emit('open');
+      await connectPromise;
+
+      // Clear any previous calls
+      vi.mocked(savePluginCache).mockClear();
+
+      const message = {
+        type: 'node:deleted',
+        nodeId: 'prod-1',
+        nodeType: 'Product',
+      };
+      mockWs.emit('message', Buffer.from(JSON.stringify(message)));
+
+      expect(store.get).toHaveBeenCalledWith('prod-1');
+      expect(store.delete).toHaveBeenCalledWith('prod-1');
+      expect(savePluginCache).toHaveBeenCalledWith(
+        '@universal-data-layer/plugin-source-contentful'
+      );
+    });
+
     it('should ignore invalid JSON messages', async () => {
       const client = new UDLWebSocketClient({ url: 'ws://localhost:4000/ws' });
       const store = createMockStore();
@@ -319,6 +421,169 @@ describe('UDLWebSocketClient', () => {
       // Should not throw and should not call store methods
       expect(store.set).not.toHaveBeenCalled();
       expect(store.delete).not.toHaveBeenCalled();
+    });
+
+    it('should handle webhook:received message and call callback', async () => {
+      const onWebhookReceived = vi.fn();
+      const client = new UDLWebSocketClient({
+        url: 'ws://localhost:4000/ws',
+        onWebhookReceived,
+      });
+      const store = createMockStore();
+
+      const connectPromise = client.connect(store);
+      mockWs.emit('open');
+      await connectPromise;
+
+      const message = {
+        type: 'webhook:received',
+        pluginName: 'test-plugin',
+        body: { action: 'update', id: '123' },
+        headers: { 'content-type': 'application/json' },
+        timestamp: '2024-01-01T00:00:00.000Z',
+      };
+      mockWs.emit('message', Buffer.from(JSON.stringify(message)));
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        '📥 Remote webhook:received: test-plugin'
+      );
+      expect(onWebhookReceived).toHaveBeenCalledWith({
+        pluginName: 'test-plugin',
+        body: { action: 'update', id: '123' },
+        headers: { 'content-type': 'application/json' },
+        timestamp: '2024-01-01T00:00:00.000Z',
+      });
+    });
+
+    it('should not call callback when webhook:received but no callback configured', async () => {
+      const client = new UDLWebSocketClient({
+        url: 'ws://localhost:4000/ws',
+        // No onWebhookReceived callback
+      });
+      const store = createMockStore();
+
+      const connectPromise = client.connect(store);
+      mockWs.emit('open');
+      await connectPromise;
+
+      const message = {
+        type: 'webhook:received',
+        pluginName: 'test-plugin',
+        body: { action: 'update' },
+        headers: {},
+        timestamp: '2024-01-01T00:00:00.000Z',
+      };
+
+      // Should not throw when no callback is configured
+      expect(() => {
+        mockWs.emit('message', Buffer.from(JSON.stringify(message)));
+      }).not.toThrow();
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        '📥 Remote webhook:received: test-plugin'
+      );
+    });
+
+    it('should handle async callback errors in webhook:received gracefully', async () => {
+      // Use real timers for this test since we need proper async handling
+      vi.useRealTimers();
+
+      const onWebhookReceived = vi
+        .fn()
+        .mockRejectedValue(new Error('Callback failed'));
+      const client = new UDLWebSocketClient({
+        url: 'ws://localhost:4000/ws',
+        onWebhookReceived,
+      });
+
+      // Reset the mock WebSocket to use real handlers
+      const realMockWs = createMockWs();
+      (WebSocket as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+        () => realMockWs
+      );
+
+      const store = createMockStore();
+      const connectPromise = client.connect(store);
+      realMockWs.emit('open');
+      await connectPromise;
+
+      const message = {
+        type: 'webhook:received',
+        pluginName: 'test-plugin',
+        body: {},
+        headers: {},
+        timestamp: '2024-01-01T00:00:00.000Z',
+      };
+      realMockWs.emit('message', Buffer.from(JSON.stringify(message)));
+
+      // Wait for the async error to be caught
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '❌ Error processing relayed webhook:',
+        expect.any(Error)
+      );
+
+      // Restore fake timers for other tests
+      vi.useFakeTimers();
+    });
+
+    it('should skip node:created/updated when onWebhookReceived is configured', async () => {
+      const onWebhookReceived = vi.fn();
+      const client = new UDLWebSocketClient({
+        url: 'ws://localhost:4000/ws',
+        onWebhookReceived, // This enables local webhook handling
+      });
+      const store = createMockStore();
+
+      const connectPromise = client.connect(store);
+      mockWs.emit('open');
+      await connectPromise;
+
+      // Send node:created - should be skipped
+      const createMessage = {
+        type: 'node:created',
+        nodeId: 'prod-1',
+        nodeType: 'Product',
+        data: { id: 'prod-1', name: 'Test Product' },
+      };
+      mockWs.emit('message', Buffer.from(JSON.stringify(createMessage)));
+
+      // Send node:updated - should also be skipped
+      const updateMessage = {
+        type: 'node:updated',
+        nodeId: 'prod-1',
+        nodeType: 'Product',
+        data: { id: 'prod-1', name: 'Updated Product' },
+      };
+      mockWs.emit('message', Buffer.from(JSON.stringify(updateMessage)));
+
+      // store.set should NOT have been called since we handle webhooks locally
+      expect(store.set).not.toHaveBeenCalled();
+    });
+
+    it('should still handle node:deleted when onWebhookReceived is configured', async () => {
+      const onWebhookReceived = vi.fn();
+      const client = new UDLWebSocketClient({
+        url: 'ws://localhost:4000/ws',
+        onWebhookReceived, // This enables local webhook handling
+      });
+      const store = createMockStore();
+
+      const connectPromise = client.connect(store);
+      mockWs.emit('open');
+      await connectPromise;
+
+      // Send node:deleted - should still be handled
+      const deleteMessage = {
+        type: 'node:deleted',
+        nodeId: 'prod-1',
+        nodeType: 'Product',
+      };
+      mockWs.emit('message', Buffer.from(JSON.stringify(deleteMessage)));
+
+      // Deletions should still work even with local webhook handling
+      expect(store.delete).toHaveBeenCalledWith('prod-1');
     });
 
     it('should not update store when data is missing on node:created', async () => {

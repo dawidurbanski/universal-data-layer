@@ -335,6 +335,70 @@ describe('UDLWebSocketServer', () => {
         client2.close();
       }
     });
+
+    it('broadcasts webhook:received to all clients', async () => {
+      client = new WebSocket(`ws://localhost:${serverPort}/ws`);
+      await waitForMessage(client); // connected message
+
+      const client2 = new WebSocket(`ws://localhost:${serverPort}/ws`);
+      await waitForMessage(client2); // connected message
+
+      try {
+        const webhook = {
+          pluginName: 'test-plugin',
+          body: { action: 'update', id: '123' },
+          headers: { 'content-type': 'application/json' },
+          timestamp: Date.now(),
+        };
+
+        wsServer.broadcastWebhookReceived(webhook);
+
+        const [message1, message2] = await Promise.all([
+          waitForMessage(client),
+          waitForMessage(client2),
+        ]);
+
+        expect(message1.type).toBe('webhook:received');
+        expect((message1 as { pluginName: string }).pluginName).toBe(
+          'test-plugin'
+        );
+        expect((message1 as { body: unknown }).body).toEqual({
+          action: 'update',
+          id: '123',
+        });
+
+        expect(message2.type).toBe('webhook:received');
+        expect((message2 as { pluginName: string }).pluginName).toBe(
+          'test-plugin'
+        );
+      } finally {
+        client2.close();
+      }
+    });
+
+    it('does not broadcast webhook:received to closed clients', async () => {
+      client = new WebSocket(`ws://localhost:${serverPort}/ws`);
+      await waitForMessage(client); // connected message
+
+      // Close the client
+      const closePromise = new Promise<void>((resolve) => {
+        client!.once('close', () => resolve());
+      });
+      client.close();
+      await closePromise;
+
+      // This should not throw even though client is closed
+      const webhook = {
+        pluginName: 'test-plugin',
+        body: {},
+        headers: {},
+        timestamp: Date.now(),
+      };
+      wsServer.broadcastWebhookReceived(webhook);
+
+      // If we get here without error, it correctly skipped the closed client
+      expect(client.readyState).toBe(WebSocket.CLOSED);
+    });
   });
 
   describe('close', () => {

@@ -17,6 +17,11 @@ vi.mock('@/websocket/client.js', () => ({
   UDLWebSocketClient: vi.fn(),
 }));
 
+// Mock cache manager functions to avoid store.getAll() issues
+vi.mock('@/cache/manager.js', () => ({
+  replaceAllCaches: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Mock console.log to avoid noise in tests
 vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -236,6 +241,52 @@ describe('remote sync', () => {
         maxReconnectAttempts: 3,
       });
     });
+
+    it('passes onWebhookReceived callback to WebSocket client', async () => {
+      const mockConnect = vi.fn().mockResolvedValue(undefined);
+      const mockClientInstance = { connect: mockConnect };
+
+      vi.mocked(UDLWebSocketClient).mockImplementation(
+        () => mockClientInstance as unknown as UDLWebSocketClient
+      );
+
+      const mockStore = {} as NodeStore;
+      const onWebhookReceived = vi.fn();
+
+      await tryConnectRemoteWebSocket(
+        'http://localhost:4000',
+        mockStore,
+        undefined,
+        onWebhookReceived
+      );
+
+      expect(UDLWebSocketClient).toHaveBeenCalledWith({
+        url: 'ws://localhost:4000/ws',
+        onWebhookReceived,
+      });
+    });
+
+    it('does not include onWebhookReceived when not provided', async () => {
+      const mockConnect = vi.fn().mockResolvedValue(undefined);
+      const mockClientInstance = { connect: mockConnect };
+
+      vi.mocked(UDLWebSocketClient).mockImplementation(
+        () => mockClientInstance as unknown as UDLWebSocketClient
+      );
+
+      const mockStore = {} as NodeStore;
+
+      await tryConnectRemoteWebSocket(
+        'http://localhost:4000',
+        mockStore,
+        undefined,
+        undefined
+      );
+
+      expect(UDLWebSocketClient).toHaveBeenCalledWith({
+        url: 'ws://localhost:4000/ws',
+      });
+    });
   });
 
   describe('initRemoteSync', () => {
@@ -325,6 +376,112 @@ describe('remote sync', () => {
         url: 'ws://localhost:4000/ws',
         reconnectDelayMs: 3000,
       });
+    });
+
+    it('logs instant webhook relay when wsClient and onWebhookReceived are both present', async () => {
+      // Mock fetchRemoteNodes
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ updated: [], deleted: [] }),
+      });
+
+      // Mock WebSocket connection success
+      const mockConnect = vi.fn().mockResolvedValue(undefined);
+      const mockClientInstance = { connect: mockConnect };
+      vi.mocked(UDLWebSocketClient).mockImplementation(
+        () => mockClientInstance as unknown as UDLWebSocketClient
+      );
+
+      const mockStore = {
+        set: vi.fn(),
+      } as unknown as NodeStore;
+
+      const onWebhookReceived = vi.fn();
+      const consoleLogSpy = vi.spyOn(console, 'log');
+
+      await initRemoteSync(
+        {
+          url: 'http://localhost:4000',
+          onWebhookReceived,
+        },
+        mockStore
+      );
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        '📡 Instant webhook relay enabled for local processing'
+      );
+    });
+
+    it('does not log instant webhook relay when wsClient is null', async () => {
+      // Mock fetchRemoteNodes
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ updated: [], deleted: [] }),
+      });
+
+      // Mock WebSocket connection failure
+      const mockConnect = vi
+        .fn()
+        .mockRejectedValue(new Error('Connection failed'));
+      const mockClientInstance = { connect: mockConnect };
+      vi.mocked(UDLWebSocketClient).mockImplementation(
+        () => mockClientInstance as unknown as UDLWebSocketClient
+      );
+
+      const mockStore = {
+        set: vi.fn(),
+      } as unknown as NodeStore;
+
+      const onWebhookReceived = vi.fn();
+      const consoleLogSpy = vi.spyOn(console, 'log');
+      consoleLogSpy.mockClear();
+
+      await initRemoteSync(
+        {
+          url: 'http://localhost:4000',
+          onWebhookReceived,
+        },
+        mockStore
+      );
+
+      // Should not log the instant webhook relay message
+      expect(consoleLogSpy).not.toHaveBeenCalledWith(
+        '📡 Instant webhook relay enabled for local processing'
+      );
+    });
+
+    it('does not log instant webhook relay when onWebhookReceived is not provided', async () => {
+      // Mock fetchRemoteNodes
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ updated: [], deleted: [] }),
+      });
+
+      // Mock WebSocket connection success
+      const mockConnect = vi.fn().mockResolvedValue(undefined);
+      const mockClientInstance = { connect: mockConnect };
+      vi.mocked(UDLWebSocketClient).mockImplementation(
+        () => mockClientInstance as unknown as UDLWebSocketClient
+      );
+
+      const mockStore = {
+        set: vi.fn(),
+      } as unknown as NodeStore;
+
+      const consoleLogSpy = vi.spyOn(console, 'log');
+      consoleLogSpy.mockClear();
+
+      await initRemoteSync(
+        {
+          url: 'http://localhost:4000',
+        },
+        mockStore
+      );
+
+      // Should not log the instant webhook relay message
+      expect(consoleLogSpy).not.toHaveBeenCalledWith(
+        '📡 Instant webhook relay enabled for local processing'
+      );
     });
   });
 });

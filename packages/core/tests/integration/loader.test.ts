@@ -788,6 +788,102 @@ describe('loader integration tests', () => {
       expect(registeredTypes[0]).toEqual({ name: 'TestType', fields: [] });
     });
 
+    it('should execute sourceNodes hook in loadConfigFile when pluginName and store are provided', async () => {
+      const { NodeStore } = await import('@/nodes/index.js');
+
+      const configPath = join(testDir, 'source-nodes-config.js');
+
+      writeFileSync(
+        configPath,
+        `
+        export const config = {
+          name: 'source-nodes-test'
+        };
+
+        export async function sourceNodes({ actions, createNodeId, options }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('SourceNodesTestNode', '1'),
+              type: 'SourceNodesTestNode',
+            },
+            parent: undefined,
+            children: undefined,
+            testOption: options?.testValue || 'default',
+          });
+        }
+        `
+      );
+
+      const store = new NodeStore();
+
+      await loadConfigFile(configPath, {
+        pluginName: 'source-nodes-test-plugin',
+        store,
+        context: {
+          options: { testValue: 'custom-value' },
+        },
+      });
+
+      // Verify the node was created
+      const nodes = store.getAll();
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0]?.internal.type).toBe('SourceNodesTestNode');
+      expect(nodes[0]?.internal.owner).toBe('source-nodes-test-plugin');
+      expect(
+        (nodes[0] as unknown as Record<string, unknown>)['testOption']
+      ).toBe('custom-value');
+    });
+
+    it('should load TypeScript plugin config using tsx loader', async () => {
+      const pluginDir = join(pluginsDir, 'ts-source-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      // Create a TypeScript config (without compiled dist version to force tsx usage)
+      writeFileSync(
+        join(pluginDir, 'udl.config.ts'),
+        `
+        export const config = {
+          name: 'ts-source-plugin'
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('TsPluginNode', '1'),
+              type: 'TsPluginNode',
+            },
+            parent: undefined,
+            children: undefined,
+            fromTs: true,
+          });
+        }
+        `
+      );
+
+      const { NodeStore } = await import('@/nodes/index.js');
+      const store = new NodeStore();
+
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      await loadPlugins([pluginDir], {
+        appConfig: {},
+        store,
+        cache: false,
+      });
+
+      // Verify the node was created
+      const nodes = store.getAll();
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0]?.internal.type).toBe('TsPluginNode');
+      expect((nodes[0] as unknown as Record<string, unknown>)['fromTs']).toBe(
+        true
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+
     it('should register reference resolver from plugin config', async () => {
       const { defaultRegistry } = await import('@/references/index.js');
 
@@ -1530,6 +1626,161 @@ describe('loader integration tests', () => {
 
       // Cleanup
       delete global.__childCacheDir;
+    });
+
+    it('should use plugin folder basename as name when config.name is missing', async () => {
+      const pluginDir = join(pluginsDir, 'no-name-plugin-folder');
+      mkdirSync(pluginDir, { recursive: true });
+
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        // Config without a name property - should fallback to directory name
+        export const config = {
+          type: 'source'
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('NoNameNode', '1'),
+              type: 'NoNameNode',
+            },
+            parent: undefined,
+            children: undefined,
+          });
+        }
+        `
+      );
+
+      const { NodeStore } = await import('@/nodes/index.js');
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      const store = new NodeStore();
+      await loadPlugins([pluginDir], {
+        appConfig: {},
+        store,
+        cache: false,
+      });
+
+      // Verify the node was created with owner being the folder basename
+      const nodes = store.getAll();
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0]?.internal.owner).toBe('no-name-plugin-folder');
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should use custom CacheStorage when plugin config provides one', async () => {
+      const pluginDir = join(pluginsDir, 'custom-cache-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      // We'll test by providing a config that has cache as an object (custom CacheStorage)
+      // The test verifies the branch is executed by checking the plugin still works
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        // Custom cache storage object
+        const customCacheStorage = {
+          async load() { return null; },
+          async save(data) { /* no-op */ },
+          async clear() { /* no-op */ },
+        };
+
+        export const config = {
+          name: 'custom-cache-plugin',
+          cache: customCacheStorage // Custom CacheStorage object
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('CustomCacheNode', '1'),
+              type: 'CustomCacheNode',
+            },
+            parent: undefined,
+            children: undefined,
+          });
+        }
+        `
+      );
+
+      const { NodeStore } = await import('@/nodes/index.js');
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      const store = new NodeStore();
+      await loadPlugins([pluginDir], {
+        appConfig: {},
+        store,
+        cache: true, // Enable caching
+        cacheDir: pluginDir,
+      });
+
+      // Verify the node was created (custom cache was used, doesn't throw)
+      expect(store.getAll()).toHaveLength(1);
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should handle plugin options without indexes property', async () => {
+      const pluginDir = join(pluginsDir, 'no-indexes-options-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'no-indexes-options-plugin'
+        };
+
+        export async function sourceNodes({ actions, createNodeId, options }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('NoIndexesNode', '1'),
+              type: 'NoIndexesNode',
+            },
+            parent: undefined,
+            children: undefined,
+            optionValue: options?.someOption || 'default',
+          });
+        }
+        `
+      );
+
+      const { NodeStore } = await import('@/nodes/index.js');
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      const store = new NodeStore();
+
+      // Pass plugin options WITHOUT indexes property
+      await loadPlugins(
+        [
+          {
+            name: pluginDir,
+            options: { someOption: 'custom-value' }, // No indexes here
+          },
+        ],
+        {
+          appConfig: {},
+          store,
+          cache: false,
+        }
+      );
+
+      // Verify the node was created
+      const nodes = store.getAll();
+      expect(nodes).toHaveLength(1);
+      expect(
+        (nodes[0] as unknown as Record<string, unknown>)['optionValue']
+      ).toBe('custom-value');
+
+      consoleLogSpy.mockRestore();
     });
   });
 

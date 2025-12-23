@@ -20,6 +20,26 @@ vi.mock('@/utils/wait-for-ready.js', async (importOriginal) => {
   };
 });
 
+// Mock the config module
+vi.mock('@/utils/config.js', () => ({
+  COLORS: {
+    CYAN: '\x1b[36m',
+    MAGENTA: '\x1b[35m',
+    GREEN: '\x1b[32m',
+    RESET: '\x1b[0m',
+  },
+  DEFAULT_NEXT_PORT: 3000,
+  DEFAULT_UDL_PORT: 4000,
+  UDL_ENDPOINT_ENV: 'UDL_ENDPOINT',
+  // Mock resolveUdlPort to return default port (simulating no config file)
+  resolveUdlPort: vi.fn(async (cliPort?: number) => cliPort ?? 4000),
+  buildUdlEndpoint: vi.fn((port: number) => `http://localhost:${port}/graphql`),
+  createNextEnv: vi.fn((udlEndpoint: string) => ({
+    ...process.env,
+    UDL_ENDPOINT: udlEndpoint,
+  })),
+}));
+
 const mockSpawnWithPrefix = vi.mocked(spawnModule.spawnWithPrefix);
 const mockKillAll = vi.mocked(spawnModule.killAll);
 
@@ -85,15 +105,16 @@ describe('runBuild', () => {
     vi.restoreAllMocks();
   });
 
-  it('should spawn UDL server with default port', async () => {
+  it('should spawn UDL server without explicit port (uses UDL default)', async () => {
     await runBuild({}, [], {
       exit: mockExit,
       waitForServer: mockWaitForServer,
     });
 
+    // When no port is specified, UDL uses its own default (from config or 4000)
     expect(mockSpawnWithPrefix).toHaveBeenCalledWith(
       'npx',
-      ['universal-data-layer', '--port', '4000'],
+      ['universal-data-layer'],
       expect.stringContaining('[udl]')
     );
   });
@@ -129,7 +150,8 @@ describe('runBuild', () => {
     expect(mockSpawnWithPrefix).toHaveBeenCalledWith(
       'npx',
       ['udl-codegen'],
-      expect.stringContaining('[codegen]')
+      expect.stringContaining('[codegen]'),
+      undefined
     );
   });
 
@@ -142,7 +164,12 @@ describe('runBuild', () => {
     expect(mockSpawnWithPrefix).toHaveBeenCalledWith(
       'npx',
       ['next', 'build'],
-      expect.stringContaining('[next]')
+      expect.stringContaining('[next]'),
+      expect.objectContaining({
+        env: expect.objectContaining({
+          UDL_ENDPOINT: 'http://localhost:4000/graphql',
+        }),
+      })
     );
   });
 
@@ -155,7 +182,12 @@ describe('runBuild', () => {
     expect(mockSpawnWithPrefix).toHaveBeenCalledWith(
       'npx',
       ['next', 'build', '--debug'],
-      expect.stringContaining('[next]')
+      expect.stringContaining('[next]'),
+      expect.objectContaining({
+        env: expect.objectContaining({
+          UDL_ENDPOINT: 'http://localhost:4000/graphql',
+        }),
+      })
     );
   });
 
