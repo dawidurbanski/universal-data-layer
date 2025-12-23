@@ -1,7 +1,9 @@
 import type { NodeStore } from '@/nodes/store.js';
+import { replaceAllCaches } from '@/cache/manager.js';
 import {
   UDLWebSocketClient,
   type WebSocketClientConfig,
+  type WebhookReceivedEvent,
 } from '@/websocket/client.js';
 import type { SyncResponse } from '@/handlers/sync.js';
 
@@ -44,6 +46,11 @@ export interface RemoteSyncConfig {
   url: string;
   /** WebSocket configuration overrides */
   websocket?: Partial<Omit<WebSocketClientConfig, 'url'>>;
+  /**
+   * Callback invoked immediately when a webhook:received message is received.
+   * This enables instant processing of webhooks without waiting for batch debounce.
+   */
+  onWebhookReceived?: (event: WebhookReceivedEvent) => void | Promise<void>;
 }
 
 /**
@@ -93,20 +100,26 @@ export async function fetchRemoteNodes(
  * @param url - Base URL of the remote UDL server
  * @param store - Local node store to update with changes
  * @param config - Optional WebSocket configuration overrides
+ * @param onWebhookReceived - Optional callback for instant webhook processing
  * @returns The WebSocket client if connected, null if connection failed
  */
 export async function tryConnectRemoteWebSocket(
   url: string,
   store: NodeStore,
-  config?: Partial<Omit<WebSocketClientConfig, 'url'>>
+  config?: Partial<Omit<WebSocketClientConfig, 'url'>>,
+  onWebhookReceived?: (event: WebhookReceivedEvent) => void | Promise<void>
 ): Promise<UDLWebSocketClient | null> {
   // Convert HTTP URL to WebSocket URL
   const wsUrl = url.replace(/^http/, 'ws') + '/ws';
 
-  const client = new UDLWebSocketClient({
+  const clientConfig: WebSocketClientConfig = {
     url: wsUrl,
     ...config,
-  });
+  };
+  if (onWebhookReceived) {
+    clientConfig.onWebhookReceived = onWebhookReceived;
+  }
+  const client = new UDLWebSocketClient(clientConfig);
 
   try {
     await client.connect(store);
@@ -137,12 +150,21 @@ export async function initRemoteSync(
   // Fetch initial data
   await fetchRemoteNodes(config.url, store);
 
+  // Save fetched nodes to cache for offline support and faster restarts
+  // Replace entirely since remote is authoritative
+  await replaceAllCaches(store);
+
   // Try to connect WebSocket for real-time updates
   const wsClient = await tryConnectRemoteWebSocket(
     config.url,
     store,
-    config.websocket
+    config.websocket,
+    config.onWebhookReceived
   );
+
+  if (wsClient && config.onWebhookReceived) {
+    console.log('📡 Instant webhook relay enabled for local processing');
+  }
 
   return wsClient;
 }

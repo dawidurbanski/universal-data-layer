@@ -6,8 +6,13 @@ import { NodeStore } from '@/nodes/store.js';
 import { createNodeActions } from '@/nodes/actions/index.js';
 import { createNodeId, createContentDigest } from '@/nodes/utils/index.js';
 import { defaultStore } from '@/nodes/defaultStore.js';
-import { FileCacheStorage } from '@/cache/file-cache.js';
-import type { CacheStorage, CachedData } from '@/cache/types.js';
+import {
+  setStore as setCacheStore,
+  initPluginCache,
+  getPluginCache,
+  savePluginCache,
+} from '@/cache/manager.js';
+import type { CacheStorage } from '@/cache/types.js';
 import { defaultRegistry } from '@/references/index.js';
 import type {
   ReferenceResolverConfig,
@@ -579,6 +584,14 @@ export interface LoadPluginsOptions {
    * If not provided, uses the defaultWebhookRegistry singleton.
    */
   webhookRegistry?: WebhookRegistry;
+  /**
+   * Indicates this is a local development instance syncing from a remote UDL.
+   * When true, plugins are loaded and webhook handlers are registered,
+   * but sourceNodes is skipped (data comes from remote).
+   *
+   * @default false
+   */
+  isLocal?: boolean;
 }
 
 /** Maximum recursion depth for nested plugins */
@@ -712,6 +725,9 @@ export async function loadPlugins(
   const nodeStore = store ?? defaultStore;
   const codegenConfigs: PluginCodegenInfo[] = [];
 
+  // Set store reference on cache manager for webhook/remote sync cache updates
+  setCacheStore(nodeStore);
+
   if (_depth >= MAX_PLUGIN_DEPTH) {
     console.warn(
       `Maximum plugin recursion depth (${MAX_PLUGIN_DEPTH}) reached. Skipping nested plugins.`
@@ -769,11 +785,32 @@ export async function loadPlugins(
           await module.onLoad(context);
         }
 
-        // Execute sourceNodes hook and register indexes
-        if (module.sourceNodes && nodeStore) {
-          // Get the idField from plugin config (used for webhook lookups)
-          const pluginIdField = module.config?.idField;
+        // Get the idField from plugin config (used for webhook lookups)
+        const pluginIdField = module.config?.idField;
 
+        // Determine if caching is enabled for this plugin
+        // Plugin can provide custom CacheStorage or set to false to disable
+        const pluginCacheConfig = module.config?.cache;
+        const pluginCacheDisabled = pluginCacheConfig === false;
+        const shouldCache = cacheEnabled && !pluginCacheDisabled;
+        // Extract custom CacheStorage if provided (not false, not undefined)
+        const customCache =
+          typeof pluginCacheConfig === 'object' ? pluginCacheConfig : undefined;
+
+        // Cache is stored in the config directory that specified the plugin,
+        // not in the plugin's own directory. This ensures that when a feature
+        // uses a plugin, the cache lives alongside the feature's config.
+        // For nested plugins, the cache is stored in the parent plugin's directory.
+        const cacheLocation = cacheDir ?? pluginPath;
+
+        // Initialize cache for this plugin (needed for both local and remote modes)
+        // In local mode, replaceAllCaches() needs this to persist synced nodes
+        if (shouldCache) {
+          initPluginCache(actualPluginName, cacheLocation, customCache);
+        }
+
+        // Execute sourceNodes hook and register indexes (unless isLocal - data comes from remote)
+        if (module.sourceNodes && nodeStore && !options?.isLocal) {
           // Build indexes: idField is always indexed if specified
           const pluginDefaultIndexes = module.config?.indexes || [];
           const userIndexes =
@@ -786,38 +823,29 @@ export async function loadPlugins(
             ]),
           ];
 
-          // Determine if caching is enabled for this plugin
-          const pluginCacheDisabled = module.config?.cache === false;
-          const shouldCache = cacheEnabled && !pluginCacheDisabled;
-
-          // Cache is stored in the config directory that specified the plugin,
-          // not in the plugin's own directory. This ensures that when a feature
-          // uses a plugin, the cache lives alongside the feature's config.
-          // For nested plugins, the cache is stored in the parent plugin's directory.
-          const cacheLocation = cacheDir ?? pluginPath;
-
-          // Load plugin's cached nodes before sourceNodes
-          let pluginCache: FileCacheStorage | null = null;
+          // Load cached nodes before sourcing (if cache was initialized)
           if (shouldCache) {
-            pluginCache = new FileCacheStorage(cacheLocation);
-            const cached = await pluginCache.load();
-            if (cached && cached.nodes.length > 0) {
-              console.log(
-                `📂 [${actualPluginName}] Loading ${cached.nodes.length} nodes from cache...`
-              );
-              // Only load nodes owned by this plugin
-              const pluginNodes = cached.nodes.filter(
-                (node) => node.internal.owner === actualPluginName
-              );
-              for (const node of pluginNodes) {
-                nodeStore.set(node);
-              }
-              // Restore indexes for this plugin
-              for (const [nodeType, fieldNames] of Object.entries(
-                cached.indexes
-              )) {
-                for (const fieldName of fieldNames) {
-                  nodeStore.registerIndex(nodeType, fieldName);
+            const pluginCache = getPluginCache(actualPluginName);
+            if (pluginCache) {
+              const cached = await pluginCache.load();
+              if (cached && cached.nodes.length > 0) {
+                console.log(
+                  `📂 [${actualPluginName}] Loading ${cached.nodes.length} nodes from cache...`
+                );
+                // Only load nodes owned by this plugin
+                const pluginNodes = cached.nodes.filter(
+                  (node) => node.internal.owner === actualPluginName
+                );
+                for (const node of pluginNodes) {
+                  nodeStore.set(node);
+                }
+                // Restore indexes for this plugin
+                for (const [nodeType, fieldNames] of Object.entries(
+                  cached.indexes
+                )) {
+                  for (const fieldName of fieldNames) {
+                    nodeStore.registerIndex(nodeType, fieldName);
+                  }
                 }
               }
             }
@@ -838,57 +866,26 @@ export async function loadPlugins(
 
           registerPluginIndexes(nodeStore, actualPluginName, allIndexes);
 
-          // Register webhook handler for the plugin
-          // If plugin exports registerWebhookHandler, use it instead of default
-          if (module.registerWebhookHandler) {
-            registerPluginWebhookHandler(
-              webhookRegistry,
-              actualPluginName,
-              module.registerWebhookHandler
-            );
-          } else {
-            registerDefaultWebhook(
-              webhookRegistry,
-              actualPluginName,
-              pluginIdField
-            );
+          // Save plugin's nodes after sourceNodes (via CacheManager)
+          if (shouldCache) {
+            await savePluginCache(actualPluginName);
           }
+        }
 
-          // Save plugin's nodes after sourceNodes
-          if (shouldCache && pluginCache) {
-            // Get only nodes owned by this plugin
-            const allNodes = nodeStore.getAll();
-            const pluginNodes = allNodes.filter(
-              (node) => node.internal.owner === actualPluginName
-            );
-
-            // Get indexes for node types owned by this plugin
-            const pluginNodeTypes = new Set(
-              pluginNodes.map((n) => n.internal.type)
-            );
-            const indexes: Record<string, string[]> = {};
-            for (const nodeType of pluginNodeTypes) {
-              const registeredIndexes =
-                nodeStore.getRegisteredIndexes(nodeType);
-              if (registeredIndexes.length > 0) {
-                indexes[nodeType] = registeredIndexes;
-              }
-            }
-
-            const cacheData: CachedData = {
-              nodes: pluginNodes,
-              indexes,
-              meta: {
-                version: 1,
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-              },
-            };
-            await pluginCache.save(cacheData);
-            console.log(
-              `💾 [${actualPluginName}] Cached ${pluginNodes.length} nodes to disk`
-            );
-          }
+        // Register webhook handler for the plugin (always, regardless of isLocal)
+        // If plugin exports registerWebhookHandler, use it instead of default
+        if (module.registerWebhookHandler) {
+          registerPluginWebhookHandler(
+            webhookRegistry,
+            actualPluginName,
+            module.registerWebhookHandler
+          );
+        } else {
+          registerDefaultWebhook(
+            webhookRegistry,
+            actualPluginName,
+            pluginIdField
+          );
         }
 
         // Execute registerTypes hook
