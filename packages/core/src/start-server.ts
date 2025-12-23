@@ -83,15 +83,15 @@ export async function startServer(options: StartServerOptions = {}) {
     setWebhookHooks(webhookConfig.hooks);
   }
 
-  // Configure outbound webhook triggers if specified
-  const outboundTriggers = webhookConfig.trigger;
-  if (outboundTriggers && outboundTriggers.length > 0) {
-    const outboundManager = new OutboundWebhookManager(outboundTriggers);
+  // Configure outbound webhooks if specified
+  const outboundWebhooks = webhookConfig.outbound;
+  if (outboundWebhooks && outboundWebhooks.length > 0) {
+    const outboundManager = new OutboundWebhookManager(outboundWebhooks);
     webhookQueue.on('webhook:batch-complete', (batch) => {
       void outboundManager.triggerAll(batch);
     });
     console.log(
-      `📤 Outbound webhooks configured: ${outboundTriggers.length} endpoint(s)`
+      `📤 Outbound webhooks configured: ${outboundWebhooks.length} endpoint(s)`
     );
   }
 

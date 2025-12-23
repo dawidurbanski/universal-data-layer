@@ -9,11 +9,56 @@
 import type { WebhookBatch } from './queue.js';
 
 /**
- * Configuration for an outbound webhook trigger.
+ * Individual webhook item info for transform context.
+ */
+export interface WebhookItem {
+  /** Plugin that sent the webhook */
+  pluginName: string;
+  /** Parsed body of the webhook */
+  body: unknown;
+  /** Headers from the original webhook */
+  headers: Record<string, string | string[] | undefined>;
+  /** Timestamp when webhook was received */
+  timestamp: number;
+}
+
+/**
+ * Context passed to transformPayload function.
+ */
+export interface TransformPayloadContext {
+  /** Raw batch data - full access */
+  batch: WebhookBatch;
+  /** Event type */
+  event: 'batch-complete';
+  /** Timestamp of batch completion (ISO 8601) */
+  timestamp: string;
+  /** UDL instance identifier */
+  source: string;
+  /** Summary statistics */
+  summary: {
+    webhookCount: number;
+    plugins: string[];
+  };
+  /** Individual items with their payloads */
+  items: WebhookItem[];
+}
+
+/**
+ * Transform function to customize outbound webhook payload.
+ */
+export type TransformPayload = (context: TransformPayloadContext) => unknown;
+
+/**
+ * Configuration for an outbound webhook.
  */
 export interface OutboundWebhookConfig {
-  /** URL to POST to */
+  /** URL to send the webhook to */
   url: string;
+  /**
+   * HTTP method to use.
+   * @default 'POST'
+   */
+  method?: 'POST' | 'GET';
   /**
    * Events to trigger on. '*' = all events.
    * @default ['*']
@@ -32,10 +77,29 @@ export interface OutboundWebhookConfig {
    * @default 1000
    */
   retryDelayMs?: number;
+  /**
+   * Transform the payload before sending.
+   * If not provided, uses the default OutboundWebhookPayload format.
+   * Works with both POST and GET methods.
+   *
+   * @example
+   * ```typescript
+   * // Return empty object for Vercel deploy hooks
+   * transformPayload: () => ({})
+   *
+   * // Custom shape for your system
+   * transformPayload: ({ items, timestamp }) => ({
+   *   event: 'content-updated',
+   *   changes: items.map(i => i.body),
+   *   timestamp,
+   * })
+   * ```
+   */
+  transformPayload?: TransformPayload;
 }
 
 /**
- * Payload sent to outbound webhook endpoints.
+ * Payload sent to outbound webhook endpoints (default format).
  */
 export interface OutboundWebhookPayload {
   /** Event type */
@@ -48,11 +112,14 @@ export interface OutboundWebhookPayload {
     webhookCount: number;
     /** Plugins that were updated */
     plugins: string[];
-    /** Node types that were updated (if available) */
-    nodeTypes?: string[];
   };
   /** UDL instance identifier (for multi-instance setups) */
   source: string;
+  /** Individual webhook items in the batch */
+  items: Array<{
+    pluginName: string;
+    body: unknown;
+  }>;
 }
 
 /**
@@ -106,11 +173,7 @@ export class OutboundWebhookManager {
       return [];
     }
 
-    const payload = this.createPayload(batch);
-
-    const promises = this.configs.map((config) =>
-      this.trigger(config, payload)
-    );
+    const promises = this.configs.map((config) => this.trigger(config, batch));
 
     const settledResults = await Promise.allSettled(promises);
 
@@ -153,21 +216,28 @@ export class OutboundWebhookManager {
    * Trigger a single outbound webhook with retry logic.
    *
    * @param config - The webhook configuration
-   * @param payload - The payload to send
+   * @param batch - The webhook batch to send
    * @returns The result of the trigger attempt
    */
   private async trigger(
     config: OutboundWebhookConfig,
-    payload: OutboundWebhookPayload
+    batch: WebhookBatch
   ): Promise<OutboundWebhookResult> {
-    const { url, headers = {}, retries = 3, retryDelayMs = 1000 } = config;
+    const {
+      url,
+      method = 'POST',
+      headers = {},
+      retries = 3,
+      retryDelayMs = 1000,
+    } = config;
+    const payload = this.createPayload(config, batch);
 
     let lastError: Error | undefined;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const response = await fetch(url, {
-          method: 'POST',
+          method,
           headers: {
             'Content-Type': 'application/json',
             'User-Agent': 'UDL-Webhook/1.0',
@@ -208,23 +278,56 @@ export class OutboundWebhookManager {
 
   /**
    * Create the outbound webhook payload from a batch.
+   * Uses transformPayload if provided, otherwise returns default payload.
    *
+   * @param config - The webhook configuration (may include transformPayload)
    * @param batch - The completed webhook batch
    * @returns The payload to send
    */
-  private createPayload(batch: WebhookBatch): OutboundWebhookPayload {
+  private createPayload(
+    config: OutboundWebhookConfig,
+    batch: WebhookBatch
+  ): unknown {
     // Extract unique plugin names from the batch
     const plugins = [...new Set(batch.webhooks.map((w) => w.pluginName))];
 
-    return {
+    // Build items array with relevant info
+    const items: WebhookItem[] = batch.webhooks.map((w) => ({
+      pluginName: w.pluginName,
+      body: w.body,
+      headers: w.headers,
+      timestamp: w.timestamp,
+    }));
+
+    // Build the full context
+    const context: TransformPayloadContext = {
+      batch,
       event: 'batch-complete',
       timestamp: new Date(batch.completedAt).toISOString(),
+      source: process.env['UDL_INSTANCE_ID'] || 'UDL',
       summary: {
         webhookCount: batch.webhooks.length,
         plugins,
       },
-      source: process.env['UDL_INSTANCE_ID'] || 'default',
+      items,
     };
+
+    // Use transformPayload if provided
+    if (config.transformPayload) {
+      return config.transformPayload(context);
+    }
+
+    // Default payload with items
+    return {
+      event: context.event,
+      timestamp: context.timestamp,
+      summary: context.summary,
+      source: context.source,
+      items: items.map((i) => ({
+        pluginName: i.pluginName,
+        body: i.body,
+      })),
+    } satisfies OutboundWebhookPayload;
   }
 
   /**
