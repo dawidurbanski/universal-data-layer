@@ -38,6 +38,16 @@ vi.mock('@/nodes/actions/index.js', () => ({
   })),
 }));
 
+vi.mock('@/plugins/index.js', () => ({
+  defaultPluginRegistry: {
+    get: vi.fn(),
+  },
+}));
+
+vi.mock('@/cache/manager.js', () => ({
+  savePluginCache: vi.fn().mockResolvedValue(undefined),
+}));
+
 import {
   initializeWebhookProcessor,
   processWebhookBatch,
@@ -46,6 +56,8 @@ import { defaultWebhookRegistry } from '@/webhooks/registry.js';
 import { defaultWebhookQueue } from '@/webhooks/queue.js';
 import { getWebhookHooks } from '@/webhooks/hooks.js';
 import { createNodeActions } from '@/nodes/actions/index.js';
+import { defaultPluginRegistry } from '@/plugins/index.js';
+import { savePluginCache } from '@/cache/manager.js';
 import type { QueuedWebhook } from '@/webhooks/queue.js';
 
 describe('webhooks/processor', () => {
@@ -570,6 +582,265 @@ describe('webhooks/processor', () => {
 
       await processWebhookBatch([webhook]);
 
+      expect(mockHandler).toHaveBeenCalled();
+    });
+  });
+
+  describe('updateStrategy: sync', () => {
+    it('should call sourceNodes for plugins with sync strategy', async () => {
+      const mockSourceNodes = vi.fn().mockResolvedValue(undefined);
+      const mockStore = { get: vi.fn(), set: vi.fn() };
+
+      vi.mocked(defaultPluginRegistry.get).mockReturnValue({
+        name: 'sync-plugin',
+        sourceNodes: mockSourceNodes,
+        updateStrategy: 'sync',
+        sourceNodesContext: {
+          createNodeId: vi.fn(),
+          createContentDigest: vi.fn(),
+          options: {},
+          cacheDir: '/test',
+        },
+        store: mockStore as never,
+      });
+      vi.mocked(getWebhookHooks).mockReturnValue({});
+
+      const webhook = createQueuedWebhook({ pluginName: 'sync-plugin' });
+
+      await processWebhookBatch([webhook]);
+
+      expect(mockSourceNodes).toHaveBeenCalled();
+      expect(savePluginCache).toHaveBeenCalledWith('sync-plugin');
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        '🔄 [sync-plugin] Re-syncing via sourceNodes...'
+      );
+      expect(mockConsoleLog).toHaveBeenCalledWith(
+        '✅ [sync-plugin] Re-sync complete'
+      );
+    });
+
+    it('should warn when plugin is not found in registry for sync strategy', async () => {
+      vi.mocked(defaultPluginRegistry.get).mockReturnValue(undefined);
+      vi.mocked(getWebhookHooks).mockReturnValue({});
+      // Ensure the webhook handler is not found either to avoid fallback
+      vi.mocked(defaultWebhookRegistry.getHandler).mockReturnValue(undefined);
+
+      // Force the code path by creating a scenario where plugin is found
+      // but then removed from registry before invokeSourceNodes
+      const mockPluginOnFirstCall = {
+        name: 'disappearing-plugin',
+        sourceNodes: vi.fn(),
+        updateStrategy: 'sync' as const,
+        sourceNodesContext: undefined,
+        store: undefined,
+      };
+
+      // First call returns plugin (for strategy check), second returns undefined
+      vi.mocked(defaultPluginRegistry.get)
+        .mockReturnValueOnce(mockPluginOnFirstCall)
+        .mockReturnValueOnce(undefined);
+
+      const webhook = createQueuedWebhook({
+        pluginName: 'disappearing-plugin',
+      });
+
+      await processWebhookBatch([webhook]);
+
+      expect(mockConsoleWarn).toHaveBeenCalledWith(
+        '⚠️ Plugin not found in registry: disappearing-plugin'
+      );
+    });
+
+    it('should warn when sync plugin has no sourceNodes function', async () => {
+      vi.mocked(defaultPluginRegistry.get).mockReturnValue({
+        name: 'no-sourceNodes-plugin',
+        sourceNodes: undefined,
+        updateStrategy: 'sync',
+        sourceNodesContext: undefined,
+        store: undefined,
+      });
+      vi.mocked(getWebhookHooks).mockReturnValue({});
+
+      const webhook = createQueuedWebhook({
+        pluginName: 'no-sourceNodes-plugin',
+      });
+
+      await processWebhookBatch([webhook]);
+
+      expect(mockConsoleWarn).toHaveBeenCalledWith(
+        "⚠️ Plugin no-sourceNodes-plugin has updateStrategy: 'sync' but no sourceNodes function"
+      );
+    });
+
+    it('should warn when sync plugin has no sourceNodesContext', async () => {
+      vi.mocked(defaultPluginRegistry.get).mockReturnValue({
+        name: 'no-context-plugin',
+        sourceNodes: vi.fn(),
+        updateStrategy: 'sync',
+        sourceNodesContext: undefined,
+        store: { get: vi.fn() } as never,
+      });
+      vi.mocked(getWebhookHooks).mockReturnValue({});
+
+      const webhook = createQueuedWebhook({ pluginName: 'no-context-plugin' });
+
+      await processWebhookBatch([webhook]);
+
+      expect(mockConsoleWarn).toHaveBeenCalledWith(
+        "⚠️ Plugin no-context-plugin has updateStrategy: 'sync' but no sourceNodes function"
+      );
+    });
+
+    it('should warn when sync plugin has no store', async () => {
+      vi.mocked(defaultPluginRegistry.get).mockReturnValue({
+        name: 'no-store-plugin',
+        sourceNodes: vi.fn(),
+        updateStrategy: 'sync',
+        sourceNodesContext: {
+          createNodeId: vi.fn(),
+          createContentDigest: vi.fn(),
+          options: {},
+          cacheDir: '/test',
+        },
+        store: undefined,
+      });
+      vi.mocked(getWebhookHooks).mockReturnValue({});
+
+      const webhook = createQueuedWebhook({ pluginName: 'no-store-plugin' });
+
+      await processWebhookBatch([webhook]);
+
+      expect(mockConsoleWarn).toHaveBeenCalledWith(
+        "⚠️ Plugin no-store-plugin has updateStrategy: 'sync' but no sourceNodes function"
+      );
+    });
+
+    it('should catch and log sourceNodes errors without rethrowing', async () => {
+      const sourceNodesError = new Error('sourceNodes failed');
+      const mockSourceNodes = vi.fn().mockRejectedValue(sourceNodesError);
+      const mockStore = { get: vi.fn(), set: vi.fn() };
+
+      vi.mocked(defaultPluginRegistry.get).mockReturnValue({
+        name: 'error-plugin',
+        sourceNodes: mockSourceNodes,
+        updateStrategy: 'sync',
+        sourceNodesContext: {
+          createNodeId: vi.fn(),
+          createContentDigest: vi.fn(),
+          options: {},
+          cacheDir: '/test',
+        },
+        store: mockStore as never,
+      });
+      vi.mocked(getWebhookHooks).mockReturnValue({});
+
+      const webhook = createQueuedWebhook({ pluginName: 'error-plugin' });
+
+      // Should not throw
+      await processWebhookBatch([webhook]);
+
+      expect(mockConsoleError).toHaveBeenCalledWith(
+        '❌ [error-plugin] Re-sync failed:',
+        sourceNodesError
+      );
+    });
+
+    it('should only call sourceNodes once per plugin even with multiple webhooks', async () => {
+      const mockSourceNodes = vi.fn().mockResolvedValue(undefined);
+      const mockStore = { get: vi.fn(), set: vi.fn() };
+
+      vi.mocked(defaultPluginRegistry.get).mockReturnValue({
+        name: 'sync-plugin',
+        sourceNodes: mockSourceNodes,
+        updateStrategy: 'sync',
+        sourceNodesContext: {
+          createNodeId: vi.fn(),
+          createContentDigest: vi.fn(),
+          options: {},
+          cacheDir: '/test',
+        },
+        store: mockStore as never,
+      });
+      vi.mocked(getWebhookHooks).mockReturnValue({});
+
+      const webhooks = [
+        createQueuedWebhook({ pluginName: 'sync-plugin' }),
+        createQueuedWebhook({ pluginName: 'sync-plugin' }),
+        createQueuedWebhook({ pluginName: 'sync-plugin' }),
+      ];
+
+      await processWebhookBatch(webhooks);
+
+      // Should only be called once despite 3 webhooks
+      expect(mockSourceNodes).toHaveBeenCalledTimes(1);
+    });
+
+    it('should process webhook strategy webhooks normally alongside sync strategy', async () => {
+      const mockSourceNodes = vi.fn().mockResolvedValue(undefined);
+      const mockStore = { get: vi.fn(), set: vi.fn() };
+      const mockHandler = vi.fn().mockResolvedValue(undefined);
+
+      // sync-plugin uses sync strategy
+      vi.mocked(defaultPluginRegistry.get).mockImplementation((name) => {
+        if (name === 'sync-plugin') {
+          return {
+            name: 'sync-plugin',
+            sourceNodes: mockSourceNodes,
+            updateStrategy: 'sync',
+            sourceNodesContext: {
+              createNodeId: vi.fn(),
+              createContentDigest: vi.fn(),
+              options: {},
+              cacheDir: '/test',
+            },
+            store: mockStore as never,
+          };
+        }
+        // webhook-plugin uses default webhook strategy
+        return {
+          name: 'webhook-plugin',
+          sourceNodes: undefined,
+          updateStrategy: 'webhook',
+          sourceNodesContext: undefined,
+          store: undefined,
+        };
+      });
+
+      vi.mocked(defaultWebhookRegistry.getHandler).mockReturnValue({
+        pluginName: 'webhook-plugin',
+        handler: mockHandler,
+      });
+      vi.mocked(getWebhookHooks).mockReturnValue({});
+
+      const webhooks = [
+        createQueuedWebhook({ pluginName: 'sync-plugin' }),
+        createQueuedWebhook({ pluginName: 'webhook-plugin' }),
+      ];
+
+      await processWebhookBatch(webhooks);
+
+      // sync plugin should call sourceNodes
+      expect(mockSourceNodes).toHaveBeenCalledTimes(1);
+      // webhook plugin should call handler
+      expect(mockHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should default to webhook strategy when plugin is not in registry', async () => {
+      const mockHandler = vi.fn().mockResolvedValue(undefined);
+
+      // Plugin not found in registry
+      vi.mocked(defaultPluginRegistry.get).mockReturnValue(undefined);
+      vi.mocked(defaultWebhookRegistry.getHandler).mockReturnValue({
+        pluginName: 'unknown-plugin',
+        handler: mockHandler,
+      });
+      vi.mocked(getWebhookHooks).mockReturnValue({});
+
+      const webhook = createQueuedWebhook({ pluginName: 'unknown-plugin' });
+
+      await processWebhookBatch([webhook]);
+
+      // Should use default webhook strategy and call handler
       expect(mockHandler).toHaveBeenCalled();
     });
   });
