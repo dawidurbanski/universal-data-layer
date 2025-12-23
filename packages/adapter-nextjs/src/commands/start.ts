@@ -4,13 +4,13 @@ import {
   killAll,
   type SpawnedProcess,
 } from '@/utils/spawn.js';
-
-// ANSI color codes
-const CYAN = '\x1b[36m';
-const MAGENTA = '\x1b[35m';
-const RESET = '\x1b[0m';
-
-const DEFAULT_NEXT_PORT = 3000;
+import {
+  COLORS,
+  DEFAULT_NEXT_PORT,
+  resolveUdlPort,
+  buildUdlEndpoint,
+  createNextEnv,
+} from '@/utils/config.js';
 
 /**
  * Configuration for runStart, allowing dependency injection for testing.
@@ -54,20 +54,32 @@ export async function runStart(
   process.on('SIGINT', handleSignal);
   process.on('SIGTERM', handleSignal);
 
+  // Resolve UDL port from CLI options or config file
+  const udlPort = await resolveUdlPort(options.port);
+  const udlEndpoint = buildUdlEndpoint(udlPort);
+
   // Spawn UDL server
   const udlArgs = ['universal-data-layer'];
+  // Pass --port only if explicitly provided via CLI (to override config)
   if (options.port !== undefined) {
     udlArgs.push('--port', String(options.port));
   }
-  const udlProcess = spawnWithPrefix('npx', udlArgs, `${CYAN}[udl]${RESET}`);
+  const udlProcess = spawnWithPrefix(
+    'npx',
+    udlArgs,
+    `${COLORS.CYAN}[udl]${COLORS.RESET}`
+  );
   processes.push(udlProcess);
 
-  // Spawn Next.js production server
+  // Spawn Next.js production server with UDL_ENDPOINT set
   const nextPortArgs = ['--port', String(nextPort)];
   const nextProcess = spawnWithPrefix(
     'npx',
     ['next', 'start', ...nextPortArgs, ...nextArgs],
-    `${MAGENTA}[next]${RESET}`
+    `${COLORS.MAGENTA}[next]${COLORS.RESET}`,
+    {
+      env: createNextEnv(udlEndpoint),
+    }
   );
   processes.push(nextProcess);
 

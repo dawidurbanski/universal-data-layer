@@ -5,14 +5,12 @@ import {
   type SpawnedProcess,
 } from '@/utils/spawn.js';
 import { waitForServer } from '@/utils/wait-for-ready.js';
-
-// ANSI color codes
-const CYAN = '\x1b[36m';
-const MAGENTA = '\x1b[35m';
-const GREEN = '\x1b[32m';
-const RESET = '\x1b[0m';
-
-const DEFAULT_UDL_PORT = 4000;
+import {
+  COLORS,
+  resolveUdlPort,
+  buildUdlEndpoint,
+  createNextEnv,
+} from '@/utils/config.js';
 
 /**
  * Configuration for runBuild, allowing dependency injection for testing.
@@ -34,7 +32,10 @@ export async function runBuild(
 ): Promise<void> {
   const exit = config?.exit ?? ((code: number) => process.exit(code));
   const waitFn = config?.waitForServer ?? waitForServer;
-  const udlPort = options.port ?? DEFAULT_UDL_PORT;
+
+  // Resolve UDL port from CLI options or config file
+  const udlPort = await resolveUdlPort(options.port);
+  const udlEndpoint = buildUdlEndpoint(udlPort);
 
   const processes: SpawnedProcess[] = [];
 
@@ -44,25 +45,34 @@ export async function runBuild(
 
   try {
     // Step 1: Start UDL server in background
-    console.log(`${GREEN}Starting UDL server...${RESET}`);
+    console.log(`${COLORS.GREEN}Starting UDL server...${COLORS.RESET}`);
+    const udlArgs = ['universal-data-layer'];
+    // Pass --port only if explicitly provided via CLI (to override config)
+    if (options.port !== undefined) {
+      udlArgs.push('--port', String(options.port));
+    }
     const udlProcess = spawnWithPrefix(
       'npx',
-      ['universal-data-layer', '--port', String(udlPort)],
-      `${CYAN}[udl]${RESET}`
+      udlArgs,
+      `${COLORS.CYAN}[udl]${COLORS.RESET}`
     );
     processes.push(udlProcess);
 
     // Step 2: Wait for UDL server to be ready
-    console.log(`${GREEN}Waiting for UDL server to be ready...${RESET}`);
+    console.log(
+      `${COLORS.GREEN}Waiting for UDL server to be ready...${COLORS.RESET}`
+    );
     await waitFn(udlPort);
-    console.log(`${GREEN}UDL server is ready on port ${udlPort}${RESET}`);
+    console.log(
+      `${COLORS.GREEN}UDL server is ready on port ${udlPort}${COLORS.RESET}`
+    );
 
     // Step 3: Run codegen
-    console.log(`${GREEN}Running codegen...${RESET}`);
+    console.log(`${COLORS.GREEN}Running codegen...${COLORS.RESET}`);
     const codegenExitCode = await runCommand(
       'npx',
       ['udl-codegen'],
-      `${CYAN}[codegen]${RESET}`
+      `${COLORS.CYAN}[codegen]${COLORS.RESET}`
     );
 
     if (codegenExitCode !== 0) {
@@ -71,14 +81,15 @@ export async function runBuild(
       exit(codegenExitCode);
       return;
     }
-    console.log(`${GREEN}Codegen completed successfully${RESET}`);
+    console.log(`${COLORS.GREEN}Codegen completed successfully${COLORS.RESET}`);
 
-    // Step 4: Run next build
-    console.log(`${GREEN}Building Next.js...${RESET}`);
+    // Step 4: Run next build with UDL_ENDPOINT set
+    console.log(`${COLORS.GREEN}Building Next.js...${COLORS.RESET}`);
     const nextBuildExitCode = await runCommand(
       'npx',
       ['next', 'build', ...nextArgs],
-      `${MAGENTA}[next]${RESET}`
+      `${COLORS.MAGENTA}[next]${COLORS.RESET}`,
+      { env: createNextEnv(udlEndpoint) }
     );
 
     if (nextBuildExitCode !== 0) {
@@ -87,7 +98,9 @@ export async function runBuild(
       exit(nextBuildExitCode);
       return;
     }
-    console.log(`${GREEN}Next.js build completed successfully${RESET}`);
+    console.log(
+      `${COLORS.GREEN}Next.js build completed successfully${COLORS.RESET}`
+    );
 
     // Step 5: Cleanup and exit
     await cleanup();
@@ -107,10 +120,11 @@ export async function runBuild(
 function runCommand(
   command: string,
   args: string[],
-  prefix: string
+  prefix: string,
+  options?: { env?: NodeJS.ProcessEnv }
 ): Promise<number> {
   return new Promise((resolve) => {
-    const spawned = spawnWithPrefix(command, args, prefix);
+    const spawned = spawnWithPrefix(command, args, prefix, options);
 
     spawned.process.on('exit', (code) => {
       resolve(code ?? 1);
