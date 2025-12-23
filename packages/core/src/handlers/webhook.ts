@@ -2,7 +2,7 @@
  * Webhook HTTP Handler
  *
  * Routes incoming webhook requests to the appropriate plugin handler.
- * URL format: POST /_webhooks/{pluginName}/{path}
+ * URL format: POST /_webhooks/{pluginName}/sync
  *
  * Webhooks are queued and processed in batches after a debounce period.
  * This prevents N rapid webhooks from triggering N separate processing cycles.
@@ -20,6 +20,9 @@ import { defaultStore } from '@/nodes/defaultStore.js';
 /** URL path prefix for webhook endpoints */
 export const WEBHOOK_PATH_PREFIX = '/_webhooks/';
 
+/** Pattern for webhook URLs: /_webhooks/{plugin-name}/sync */
+const WEBHOOK_PATTERN = /^\/_webhooks\/([^/]+)\/sync(?:\?.*)?$/;
+
 /** Maximum request body size (1MB) */
 const MAX_BODY_SIZE = 1024 * 1024;
 
@@ -34,32 +37,17 @@ export function isWebhookRequest(url: string): boolean {
 }
 
 /**
- * Parse the webhook URL to extract plugin name and path.
+ * Extract the plugin name from a webhook URL.
  *
- * @param url - The full request URL (e.g., "/_webhooks/contentful/entry-update")
- * @returns Object with pluginName and webhookPath, or null if invalid
+ * @param url - The full request URL (e.g., "/_webhooks/contentful/sync")
+ * @returns The plugin name, or null if invalid format
  */
-export function parseWebhookUrl(
-  url: string
-): { pluginName: string; webhookPath: string } | null {
-  if (!isWebhookRequest(url)) {
+export function getPluginFromWebhookUrl(url: string): string | null {
+  const match = url.match(WEBHOOK_PATTERN);
+  if (!match) {
     return null;
   }
-
-  // Remove prefix and any query string
-  const urlPath = url.slice(WEBHOOK_PATH_PREFIX.length);
-  const pathWithoutPrefix = urlPath.split('?')[0] ?? urlPath;
-  const parts = pathWithoutPrefix.split('/');
-
-  // Need at least plugin name and one path segment
-  if (parts.length < 2 || !parts[0] || !parts[1]) {
-    return null;
-  }
-
-  return {
-    pluginName: parts[0],
-    webhookPath: parts.slice(1).join('/'),
-  };
+  return match[1] || null;
 }
 
 /**
@@ -114,18 +102,21 @@ export async function webhookHandler(
     return;
   }
 
-  // Parse the URL to get plugin name and path
-  const parsed = parseWebhookUrl(req.url || '');
-  if (!parsed) {
+  // Extract plugin name from URL
+  const pluginName = getPluginFromWebhookUrl(req.url || '');
+  if (!pluginName) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Invalid webhook URL format' }));
+    res.end(
+      JSON.stringify({
+        error:
+          'Invalid webhook URL format. Expected: /_webhooks/{plugin-name}/sync',
+      })
+    );
     return;
   }
 
-  const { pluginName, webhookPath } = parsed;
-
   // Look up the registered handler
-  const handler = defaultWebhookRegistry.getHandler(pluginName, webhookPath);
+  const handler = defaultWebhookRegistry.getHandler(pluginName);
   if (!handler) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Webhook handler not found' }));
@@ -147,23 +138,17 @@ export async function webhookHandler(
     return;
   }
 
-  // Verify signature if handler requires it
+  // Verify signature if handler has verification configured
   if (handler.verifySignature) {
     try {
       const isValid = await handler.verifySignature(req, rawBody);
       if (!isValid) {
-        console.warn(
-          `Webhook signature verification failed: ${pluginName}/${webhookPath}`
-        );
         res.writeHead(401, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Invalid signature' }));
         return;
       }
     } catch (error) {
-      console.error(
-        `Webhook signature verification error: ${pluginName}/${webhookPath}`,
-        error
-      );
+      console.error('Signature verification error:', error);
       res.writeHead(401, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Signature verification failed' }));
       return;
@@ -183,12 +168,11 @@ export async function webhookHandler(
     }
   }
 
-  console.log(`Webhook received: ${pluginName}/${webhookPath}`);
+  console.log(`Webhook received: ${pluginName}/sync`);
 
   // Create the queued webhook object
   let queuedWebhook: QueuedWebhook = {
     pluginName,
-    path: webhookPath,
     rawBody,
     body,
     headers: req.headers as Record<string, string | string[] | undefined>,

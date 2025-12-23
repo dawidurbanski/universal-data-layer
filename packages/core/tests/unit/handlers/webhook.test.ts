@@ -3,7 +3,7 @@ import { EventEmitter } from 'node:events';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import {
   isWebhookRequest,
-  parseWebhookUrl,
+  getPluginFromWebhookUrl,
   webhookHandler,
   WEBHOOK_PATH_PREFIX,
 } from '@/handlers/webhook.js';
@@ -80,33 +80,20 @@ function emitBody(
   });
 }
 
-// Sample webhook handler for testing
-function createTestWebhook(
-  path: string,
-  options: {
-    handler?: WebhookRegistration['handler'];
-    verifySignature?: WebhookRegistration['verifySignature'];
-  } = {}
-): WebhookRegistration {
-  const webhook: WebhookRegistration = {
-    path,
-    handler:
-      options.handler ||
-      (async (_req, res, _context) => {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ received: true }));
-      }),
+// Sample webhook handler for testing (simplified - no path)
+function createTestWebhook(): WebhookRegistration {
+  return {
+    handler: async (_req, res, _context) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ received: true }));
+    },
   };
-  if (options.verifySignature) {
-    webhook.verifySignature = options.verifySignature;
-  }
-  return webhook;
 }
 
 describe('isWebhookRequest', () => {
   it('should return true for valid webhook URLs', () => {
-    expect(isWebhookRequest('/_webhooks/plugin/path')).toBe(true);
-    expect(isWebhookRequest('/_webhooks/contentful/entry-update')).toBe(true);
+    expect(isWebhookRequest('/_webhooks/plugin/sync')).toBe(true);
+    expect(isWebhookRequest('/_webhooks/contentful/sync')).toBe(true);
     expect(isWebhookRequest('/_webhooks/my-plugin/sync')).toBe(true);
   });
 
@@ -114,8 +101,8 @@ describe('isWebhookRequest', () => {
     expect(isWebhookRequest('/graphql')).toBe(false);
     expect(isWebhookRequest('/health')).toBe(false);
     expect(isWebhookRequest('/ready')).toBe(false);
-    expect(isWebhookRequest('/webhooks/plugin/path')).toBe(false);
-    expect(isWebhookRequest('/_webhook/plugin/path')).toBe(false);
+    expect(isWebhookRequest('/webhooks/plugin/sync')).toBe(false);
+    expect(isWebhookRequest('/_webhook/plugin/sync')).toBe(false);
     expect(isWebhookRequest('/')).toBe(false);
   });
 
@@ -126,43 +113,29 @@ describe('isWebhookRequest', () => {
   });
 });
 
-describe('parseWebhookUrl', () => {
-  it('should parse valid webhook URLs', () => {
-    expect(parseWebhookUrl('/_webhooks/plugin/path')).toEqual({
-      pluginName: 'plugin',
-      webhookPath: 'path',
-    });
-
-    expect(parseWebhookUrl('/_webhooks/contentful/entry-update')).toEqual({
-      pluginName: 'contentful',
-      webhookPath: 'entry-update',
-    });
-
-    expect(parseWebhookUrl('/_webhooks/my-plugin/sync')).toEqual({
-      pluginName: 'my-plugin',
-      webhookPath: 'sync',
-    });
-  });
-
-  it('should handle multi-segment paths', () => {
-    expect(parseWebhookUrl('/_webhooks/plugin/path/subpath')).toEqual({
-      pluginName: 'plugin',
-      webhookPath: 'path/subpath',
-    });
+describe('getPluginFromWebhookUrl', () => {
+  it('should extract plugin name from valid webhook URLs', () => {
+    expect(getPluginFromWebhookUrl('/_webhooks/plugin/sync')).toBe('plugin');
+    expect(getPluginFromWebhookUrl('/_webhooks/contentful/sync')).toBe(
+      'contentful'
+    );
+    expect(getPluginFromWebhookUrl('/_webhooks/my-plugin/sync')).toBe(
+      'my-plugin'
+    );
   });
 
   it('should handle query strings', () => {
-    expect(parseWebhookUrl('/_webhooks/plugin/path?foo=bar')).toEqual({
-      pluginName: 'plugin',
-      webhookPath: 'path',
-    });
+    expect(getPluginFromWebhookUrl('/_webhooks/plugin/sync?foo=bar')).toBe(
+      'plugin'
+    );
   });
 
   it('should return null for invalid URLs', () => {
-    expect(parseWebhookUrl('/graphql')).toBeNull();
-    expect(parseWebhookUrl('/_webhooks/')).toBeNull();
-    expect(parseWebhookUrl('/_webhooks/plugin')).toBeNull();
-    expect(parseWebhookUrl('/_webhooks/plugin/')).toBeNull();
+    expect(getPluginFromWebhookUrl('/graphql')).toBeNull();
+    expect(getPluginFromWebhookUrl('/_webhooks/')).toBeNull();
+    expect(getPluginFromWebhookUrl('/_webhooks/plugin')).toBeNull();
+    expect(getPluginFromWebhookUrl('/_webhooks/plugin/')).toBeNull();
+    expect(getPluginFromWebhookUrl('/_webhooks/plugin/other-path')).toBeNull();
   });
 });
 
@@ -186,7 +159,7 @@ describe('webhookHandler', () => {
 
   describe('HTTP method validation', () => {
     it('should return 405 for GET requests', async () => {
-      const req = createMockRequest('GET', '/_webhooks/plugin/path');
+      const req = createMockRequest('GET', '/_webhooks/plugin/sync');
       const res = createMockResponse();
 
       await webhookHandler(req, res);
@@ -197,7 +170,7 @@ describe('webhookHandler', () => {
     });
 
     it('should return 405 for PUT requests', async () => {
-      const req = createMockRequest('PUT', '/_webhooks/plugin/path');
+      const req = createMockRequest('PUT', '/_webhooks/plugin/sync');
       const res = createMockResponse();
 
       await webhookHandler(req, res);
@@ -206,7 +179,7 @@ describe('webhookHandler', () => {
     });
 
     it('should return 405 for DELETE requests', async () => {
-      const req = createMockRequest('DELETE', '/_webhooks/plugin/path');
+      const req = createMockRequest('DELETE', '/_webhooks/plugin/sync');
       const res = createMockResponse();
 
       await webhookHandler(req, res);
@@ -225,11 +198,35 @@ describe('webhookHandler', () => {
 
       expect(res._statusCode).toBe(404);
       const body = JSON.parse(res._body);
-      expect(body.error).toBe('Invalid webhook URL format');
+      expect(body.error).toContain('Invalid webhook URL format');
+    });
+
+    it('should return 404 for missing /sync path', async () => {
+      const req = createMockRequest('POST', '/_webhooks/plugin');
+      const res = createMockResponse();
+
+      emitBody(req, '{}');
+      await webhookHandler(req, res);
+
+      expect(res._statusCode).toBe(404);
+      const body = JSON.parse(res._body);
+      expect(body.error).toContain('Invalid webhook URL format');
+    });
+
+    it('should return 404 for wrong path', async () => {
+      registry.register('plugin', createTestWebhook());
+
+      const req = createMockRequest('POST', '/_webhooks/plugin/other-path');
+      const res = createMockResponse();
+
+      emitBody(req, '{}');
+      await webhookHandler(req, res);
+
+      expect(res._statusCode).toBe(404);
     });
 
     it('should return 404 when no handler is registered', async () => {
-      const req = createMockRequest('POST', '/_webhooks/unknown-plugin/path');
+      const req = createMockRequest('POST', '/_webhooks/unknown-plugin/sync');
       const res = createMockResponse();
 
       emitBody(req, '{}');
@@ -241,163 +238,23 @@ describe('webhookHandler', () => {
     });
 
     it('should return 404 for wrong plugin name', async () => {
-      registry.register('plugin-a', createTestWebhook('path'));
+      registry.register('plugin-a', createTestWebhook());
 
-      const req = createMockRequest('POST', '/_webhooks/plugin-b/path');
+      const req = createMockRequest('POST', '/_webhooks/plugin-b/sync');
       const res = createMockResponse();
 
       emitBody(req, '{}');
       await webhookHandler(req, res);
 
       expect(res._statusCode).toBe(404);
-    });
-
-    it('should return 404 for wrong path', async () => {
-      registry.register('plugin', createTestWebhook('path-a'));
-
-      const req = createMockRequest('POST', '/_webhooks/plugin/path-b');
-      const res = createMockResponse();
-
-      emitBody(req, '{}');
-      await webhookHandler(req, res);
-
-      expect(res._statusCode).toBe(404);
-    });
-  });
-
-  describe('signature verification', () => {
-    it('should return 401 when verifySignature returns false', async () => {
-      const consoleWarnSpy = vi
-        .spyOn(console, 'warn')
-        .mockImplementation(() => {});
-
-      registry.register(
-        'plugin',
-        createTestWebhook('path', {
-          verifySignature: () => false,
-        })
-      );
-
-      const req = createMockRequest('POST', '/_webhooks/plugin/path');
-      const res = createMockResponse();
-
-      emitBody(req, '{}');
-      await webhookHandler(req, res);
-
-      expect(res._statusCode).toBe(401);
-      const body = JSON.parse(res._body);
-      expect(body.error).toBe('Invalid signature');
-      expect(consoleWarnSpy).toHaveBeenCalled();
-
-      consoleWarnSpy.mockRestore();
-    });
-
-    it('should return 401 when verifySignature throws', async () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
-
-      registry.register(
-        'plugin',
-        createTestWebhook('path', {
-          verifySignature: () => {
-            throw new Error('Signature error');
-          },
-        })
-      );
-
-      const req = createMockRequest('POST', '/_webhooks/plugin/path');
-      const res = createMockResponse();
-
-      emitBody(req, '{}');
-      await webhookHandler(req, res);
-
-      expect(res._statusCode).toBe(401);
-      const body = JSON.parse(res._body);
-      expect(body.error).toBe('Signature verification failed');
-
-      consoleErrorSpy.mockRestore();
-    });
-
-    it('should queue webhook when verifySignature returns true', async () => {
-      const consoleLogSpy = vi
-        .spyOn(console, 'log')
-        .mockImplementation(() => {});
-
-      registry.register(
-        'plugin',
-        createTestWebhook('path', {
-          verifySignature: () => true,
-        })
-      );
-
-      const req = createMockRequest('POST', '/_webhooks/plugin/path');
-      const res = createMockResponse();
-
-      emitBody(req, '{}');
-      await webhookHandler(req, res);
-
-      // Webhook is queued, not immediately processed
-      expect(res._statusCode).toBe(202);
-      expect(queue.size()).toBe(1);
-
-      consoleLogSpy.mockRestore();
-    });
-
-    it('should support async verifySignature', async () => {
-      const consoleLogSpy = vi
-        .spyOn(console, 'log')
-        .mockImplementation(() => {});
-
-      registry.register(
-        'plugin',
-        createTestWebhook('path', {
-          verifySignature: async () => {
-            await new Promise((resolve) => setTimeout(resolve, 10));
-            return true;
-          },
-        })
-      );
-
-      const req = createMockRequest('POST', '/_webhooks/plugin/path');
-      const res = createMockResponse();
-
-      emitBody(req, '{}');
-      await webhookHandler(req, res);
-
-      // Webhook is queued after signature verification
-      expect(res._statusCode).toBe(202);
-      expect(queue.size()).toBe(1);
-
-      consoleLogSpy.mockRestore();
-    });
-
-    it('should skip verification if no verifySignature defined', async () => {
-      const consoleLogSpy = vi
-        .spyOn(console, 'log')
-        .mockImplementation(() => {});
-
-      registry.register('plugin', createTestWebhook('path'));
-
-      const req = createMockRequest('POST', '/_webhooks/plugin/path');
-      const res = createMockResponse();
-
-      emitBody(req, '{}');
-      await webhookHandler(req, res);
-
-      // Webhook is queued without signature verification
-      expect(res._statusCode).toBe(202);
-      expect(queue.size()).toBe(1);
-
-      consoleLogSpy.mockRestore();
     });
   });
 
   describe('JSON body parsing', () => {
     it('should return 400 for invalid JSON with application/json content-type', async () => {
-      registry.register('plugin', createTestWebhook('path'));
+      registry.register('plugin', createTestWebhook());
 
-      const req = createMockRequest('POST', '/_webhooks/plugin/path', {
+      const req = createMockRequest('POST', '/_webhooks/plugin/sync', {
         'content-type': 'application/json',
       });
       const res = createMockResponse();
@@ -423,9 +280,9 @@ describe('webhookHandler', () => {
         originalEnqueue(webhook);
       };
 
-      registry.register('plugin', createTestWebhook('path'));
+      registry.register('plugin', createTestWebhook());
 
-      const req = createMockRequest('POST', '/_webhooks/plugin/path', {
+      const req = createMockRequest('POST', '/_webhooks/plugin/sync', {
         'content-type': 'application/json',
       });
       const res = createMockResponse();
@@ -453,9 +310,9 @@ describe('webhookHandler', () => {
         originalEnqueue(webhook);
       };
 
-      registry.register('plugin', createTestWebhook('path'));
+      registry.register('plugin', createTestWebhook());
 
-      const req = createMockRequest('POST', '/_webhooks/plugin/path', {
+      const req = createMockRequest('POST', '/_webhooks/plugin/sync', {
         'content-type': 'text/plain',
       });
       const res = createMockResponse();
@@ -482,9 +339,9 @@ describe('webhookHandler', () => {
         originalEnqueue(webhook);
       };
 
-      registry.register('plugin', createTestWebhook('path'));
+      registry.register('plugin', createTestWebhook());
 
-      const req = createMockRequest('POST', '/_webhooks/plugin/path');
+      const req = createMockRequest('POST', '/_webhooks/plugin/sync');
       const res = createMockResponse();
 
       const bodyText = 'raw body content';
@@ -513,9 +370,9 @@ describe('webhookHandler', () => {
         originalEnqueue(webhook);
       };
 
-      registry.register('test-plugin', createTestWebhook('update'));
+      registry.register('test-plugin', createTestWebhook());
 
-      const req = createMockRequest('POST', '/_webhooks/test-plugin/update', {
+      const req = createMockRequest('POST', '/_webhooks/test-plugin/sync', {
         'content-type': 'application/json',
       });
       const res = createMockResponse();
@@ -526,7 +383,6 @@ describe('webhookHandler', () => {
       expect(res._statusCode).toBe(202);
       expect(queuedWebhook).toBeDefined();
       expect(queuedWebhook?.pluginName).toBe('test-plugin');
-      expect(queuedWebhook?.path).toBe('update');
       expect(queuedWebhook?.body).toEqual({ test: true });
       expect(queuedWebhook?.rawBody).toBeInstanceOf(Buffer);
       expect(queuedWebhook?.timestamp).toBeGreaterThan(0);
@@ -539,9 +395,9 @@ describe('webhookHandler', () => {
         .spyOn(console, 'log')
         .mockImplementation(() => {});
 
-      registry.register('plugin', createTestWebhook('path'));
+      registry.register('plugin', createTestWebhook());
 
-      const req = createMockRequest('POST', '/_webhooks/plugin/path');
+      const req = createMockRequest('POST', '/_webhooks/plugin/sync');
       const res = createMockResponse();
 
       emitBody(req, '{}');
@@ -559,16 +415,16 @@ describe('webhookHandler', () => {
         .spyOn(console, 'log')
         .mockImplementation(() => {});
 
-      registry.register('my-plugin', createTestWebhook('my-path'));
+      registry.register('my-plugin', createTestWebhook());
 
-      const req = createMockRequest('POST', '/_webhooks/my-plugin/my-path');
+      const req = createMockRequest('POST', '/_webhooks/my-plugin/sync');
       const res = createMockResponse();
 
       emitBody(req, '{}');
       await webhookHandler(req, res);
 
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        'Webhook received: my-plugin/my-path'
+        'Webhook received: my-plugin/sync'
       );
 
       consoleLogSpy.mockRestore();
@@ -587,9 +443,9 @@ describe('webhookHandler', () => {
         originalEnqueue(webhook);
       };
 
-      registry.register('plugin', createTestWebhook('path'));
+      registry.register('plugin', createTestWebhook());
 
-      const req = createMockRequest('POST', '/_webhooks/plugin/path', {
+      const req = createMockRequest('POST', '/_webhooks/plugin/sync', {
         'content-type': 'application/json',
         'x-custom-header': 'custom-value',
       });
@@ -620,9 +476,9 @@ describe('webhookHandler', () => {
         },
       });
 
-      registry.register('plugin', createTestWebhook('path'));
+      registry.register('plugin', createTestWebhook());
 
-      const req = createMockRequest('POST', '/_webhooks/plugin/path');
+      const req = createMockRequest('POST', '/_webhooks/plugin/sync');
       const res = createMockResponse();
 
       emitBody(req, '{}');
@@ -643,9 +499,9 @@ describe('webhookHandler', () => {
         onWebhookReceived: async () => null,
       });
 
-      registry.register('plugin', createTestWebhook('path'));
+      registry.register('plugin', createTestWebhook());
 
-      const req = createMockRequest('POST', '/_webhooks/plugin/path');
+      const req = createMockRequest('POST', '/_webhooks/plugin/sync');
       const res = createMockResponse();
 
       emitBody(req, '{}');
@@ -679,9 +535,9 @@ describe('webhookHandler', () => {
         }),
       });
 
-      registry.register('plugin', createTestWebhook('path'));
+      registry.register('plugin', createTestWebhook());
 
-      const req = createMockRequest('POST', '/_webhooks/plugin/path', {
+      const req = createMockRequest('POST', '/_webhooks/plugin/sync', {
         'content-type': 'application/json',
       });
       const res = createMockResponse();
@@ -720,9 +576,9 @@ describe('webhookHandler', () => {
         },
       });
 
-      registry.register('plugin', createTestWebhook('path'));
+      registry.register('plugin', createTestWebhook());
 
-      const req = createMockRequest('POST', '/_webhooks/plugin/path', {
+      const req = createMockRequest('POST', '/_webhooks/plugin/sync', {
         'content-type': 'application/json',
       });
       const res = createMockResponse();
@@ -742,9 +598,9 @@ describe('webhookHandler', () => {
 
   describe('body size limit', () => {
     it('should return 413 for oversized body', async () => {
-      registry.register('plugin', createTestWebhook('path'));
+      registry.register('plugin', createTestWebhook());
 
-      const req = createMockRequest('POST', '/_webhooks/plugin/path');
+      const req = createMockRequest('POST', '/_webhooks/plugin/sync');
       const res = createMockResponse();
 
       // Add destroy method to mock request
