@@ -1969,5 +1969,122 @@ describe('loader integration tests', () => {
 
       consoleLogSpy.mockRestore();
     });
+
+    it('should register default webhook handler for updateStrategy sync plugins', async () => {
+      const { WebhookRegistry } = await import('@/webhooks/registry.js');
+
+      const pluginDir = join(pluginsDir, 'sync-strategy-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'sync-strategy-plugin',
+          updateStrategy: 'sync'
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('SyncNode', '1'),
+              type: 'SyncNode',
+            },
+            parent: undefined,
+            children: undefined,
+          });
+        }
+        // No registerWebhookHandler - for sync strategy, default handler is used
+        `
+      );
+
+      const { NodeStore } = await import('@/nodes/index.js');
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      const store = new NodeStore();
+      const webhookRegistry = new WebhookRegistry();
+
+      await loadPlugins([pluginDir], {
+        appConfig: {},
+        store,
+        cache: false,
+        webhookRegistry,
+      });
+
+      // Verify the default handler was registered for sync strategy
+      expect(webhookRegistry.has('sync-strategy-plugin')).toBe(true);
+
+      const handler = webhookRegistry.getHandler('sync-strategy-plugin');
+      expect(handler).toBeDefined();
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should warn when updateStrategy is sync and registerWebhookHandler is also provided', async () => {
+      const { WebhookRegistry } = await import('@/webhooks/registry.js');
+
+      const pluginDir = join(pluginsDir, 'sync-with-handler-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'sync-with-handler-plugin',
+          updateStrategy: 'sync'
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('SyncHandlerNode', '1'),
+              type: 'SyncHandlerNode',
+            },
+            parent: undefined,
+            children: undefined,
+          });
+        }
+
+        // This handler should be ignored when updateStrategy is 'sync'
+        export async function registerWebhookHandler({ res }) {
+          res.writeHead(200);
+          res.end('Custom handler');
+        }
+        `
+      );
+
+      const { NodeStore } = await import('@/nodes/index.js');
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      const consoleWarnSpy = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      const store = new NodeStore();
+      const webhookRegistry = new WebhookRegistry();
+
+      await loadPlugins([pluginDir], {
+        appConfig: {},
+        store,
+        cache: false,
+        webhookRegistry,
+      });
+
+      // Should warn that registerWebhookHandler is ignored
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'registerWebhookHandler is ignored when updateStrategy is "sync"'
+        )
+      );
+
+      // The default handler should still be registered (not the custom one)
+      expect(webhookRegistry.has('sync-with-handler-plugin')).toBe(true);
+
+      consoleLogSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
+    });
   });
 });
