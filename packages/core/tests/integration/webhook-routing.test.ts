@@ -140,7 +140,7 @@ describe('webhook routing integration', () => {
 
   describe('webhook endpoint routing', () => {
     it('should return 404 for unregistered webhook', async () => {
-      const response = await makeRequest(server, '/_webhooks/unknown/path', {
+      const response = await makeRequest(server, '/_webhooks/unknown/sync', {
         body: '{}',
       });
 
@@ -149,12 +149,11 @@ describe('webhook routing integration', () => {
       expect(body.error).toBe('Webhook handler not found');
     });
 
-    it('should route to correct handler based on plugin and path', async () => {
+    it('should route to correct handler based on plugin', async () => {
       let handlerCalled = false;
       let receivedBody: unknown;
 
       const webhook: WebhookRegistration = {
-        path: 'entry-update',
         handler: async (_req, res, context) => {
           handlerCalled = true;
           receivedBody = context.body;
@@ -166,13 +165,9 @@ describe('webhook routing integration', () => {
       registry.register('contentful', webhook);
 
       const payload = { type: 'entry.publish', entryId: '123' };
-      const response = await makeRequest(
-        server,
-        '/_webhooks/contentful/entry-update',
-        {
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await makeRequest(server, '/_webhooks/contentful/sync', {
+        body: JSON.stringify(payload),
+      });
 
       // Webhook is queued with 202 response
       expect(response.statusCode).toBe(202);
@@ -186,14 +181,13 @@ describe('webhook routing integration', () => {
 
     it('should include CORS headers in webhook responses', async () => {
       registry.register('plugin', {
-        path: 'test',
         handler: async (_req, res) => {
           res.writeHead(200);
           res.end('OK');
         },
       });
 
-      const response = await makeRequest(server, '/_webhooks/plugin/test', {
+      const response = await makeRequest(server, '/_webhooks/plugin/sync', {
         body: '{}',
       });
 
@@ -205,14 +199,13 @@ describe('webhook routing integration', () => {
 
     it('should return 405 for GET requests to webhook endpoints', async () => {
       registry.register('plugin', {
-        path: 'test',
         handler: async (_req, res) => {
           res.writeHead(200);
           res.end('OK');
         },
       });
 
-      const response = await makeRequest(server, '/_webhooks/plugin/test', {
+      const response = await makeRequest(server, '/_webhooks/plugin/sync', {
         method: 'GET',
       });
 
@@ -225,7 +218,6 @@ describe('webhook routing integration', () => {
       let receivedContext: WebhookHandlerContext | undefined;
 
       registry.register('test-plugin', {
-        path: 'sync',
         handler: async (_req, res, context) => {
           receivedContext = context;
           res.writeHead(200);
@@ -252,7 +244,6 @@ describe('webhook routing integration', () => {
       let receivedRawBody: Buffer | undefined;
 
       registry.register('plugin', {
-        path: 'test',
         handler: async (_req, res, context) => {
           receivedRawBody = context.rawBody;
           res.writeHead(200);
@@ -261,7 +252,7 @@ describe('webhook routing integration', () => {
       });
 
       const payload = { test: 'data' };
-      await makeRequest(server, '/_webhooks/plugin/test', {
+      await makeRequest(server, '/_webhooks/plugin/sync', {
         body: JSON.stringify(payload),
       });
 
@@ -276,7 +267,6 @@ describe('webhook routing integration', () => {
   describe('node creation from webhook', () => {
     it('should allow creating nodes via webhook handler', async () => {
       registry.register('cms-plugin', {
-        path: 'content-update',
         handler: async (_req, res, context) => {
           const { body, actions } = context;
           const payload = body as { contentId: string; title: string };
@@ -296,13 +286,9 @@ describe('webhook routing integration', () => {
       });
 
       const payload = { contentId: 'entry-123', title: 'Test Entry' };
-      const response = await makeRequest(
-        server,
-        '/_webhooks/cms-plugin/content-update',
-        {
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await makeRequest(server, '/_webhooks/cms-plugin/sync', {
+        body: JSON.stringify(payload),
+      });
 
       // Webhook is queued
       expect(response.statusCode).toBe(202);
@@ -335,7 +321,6 @@ describe('webhook routing integration', () => {
       });
 
       registry.register('plugin', {
-        path: 'delete',
         handler: async (_req, res, context) => {
           const { body, actions } = context;
           const payload = body as { nodeId: string };
@@ -347,7 +332,7 @@ describe('webhook routing integration', () => {
         },
       });
 
-      await makeRequest(server, '/_webhooks/plugin/delete', {
+      await makeRequest(server, '/_webhooks/plugin/sync', {
         body: JSON.stringify({ nodeId: 'node-to-delete' }),
       });
 
@@ -362,7 +347,6 @@ describe('webhook routing integration', () => {
   describe('signature verification', () => {
     it('should return 401 when signature verification fails', async () => {
       registry.register('secure-plugin', {
-        path: 'secure-hook',
         handler: async (_req, res) => {
           res.writeHead(200);
           res.end('OK');
@@ -374,7 +358,7 @@ describe('webhook routing integration', () => {
 
       const response = await makeRequest(
         server,
-        '/_webhooks/secure-plugin/secure-hook',
+        '/_webhooks/secure-plugin/sync',
         {
           body: '{}',
         }
@@ -389,7 +373,6 @@ describe('webhook routing integration', () => {
       let handlerCalled = false;
 
       registry.register('secure-plugin', {
-        path: 'secure-hook',
         handler: async (_req, res) => {
           handlerCalled = true;
           res.writeHead(200);
@@ -403,7 +386,7 @@ describe('webhook routing integration', () => {
 
       const response = await makeRequest(
         server,
-        '/_webhooks/secure-plugin/secure-hook',
+        '/_webhooks/secure-plugin/sync',
         {
           body: '{}',
           headers: {
@@ -425,14 +408,13 @@ describe('webhook routing integration', () => {
   describe('error handling', () => {
     it('should return 400 for invalid JSON body', async () => {
       registry.register('plugin', {
-        path: 'test',
         handler: async (_req, res) => {
           res.writeHead(200);
           res.end('OK');
         },
       });
 
-      const response = await makeRequest(server, '/_webhooks/plugin/test', {
+      const response = await makeRequest(server, '/_webhooks/plugin/sync', {
         body: 'not valid json {{{',
         headers: {
           'Content-Type': 'application/json',
@@ -446,13 +428,12 @@ describe('webhook routing integration', () => {
 
     it('should queue webhook even if handler will throw (error happens during batch processing)', async () => {
       registry.register('plugin', {
-        path: 'error',
         handler: async () => {
           throw new Error('Something went wrong');
         },
       });
 
-      const response = await makeRequest(server, '/_webhooks/plugin/error', {
+      const response = await makeRequest(server, '/_webhooks/plugin/sync', {
         body: '{}',
       });
 
@@ -471,7 +452,6 @@ describe('webhook routing integration', () => {
       const calls: string[] = [];
 
       registry.register('plugin-a', {
-        path: 'update',
         handler: async (_req, res) => {
           calls.push('plugin-a');
           res.writeHead(200);
@@ -480,7 +460,6 @@ describe('webhook routing integration', () => {
       });
 
       registry.register('plugin-b', {
-        path: 'update',
         handler: async (_req, res) => {
           calls.push('plugin-b');
           res.writeHead(200);
@@ -489,12 +468,12 @@ describe('webhook routing integration', () => {
       });
 
       // Call plugin-a
-      await makeRequest(server, '/_webhooks/plugin-a/update', { body: '{}' });
+      await makeRequest(server, '/_webhooks/plugin-a/sync', { body: '{}' });
       await queue.flush();
       expect(calls).toEqual(['plugin-a']);
 
       // Call plugin-b
-      await makeRequest(server, '/_webhooks/plugin-b/update', { body: '{}' });
+      await makeRequest(server, '/_webhooks/plugin-b/sync', { body: '{}' });
       await queue.flush();
       expect(calls).toEqual(['plugin-a', 'plugin-b']);
     });
@@ -581,7 +560,6 @@ describe('webhook routing integration', () => {
 
       // Register a simple handler
       registry.register('test-plugin', {
-        path: 'sync',
         handler: async (_req, res) => {
           res.writeHead(200);
           res.end('OK');
@@ -632,7 +610,6 @@ describe('webhook routing integration', () => {
 
       // Register handlers for multiple plugins
       registry.register('plugin-a', {
-        path: 'update',
         handler: async (_req, res) => {
           res.writeHead(200);
           res.end('OK');
@@ -640,7 +617,6 @@ describe('webhook routing integration', () => {
       });
 
       registry.register('plugin-b', {
-        path: 'sync',
         handler: async (_req, res) => {
           res.writeHead(200);
           res.end('OK');
@@ -651,9 +627,9 @@ describe('webhook routing integration', () => {
       receivedOutboundPayloads = [];
 
       // Send webhooks to different plugins
-      await makeRequest(server, '/_webhooks/plugin-a/update', { body: '{}' });
+      await makeRequest(server, '/_webhooks/plugin-a/sync', { body: '{}' });
       await makeRequest(server, '/_webhooks/plugin-b/sync', { body: '{}' });
-      await makeRequest(server, '/_webhooks/plugin-a/update', { body: '{}' });
+      await makeRequest(server, '/_webhooks/plugin-a/sync', { body: '{}' });
 
       await outboundQueue.flush();
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -715,7 +691,6 @@ describe('webhook routing integration', () => {
         outboundQueue.on('webhook:batch-complete', batchCompleteHandler);
 
         registry.register('plugin', {
-          path: 'test',
           handler: async (_req, res) => {
             res.writeHead(200);
             res.end('OK');
@@ -725,7 +700,7 @@ describe('webhook routing integration', () => {
         // Clear payloads right before sending webhooks (in case of delayed arrivals from previous tests)
         receivedOutboundPayloads = [];
 
-        await makeRequest(server, '/_webhooks/plugin/test', { body: '{}' });
+        await makeRequest(server, '/_webhooks/plugin/sync', { body: '{}' });
         await outboundQueue.flush();
         await new Promise((resolve) => setTimeout(resolve, 100));
 

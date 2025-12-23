@@ -2,35 +2,36 @@
 'universal-data-layer': minor
 ---
 
-Add webhook HTTP routing for incoming webhooks
+Add webhook HTTP routing with convention-based URL pattern
 
-Routes incoming webhook requests to the appropriate plugin handler based on the URL path `POST /_webhooks/{pluginName}/{path}`.
+Routes incoming webhook requests to the appropriate plugin handler using a fixed URL pattern `POST /_webhooks/{pluginName}/sync`.
 
 **Features:**
 
-- Routes webhooks to correct handler based on plugin name and path
+- Convention-based routing: all webhooks use the `/sync` path
+- Routes webhooks to correct handler based on plugin name
 - Validates HTTP method (only POST allowed)
-- Collects raw request body for signature verification
+- Collects raw request body for handler processing
 - Parses JSON body when content-type is `application/json`
 - Provides `WebhookHandlerContext` with store, actions, rawBody, and body
 - Enforces 1MB body size limit to prevent abuse
-- Returns appropriate HTTP status codes (405, 404, 401, 400, 500)
-- Logs webhook activity for debugging
+- Returns appropriate HTTP status codes (405, 404, 400, 413)
+- Queues webhooks for batch processing with debounce
 
 **URL Format:**
 
 ```
-POST /_webhooks/{plugin-name}/{webhook-path}
+POST /_webhooks/{plugin-name}/sync
 
 Examples:
-POST /_webhooks/contentful/entry-update
-POST /_webhooks/shopify/product-update
-POST /_webhooks/custom-plugin/sync
+POST /_webhooks/contentful/sync
+POST /_webhooks/shopify/sync
+POST /_webhooks/my-plugin/sync
 ```
 
-**New exports:**
+**Exports:**
 
 - `isWebhookRequest` - Check if URL is a webhook request
-- `parseWebhookUrl` - Parse plugin name and path from URL
+- `getPluginFromWebhookUrl` - Extract plugin name from webhook URL
 - `webhookHandler` - HTTP handler for webhook requests
 - `WEBHOOK_PATH_PREFIX` - URL prefix constant (`/_webhooks/`)
