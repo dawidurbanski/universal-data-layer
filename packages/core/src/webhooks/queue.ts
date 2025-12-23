@@ -13,8 +13,6 @@ import { EventEmitter } from 'node:events';
 export interface QueuedWebhook {
   /** Name of the plugin that registered this webhook handler */
   pluginName: string;
-  /** The webhook path within the plugin */
-  path: string;
   /** Raw request body buffer */
   rawBody: Buffer;
   /** Parsed JSON body (if applicable) */
@@ -141,7 +139,7 @@ export class WebhookQueue extends EventEmitter {
   enqueue(webhook: QueuedWebhook): void {
     this.queue.push(webhook);
     console.log(
-      `📥 Webhook queued: ${webhook.pluginName}/${webhook.path} (${this.queue.length} in queue)`
+      `📥 Webhook queued: ${webhook.pluginName} (${this.queue.length} in queue)`
     );
 
     // Check if we've hit max queue size

@@ -4,6 +4,7 @@ import {
   type OutboundWebhookConfig,
   type WebhookBatch,
   type QueuedWebhook,
+  type TransformPayloadContext,
 } from '@/webhooks/index.js';
 
 // Helper to create a mock webhook batch
@@ -15,9 +16,8 @@ function createMockBatch(
   for (let i = 0; i < webhookCount; i++) {
     webhooks.push({
       pluginName: plugins[i % plugins.length]!,
-      path: `path-${i}`,
       rawBody: Buffer.from('{}'),
-      body: {},
+      body: { operation: 'upsert', nodeId: `node-${i}` },
       headers: { 'content-type': 'application/json' },
       timestamp: Date.now(),
     });
@@ -128,7 +128,7 @@ describe('OutboundWebhookManager', () => {
       expect(fetchMock).toHaveBeenCalledTimes(3);
     });
 
-    it('should send correct payload structure', async () => {
+    it('should send correct payload structure with items', async () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -162,6 +162,11 @@ describe('OutboundWebhookManager', () => {
       expect(body.summary.plugins).toContain('plugin-a');
       expect(body.summary.plugins).toContain('plugin-b');
       expect(body.source).toBeDefined();
+      // New: items should be included
+      expect(body.items).toBeDefined();
+      expect(body.items.length).toBe(3);
+      expect(body.items[0]).toHaveProperty('pluginName');
+      expect(body.items[0]).toHaveProperty('body');
     });
 
     it('should include custom headers in request', async () => {
@@ -251,7 +256,6 @@ describe('OutboundWebhookManager', () => {
         webhooks: [
           {
             pluginName: 'plugin-a',
-            path: 'path-1',
             rawBody: Buffer.from('{}'),
             body: {},
             headers: {},
@@ -259,7 +263,6 @@ describe('OutboundWebhookManager', () => {
           },
           {
             pluginName: 'plugin-a',
-            path: 'path-2',
             rawBody: Buffer.from('{}'),
             body: {},
             headers: {},
@@ -267,7 +270,6 @@ describe('OutboundWebhookManager', () => {
           },
           {
             pluginName: 'plugin-b',
-            path: 'path-3',
             rawBody: Buffer.from('{}'),
             body: {},
             headers: {},
@@ -285,6 +287,340 @@ describe('OutboundWebhookManager', () => {
 
       // Should have unique plugins only
       expect(body.summary.plugins).toEqual(['plugin-a', 'plugin-b']);
+    });
+  });
+
+  describe('transformPayload', () => {
+    it('should use default payload when no transformPayload provided', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+      });
+
+      const manager = new OutboundWebhookManager([
+        { url: 'https://example.com/webhook' },
+      ]);
+      const batch = createMockBatch(2);
+
+      await manager.triggerAll(batch);
+
+      const callArgs = fetchMock.mock.calls[0]!;
+      const body = JSON.parse((callArgs[1] as { body: string }).body);
+
+      expect(body.event).toBe('batch-complete');
+      expect(body.timestamp).toBeDefined();
+      expect(body.summary).toBeDefined();
+      expect(body.source).toBeDefined();
+      expect(body.items).toHaveLength(2);
+    });
+
+    it('should call transformPayload with full context', async () => {
+      let receivedContext: TransformPayloadContext | undefined;
+
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+      });
+
+      const manager = new OutboundWebhookManager([
+        {
+          url: 'https://example.com/webhook',
+          transformPayload: (ctx) => {
+            receivedContext = ctx;
+            return {};
+          },
+        },
+      ]);
+
+      const batch = createMockBatch(2, ['plugin-a', 'plugin-b']);
+      await manager.triggerAll(batch);
+
+      expect(receivedContext).toBeDefined();
+      expect(receivedContext!.batch).toBe(batch);
+      expect(receivedContext!.event).toBe('batch-complete');
+      expect(receivedContext!.timestamp).toBeDefined();
+      expect(receivedContext!.source).toBeDefined();
+      expect(receivedContext!.summary.webhookCount).toBe(2);
+      expect(receivedContext!.summary.plugins).toContain('plugin-a');
+      expect(receivedContext!.summary.plugins).toContain('plugin-b');
+      expect(receivedContext!.items).toHaveLength(2);
+      expect(receivedContext!.items[0]).toHaveProperty('pluginName');
+      expect(receivedContext!.items[0]).toHaveProperty('body');
+      expect(receivedContext!.items[0]).toHaveProperty('headers');
+      expect(receivedContext!.items[0]).toHaveProperty('timestamp');
+    });
+
+    it('should allow transformPayload to return empty object', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+      });
+
+      const manager = new OutboundWebhookManager([
+        {
+          url: 'https://api.vercel.com/deploy',
+          transformPayload: () => ({}),
+        },
+      ]);
+      const batch = createMockBatch(3);
+
+      await manager.triggerAll(batch);
+
+      const callArgs = fetchMock.mock.calls[0]!;
+      const body = JSON.parse((callArgs[1] as { body: string }).body);
+
+      expect(body).toEqual({});
+    });
+
+    it('should allow transformPayload to return custom shape', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+      });
+
+      const manager = new OutboundWebhookManager([
+        {
+          url: 'https://my-ci.example.com/webhook',
+          transformPayload: ({ items, timestamp }) => ({
+            event: 'content-updated',
+            changes: items.map((i) => i.body),
+            deployedAt: timestamp,
+          }),
+        },
+      ]);
+      const batch = createMockBatch(2);
+
+      await manager.triggerAll(batch);
+
+      const callArgs = fetchMock.mock.calls[0]!;
+      const body = JSON.parse((callArgs[1] as { body: string }).body);
+
+      expect(body.event).toBe('content-updated');
+      expect(body.changes).toHaveLength(2);
+      expect(body.deployedAt).toBeDefined();
+      // Original fields should not be present
+      expect(body.summary).toBeUndefined();
+      expect(body.source).toBeUndefined();
+    });
+
+    it('should use convenience values from context', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+      });
+
+      const manager = new OutboundWebhookManager([
+        {
+          url: 'https://example.com/webhook',
+          transformPayload: ({ timestamp, summary }) => ({
+            deployedAt: timestamp,
+            changedCount: summary.webhookCount,
+            plugins: summary.plugins,
+          }),
+        },
+      ]);
+      const batch = createMockBatch(3, ['plugin-a']);
+
+      await manager.triggerAll(batch);
+
+      const callArgs = fetchMock.mock.calls[0]!;
+      const body = JSON.parse((callArgs[1] as { body: string }).body);
+
+      expect(body.changedCount).toBe(3);
+      expect(body.plugins).toEqual(['plugin-a']);
+    });
+
+    it('should allow different transforms per trigger', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+      });
+
+      const manager = new OutboundWebhookManager([
+        {
+          url: 'https://vercel.com/deploy',
+          transformPayload: () => ({}),
+        },
+        {
+          url: 'https://ci.example.com/webhook',
+          transformPayload: ({ summary }) => ({
+            count: summary.webhookCount,
+          }),
+        },
+        {
+          url: 'https://default.example.com/webhook',
+          // No transform - uses default
+        },
+      ]);
+      const batch = createMockBatch(2);
+
+      await manager.triggerAll(batch);
+
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+
+      // First call: empty object
+      const body1 = JSON.parse(
+        (fetchMock.mock.calls[0]![1] as { body: string }).body
+      );
+      expect(body1).toEqual({});
+
+      // Second call: custom shape
+      const body2 = JSON.parse(
+        (fetchMock.mock.calls[1]![1] as { body: string }).body
+      );
+      expect(body2).toEqual({ count: 2 });
+
+      // Third call: default payload
+      const body3 = JSON.parse(
+        (fetchMock.mock.calls[2]![1] as { body: string }).body
+      );
+      expect(body3.event).toBe('batch-complete');
+      expect(body3.items).toBeDefined();
+    });
+
+    it('should include headers in items', async () => {
+      let receivedItems: TransformPayloadContext['items'] = [];
+
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+      });
+
+      const manager = new OutboundWebhookManager([
+        {
+          url: 'https://example.com/webhook',
+          transformPayload: ({ items }) => {
+            receivedItems = items;
+            return {};
+          },
+        },
+      ]);
+
+      const batch: WebhookBatch = {
+        webhooks: [
+          {
+            pluginName: 'test',
+            rawBody: Buffer.from('{}'),
+            body: { data: 'test' },
+            headers: {
+              'x-signature': 'abc123',
+              'content-type': 'application/json',
+            },
+            timestamp: 1234567890,
+          },
+        ],
+        startedAt: Date.now() - 100,
+        completedAt: Date.now(),
+      };
+
+      await manager.triggerAll(batch);
+
+      expect(receivedItems[0]!.headers['x-signature']).toBe('abc123');
+      expect(receivedItems[0]!.headers['content-type']).toBe(
+        'application/json'
+      );
+    });
+  });
+
+  describe('method option', () => {
+    it('should use POST by default', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+      });
+
+      const manager = new OutboundWebhookManager([
+        { url: 'https://example.com/webhook' },
+      ]);
+      const batch = createMockBatch(1);
+
+      await manager.triggerAll(batch);
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://example.com/webhook',
+        expect.objectContaining({
+          method: 'POST',
+        })
+      );
+    });
+
+    it('should use GET when specified', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+      });
+
+      const manager = new OutboundWebhookManager([
+        { url: 'https://example.com/ping', method: 'GET' },
+      ]);
+      const batch = createMockBatch(1);
+
+      await manager.triggerAll(batch);
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://example.com/ping',
+        expect.objectContaining({
+          method: 'GET',
+        })
+      );
+    });
+
+    it('should send body with GET request', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+      });
+
+      const manager = new OutboundWebhookManager([
+        { url: 'https://example.com/ping', method: 'GET' },
+      ]);
+      const batch = createMockBatch(1);
+
+      await manager.triggerAll(batch);
+
+      const callArgs = fetchMock.mock.calls[0]!;
+      const options = callArgs[1] as { method: string; body: string };
+
+      expect(options.method).toBe('GET');
+      expect(options.body).toBeDefined();
+      const body = JSON.parse(options.body);
+      expect(body.event).toBe('batch-complete');
+    });
+
+    it('should allow GET with transformPayload', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+      });
+
+      const manager = new OutboundWebhookManager([
+        {
+          url: 'https://example.com/ping',
+          method: 'GET',
+          transformPayload: () => ({ ping: true }),
+        },
+      ]);
+      const batch = createMockBatch(1);
+
+      await manager.triggerAll(batch);
+
+      const callArgs = fetchMock.mock.calls[0]!;
+      const options = callArgs[1] as { method: string; body: string };
+
+      expect(options.method).toBe('GET');
+      const body = JSON.parse(options.body);
+      expect(body).toEqual({ ping: true });
     });
   });
 
@@ -418,7 +754,7 @@ describe('OutboundWebhookManager', () => {
       }
     });
 
-    it('should use "default" if UDL_INSTANCE_ID is not set', async () => {
+    it('should use "UDL" if UDL_INSTANCE_ID is not set', async () => {
       const originalEnv = process.env['UDL_INSTANCE_ID'];
       delete process.env['UDL_INSTANCE_ID'];
 
@@ -438,7 +774,7 @@ describe('OutboundWebhookManager', () => {
       const callArgs = fetchMock.mock.calls[0]!;
       const body = JSON.parse((callArgs[1] as { body: string }).body);
 
-      expect(body.source).toBe('default');
+      expect(body.source).toBe('UDL');
 
       // Restore
       if (originalEnv !== undefined) {
