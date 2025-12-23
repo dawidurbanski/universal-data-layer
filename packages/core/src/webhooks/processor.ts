@@ -17,6 +17,7 @@ import { getWebhookHooks } from './hooks.js';
 import { defaultStore } from '@/nodes/defaultStore.js';
 import { createNodeActions } from '@/nodes/actions/index.js';
 import type { WebhookHandlerContext } from './types.js';
+import { DEFAULT_WEBHOOK_PATH } from './default-handler.js';
 
 /**
  * Create a minimal mock IncomingMessage for queued webhook processing.
@@ -27,7 +28,7 @@ function createMockRequest(webhook: QueuedWebhook): IncomingMessage {
   const emitter = new EventEmitter();
   return Object.assign(emitter, {
     method: 'POST',
-    url: `/_webhooks/${webhook.pluginName}/${webhook.path}`,
+    url: `/_webhooks/${webhook.pluginName}/${DEFAULT_WEBHOOK_PATH}`,
     headers: webhook.headers,
     httpVersion: '1.1',
     httpVersionMajor: 1,
@@ -92,14 +93,11 @@ function createMockResponse(): ServerResponse {
  * @param webhook - The queued webhook to process
  */
 async function processWebhook(webhook: QueuedWebhook): Promise<void> {
-  const handler = defaultWebhookRegistry.getHandler(
-    webhook.pluginName,
-    webhook.path
-  );
+  const handler = defaultWebhookRegistry.getHandler(webhook.pluginName);
 
   if (!handler) {
     console.warn(
-      `⚠️ Handler not found for queued webhook: ${webhook.pluginName}/${webhook.path}`
+      `⚠️ Handler not found for queued webhook: ${webhook.pluginName}`
     );
     return;
   }
@@ -123,10 +121,7 @@ async function processWebhook(webhook: QueuedWebhook): Promise<void> {
   try {
     await handler.handler(mockReq, mockRes, context);
   } catch (error) {
-    console.error(
-      `❌ Error processing webhook ${webhook.pluginName}/${webhook.path}:`,
-      error
-    );
+    console.error(`❌ Error processing webhook ${webhook.pluginName}:`, error);
     // Don't rethrow - continue processing other webhooks in the batch
   }
 }

@@ -1,86 +1,54 @@
 /**
  * Default Webhook Registration Utility
  *
- * Provides functions to automatically register default webhook handlers
- * for plugins based on configuration.
+ * Automatically registers default webhook handlers for plugins.
+ * Convention-based: every plugin gets /_webhooks/{plugin-name}/sync
  */
 
 import type { WebhookRegistry } from './registry.js';
-import type { DefaultWebhookHandlerConfig } from './types.js';
+import type { PluginWebhookHandler, WebhookHandlerFn } from './types.js';
 import {
   createDefaultWebhookHandler,
   DEFAULT_WEBHOOK_PATH,
 } from './default-handler.js';
 
 /**
- * Register a default webhook handler for a plugin if enabled in configuration.
+ * Register a default webhook handler for a plugin.
  *
- * This function checks the `defaultWebhook` configuration and registers
- * a standardized webhook handler for the specified plugin. It respects:
- * - Global enable/disable setting
- * - Per-plugin enable/disable setting
- * - Custom paths (global and per-plugin)
- * - Existing custom handlers (won't overwrite)
- * - Plugin's idField for node lookups
+ * This function registers a standardized webhook handler at the
+ * convention-based path: /_webhooks/{plugin-name}/sync
+ *
+ * Features:
+ * - Zero configuration required
+ * - Won't overwrite existing custom handlers
+ * - Uses plugin's idField for node lookups if provided
  *
  * @param registry - The webhook registry to register with
  * @param pluginName - The plugin name to register for
- * @param config - The default webhook configuration
  * @param pluginIdField - The plugin's configured idField (from plugin's udl.config)
- * @returns The path that was registered, or null if not registered
+ * @returns true if registered, false if skipped (handler already exists)
  *
  * @example
  * ```typescript
- * const path = registerDefaultWebhook(registry, 'contentful', {
- *   enabled: true,
- *   path: 'sync',
- * }, 'contentfulId');
- * // path = 'sync' if registered, null if skipped
+ * registerDefaultWebhook(registry, 'contentful', 'contentfulId');
+ * // Registers: /_webhooks/contentful/sync
  * ```
  */
 export function registerDefaultWebhook(
   registry: WebhookRegistry,
   pluginName: string,
-  config: DefaultWebhookHandlerConfig | undefined,
   pluginIdField?: string
-): string | null {
-  // If config is not present, default handlers are disabled
-  if (!config) {
-    return null;
-  }
-
-  // Check if explicitly disabled globally
-  if (config.enabled === false) {
-    return null;
-  }
-
-  // Check per-plugin configuration
-  const pluginConfig = config.plugins?.[pluginName];
-
-  // If plugin is explicitly disabled
-  if (pluginConfig === false) {
-    console.log(`📭 Default webhook disabled for plugin: ${pluginName}`);
-    return null;
-  }
-
-  // Determine the path to use
-  const globalPath = config.path ?? DEFAULT_WEBHOOK_PATH;
-  const path =
-    typeof pluginConfig === 'object' && pluginConfig.path
-      ? pluginConfig.path
-      : globalPath;
-
-  // Check if handler already exists for this path (don't overwrite custom handlers)
-  if (registry.has(pluginName, path)) {
+): boolean {
+  // Check if handler already exists (don't overwrite custom handlers)
+  if (registry.has(pluginName)) {
     console.log(
-      `📌 Plugin ${pluginName} already has handler for '${path}', skipping default registration`
+      `📌 Plugin ${pluginName} already has handler, skipping default registration`
     );
-    return null;
+    return false;
   }
 
   // Register the default handler using the plugin's idField
   registry.register(pluginName, {
-    path,
     handler: createDefaultWebhookHandler(
       pluginName,
       pluginIdField ? { idField: pluginIdField } : {}
@@ -90,43 +58,53 @@ export function registerDefaultWebhook(
 
   const lookupInfo = pluginIdField ? ` (idField: ${pluginIdField})` : '';
   console.log(
-    `📬 Default webhook registered: /_webhooks/${pluginName}/${path}${lookupInfo}`
+    `📬 Default webhook registered: /_webhooks/${pluginName}/${DEFAULT_WEBHOOK_PATH}${lookupInfo}`
   );
-  return path;
+  return true;
 }
 
 /**
- * Register default webhooks for multiple plugins.
+ * Register a custom plugin webhook handler.
  *
- * Convenience function to register default handlers for all plugins
- * in a single call.
+ * Wraps the plugin's `registerWebhookHandler` export and registers it
+ * at the convention-based path: /_webhooks/{plugin-name}/sync
  *
  * @param registry - The webhook registry to register with
- * @param pluginNames - Array of plugin names to register
- * @param config - The default webhook configuration
- * @returns Map of plugin name to registered path (or null if not registered)
+ * @param pluginName - The plugin name to register for
+ * @param customHandler - The plugin's registerWebhookHandler export
+ * @returns true (always registers, replaces default)
  *
  * @example
  * ```typescript
- * const results = registerDefaultWebhooks(
- *   registry,
- *   ['contentful', 'shopify', 'custom-plugin'],
- *   { enabled: true }
- * );
- * // results: Map { 'contentful' => 'sync', 'shopify' => 'sync', ... }
+ * registerPluginWebhookHandler(registry, 'contentful', module.registerWebhookHandler);
+ * // Registers: /_webhooks/contentful/sync with custom handler
  * ```
  */
-export function registerDefaultWebhooks(
+export function registerPluginWebhookHandler(
   registry: WebhookRegistry,
-  pluginNames: string[],
-  config: DefaultWebhookHandlerConfig | undefined
-): Map<string, string | null> {
-  const results = new Map<string, string | null>();
+  pluginName: string,
+  customHandler: PluginWebhookHandler
+): boolean {
+  // Wrap the plugin's handler to match WebhookHandlerFn signature
+  const wrappedHandler: WebhookHandlerFn = async (req, res, context) => {
+    await customHandler({
+      req,
+      res,
+      actions: context.actions,
+      store: context.store,
+      body: context.body,
+      rawBody: context.rawBody,
+    });
+  };
 
-  for (const pluginName of pluginNames) {
-    const path = registerDefaultWebhook(registry, pluginName, config);
-    results.set(pluginName, path);
-  }
+  // Register the custom handler
+  registry.register(pluginName, {
+    handler: wrappedHandler,
+    description: `Custom webhook handler for ${pluginName}`,
+  });
 
-  return results;
+  console.log(
+    `📬 Custom webhook registered: /_webhooks/${pluginName}/${DEFAULT_WEBHOOK_PATH}`
+  );
+  return true;
 }
