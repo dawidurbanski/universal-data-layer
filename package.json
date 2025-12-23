@@ -14,7 +14,7 @@
     "lint": "turbo lint --filter='./packages/*' --ui=stream",
     "fix": "turbo fix --filter='./packages/*' && npm run fix --prefix tests/manual",
     "test": "turbo test --filter='./packages/*' --ui=stream",
-    "test:coverage": "turbo test:coverage --filter='./packages/*' --ui=stream && node scripts/generate-coverage-index.js && node scripts/inject-coverage-nav.js",
+    "test:coverage": "turbo test:coverage --filter='./packages/*' --ui=stream; exitcode=$?; node scripts/generate-coverage-index.js && node scripts/inject-coverage-nav.js; exit $exitcode",
     "test:coverage:file": "npm run test:coverage:file --workspace=universal-data-layer --",
     "codegen": "turbo codegen --filter='./packages/*' --ui=stream",
     "typecheck": "turbo typecheck --filter='./packages/*' --ui=stream && npm run typecheck --prefix tests/manual",
