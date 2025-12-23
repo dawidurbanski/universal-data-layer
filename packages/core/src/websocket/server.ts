@@ -146,13 +146,15 @@ export class UDLWebSocketServer {
       });
     }, heartbeatIntervalMs);
 
-    // Clean up heartbeat on server close
+    // Clean up heartbeat on server close (backup cleanup - normally cleared in close())
+    /* v8 ignore start */
     this.wss.on('close', () => {
       if (this.heartbeatInterval) {
         clearInterval(this.heartbeatInterval);
         this.heartbeatInterval = null;
       }
     });
+    /* v8 ignore stop */
 
     // Subscribe to node events
     this.nodeEventHandler = (event: NodeChangeEvent) => {
@@ -239,6 +241,7 @@ export class UDLWebSocketServer {
 
     this.wss.clients.forEach((ws) => {
       const trackedWs = ws as TrackedWebSocket;
+      /* v8 ignore next 3 - ws library removes closed clients from Set */
       if (trackedWs.readyState !== WebSocket.OPEN) {
         return;
       }

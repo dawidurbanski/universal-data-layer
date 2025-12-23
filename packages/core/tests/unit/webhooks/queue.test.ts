@@ -405,5 +405,31 @@ describe('WebhookQueue', () => {
 
       expect(queue.processing()).toBe(false);
     });
+
+    it('should convert non-Error thrown values to Error', async () => {
+      let receivedError:
+        | { webhooks: QueuedWebhook[]; error: Error }
+        | undefined;
+
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      queue.setBatchProcessor(async () => {
+        throw 'string error message';
+      });
+
+      queue.on(
+        'webhook:batch-error',
+        (error: { webhooks: QueuedWebhook[]; error: Error }) => {
+          receivedError = error;
+        }
+      );
+
+      queue.enqueue(createMockWebhook('plugin', 'path-1'));
+      await queue.flush();
+
+      expect(receivedError).toBeDefined();
+      expect(receivedError?.error).toBeInstanceOf(Error);
+      expect(receivedError?.error.message).toBe('string error message');
+    });
   });
 });
