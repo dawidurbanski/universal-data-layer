@@ -702,6 +702,44 @@ describe('OutboundWebhookManager', () => {
       expect(fetchMock).toHaveBeenCalledTimes(3);
     });
 
+    it('should handle non-Error rejection values', async () => {
+      // Reject with a non-Error value (string)
+      fetchMock.mockRejectedValue('string rejection');
+
+      const manager = new OutboundWebhookManager([
+        { url: 'https://example.com/webhook', retries: 0 },
+      ]);
+      const batch = createMockBatch(1);
+
+      const results = await manager.triggerAll(batch);
+
+      expect(results[0]!.success).toBe(false);
+      expect(results[0]!.error).toBe('string rejection');
+      expect(results[0]!.attempts).toBe(1);
+    });
+
+    it('should fallback to Unknown error when error message is undefined', async () => {
+      // Create an error object with undefined message
+      const errorWithNoMessage = new Error();
+      // Force message to undefined (cast required as message is normally a string)
+      Object.defineProperty(errorWithNoMessage, 'message', {
+        value: undefined,
+      });
+
+      fetchMock.mockRejectedValue(errorWithNoMessage);
+
+      const manager = new OutboundWebhookManager([
+        { url: 'https://example.com/webhook', retries: 0 },
+      ]);
+      const batch = createMockBatch(1);
+
+      const results = await manager.triggerAll(batch);
+
+      expect(results[0]!.success).toBe(false);
+      expect(results[0]!.error).toBe('Unknown error');
+      expect(results[0]!.attempts).toBe(1);
+    });
+
     it('should use default retry settings', async () => {
       fetchMock.mockRejectedValue(new Error('Error'));
 
@@ -796,6 +834,50 @@ describe('OutboundWebhookManager', () => {
         { url: 'https://example.com/3' },
       ]);
       expect(manager.getConfigCount()).toBe(3);
+    });
+  });
+
+  describe('Promise.allSettled rejected handling', () => {
+    it('should handle rejected promise with Error object', async () => {
+      // Create a manager instance
+      const manager = new OutboundWebhookManager([
+        { url: 'https://example.com/webhook', retries: 0 },
+      ]);
+
+      // Access private trigger method and make it reject
+      const triggerError = new Error('Unexpected rejection');
+      vi.spyOn(
+        manager as unknown as { trigger: () => Promise<never> },
+        'trigger' as never
+      ).mockRejectedValueOnce(triggerError);
+
+      const batch = createMockBatch(1);
+      const results = await manager.triggerAll(batch);
+
+      expect(results.length).toBe(1);
+      expect(results[0]!.success).toBe(false);
+      expect(results[0]!.error).toBe('Unexpected rejection');
+      expect(results[0]!.attempts).toBe(0);
+    });
+
+    it('should handle rejected promise with non-Error value', async () => {
+      const manager = new OutboundWebhookManager([
+        { url: 'https://example.com/webhook', retries: 0 },
+      ]);
+
+      // Make trigger reject with a non-Error value (string)
+      vi.spyOn(
+        manager as unknown as { trigger: () => Promise<never> },
+        'trigger' as never
+      ).mockRejectedValueOnce('string error reason');
+
+      const batch = createMockBatch(1);
+      const results = await manager.triggerAll(batch);
+
+      expect(results.length).toBe(1);
+      expect(results[0]!.success).toBe(false);
+      expect(results[0]!.error).toBe('string error reason');
+      expect(results[0]!.attempts).toBe(0);
     });
   });
 });

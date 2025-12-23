@@ -1532,4 +1532,191 @@ describe('loader integration tests', () => {
       delete global.__childCacheDir;
     });
   });
+
+  describe('loadPlugins webhook and idField handling', () => {
+    it('should include idField in indexes when plugin config has idField defined', async () => {
+      const pluginDir = join(pluginsDir, 'idfield-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'idfield-plugin',
+          idField: 'externalId' // This idField should be auto-indexed
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('IdFieldNode', '1'),
+              type: 'IdFieldNode',
+            },
+            externalId: 'ext-123',
+            parent: undefined,
+            children: undefined,
+          });
+        }
+        `
+      );
+
+      const { NodeStore } = await import('@/nodes/index.js');
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      const store = new NodeStore();
+      await loadPlugins([pluginDir], {
+        appConfig: {},
+        store,
+        cache: false,
+      });
+
+      // Verify the node was created
+      expect(store.getAll()).toHaveLength(1);
+
+      // Verify the idField was auto-indexed
+      const registeredIndexes = store.getRegisteredIndexes('IdFieldNode');
+      expect(registeredIndexes).toContain('externalId');
+
+      // Verify we can look up by the idField
+      const byExternalId = store.getByField(
+        'IdFieldNode',
+        'externalId',
+        'ext-123'
+      );
+      expect(byExternalId).toBeDefined();
+      expect(
+        (byExternalId as unknown as Record<string, unknown>)?.['externalId']
+      ).toBe('ext-123');
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should use custom registerWebhookHandler when plugin exports it', async () => {
+      const { WebhookRegistry } = await import('@/webhooks/registry.js');
+
+      const pluginDir = join(pluginsDir, 'custom-webhook-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'custom-webhook-plugin'
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('WebhookNode', '1'),
+              type: 'WebhookNode',
+            },
+            parent: undefined,
+            children: undefined,
+          });
+        }
+
+        // Custom webhook handler - should be used instead of default
+        export async function registerWebhookHandler({ req, res, actions, body }) {
+          // Custom handling logic
+          res.writeHead(200);
+          res.end('Custom handler');
+        }
+        `
+      );
+
+      const { NodeStore } = await import('@/nodes/index.js');
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      const store = new NodeStore();
+      const webhookRegistry = new WebhookRegistry();
+
+      await loadPlugins([pluginDir], {
+        appConfig: {},
+        store,
+        cache: false,
+        webhookRegistry,
+      });
+
+      // Verify the custom handler was registered
+      expect(webhookRegistry.has('custom-webhook-plugin')).toBe(true);
+
+      const handler = webhookRegistry.getHandler('custom-webhook-plugin');
+      expect(handler).toBeDefined();
+      expect(handler?.description).toBe(
+        'Custom webhook handler for custom-webhook-plugin'
+      );
+
+      // Verify console log was called for custom handler registration
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Custom webhook registered')
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should use default webhook handler when plugin does not export registerWebhookHandler', async () => {
+      const { WebhookRegistry } = await import('@/webhooks/registry.js');
+
+      const pluginDir = join(pluginsDir, 'default-webhook-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+
+      writeFileSync(
+        join(pluginDir, 'udl.config.js'),
+        `
+        export const config = {
+          name: 'default-webhook-plugin',
+          idField: 'myId'
+        };
+
+        export async function sourceNodes({ actions, createNodeId }) {
+          await actions.createNode({
+            internal: {
+              id: createNodeId('DefaultWebhookNode', '1'),
+              type: 'DefaultWebhookNode',
+            },
+            myId: 'my-123',
+            parent: undefined,
+            children: undefined,
+          });
+        }
+        // No registerWebhookHandler export - should use default
+        `
+      );
+
+      const { NodeStore } = await import('@/nodes/index.js');
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      const store = new NodeStore();
+      const webhookRegistry = new WebhookRegistry();
+
+      await loadPlugins([pluginDir], {
+        appConfig: {},
+        store,
+        cache: false,
+        webhookRegistry,
+      });
+
+      // Verify the default handler was registered
+      expect(webhookRegistry.has('default-webhook-plugin')).toBe(true);
+
+      const handler = webhookRegistry.getHandler('default-webhook-plugin');
+      expect(handler).toBeDefined();
+      expect(handler?.description).toBe(
+        'Default UDL sync handler for default-webhook-plugin (idField: myId)'
+      );
+
+      // Verify console log was called for default handler registration
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Default webhook registered')
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+  });
 });
