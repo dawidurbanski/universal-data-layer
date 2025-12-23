@@ -1,6 +1,6 @@
 {
   "name": "@universal-data-layer/adapter-nextjs",
-  "version": "1.0.6",
+  "version": "2.0.0",
   "description": "Next.js adapter for Universal Data Layer - unified CLI for running UDL and Next.js together",
   "type": "module",
   "main": "dist/src/index.js",
@@ -44,6 +44,6 @@
   ],
   "peerDependencies": {
     "next": ">=13.0.0",
-    "universal-data-layer": "^1.0.6"
+    "universal-data-layer": "^2.0.0"
   }
 }
