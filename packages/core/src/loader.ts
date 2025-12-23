@@ -16,10 +16,10 @@ import type {
 import {
   defaultWebhookRegistry,
   registerDefaultWebhook,
+  registerPluginWebhookHandler,
   type WebhookRegistry,
-  type WebhookRegistration,
   type WebhookHooksConfig,
-  type DefaultWebhookHandlerConfig,
+  type PluginWebhookHandler,
 } from '@/webhooks/index.js';
 import type { ServerOptions as WebSocketServerOptions } from 'ws';
 
@@ -88,12 +88,17 @@ export interface CodegenConfig {
 }
 
 /**
- * Configuration for an outbound webhook trigger.
+ * Configuration for an outbound webhook.
  * Outbound webhooks are sent after batch processing to notify external systems.
  */
 export interface OutboundWebhookTriggerConfig {
-  /** URL to POST to */
+  /** URL to send the webhook to */
   url: string;
+  /**
+   * HTTP method to use.
+   * @default 'POST'
+   */
+  method?: 'POST' | 'GET';
   /**
    * Events to trigger on. '*' = all events.
    * @default ['*']
@@ -138,22 +143,23 @@ export interface RemoteWebhooksConfig {
   hooks?: WebhookHooksConfig;
 
   /**
-   * Outbound webhook triggers to notify after batch processing.
+   * Outbound webhooks to notify after batch processing.
    * These webhooks are sent after a batch of incoming webhooks has been processed,
    * enabling the "30 webhooks → 1 build" optimization.
    *
    * @example
    * ```typescript
-   * trigger: [
+   * outbound: [
    *   {
    *     url: 'https://api.vercel.com/v1/integrations/deploy/...',
+   *     method: 'POST', // or 'GET' for simple ping
    *     headers: { 'Authorization': 'Bearer token' },
    *     retries: 3,
    *   }
    * ]
    * ```
    */
-  trigger?: OutboundWebhookTriggerConfig[];
+  outbound?: OutboundWebhookTriggerConfig[];
 }
 
 /**
@@ -287,28 +293,6 @@ export interface UDLConfig {
    * Configuration for remote data synchronization (webhooks, etc.).
    */
   remote?: RemoteConfig;
-  /**
-   * Configuration for automatic default webhook handlers.
-   * When enabled, registers a default 'sync' webhook endpoint for each loaded plugin
-   * that accepts standardized create/update/delete/upsert payloads.
-   *
-   * @example
-   * ```typescript
-   * defineConfig({
-   *   defaultWebhook: {
-   *     enabled: true,
-   *     path: 'sync', // Default endpoint path for all plugins
-   *     plugins: {
-   *       // Customize path for specific plugin
-   *       'contentful': { path: 'content-sync' },
-   *       // Disable for a specific plugin
-   *       'legacy-plugin': false,
-   *     },
-   *   },
-   * });
-   * ```
-   */
-  defaultWebhook?: DefaultWebhookHandlerConfig;
 }
 
 /**
@@ -357,6 +341,33 @@ export interface UDLConfigFile {
   registerTypes?: <T = Record<string, unknown>>(
     context?: RegisterTypesContext<T>
   ) => void | Promise<void>;
+  /**
+   * Optional webhook handler export.
+   * When provided, replaces the default CRUD handler for this plugin's webhook endpoint.
+   * The handler receives all incoming webhooks at /_webhooks/{plugin-name}/sync.
+   *
+   * @example
+   * ```typescript
+   * export async function registerWebhookHandler({ req, res, actions, body }) {
+   *   // Verify signature
+   *   if (!verifySignature(req, body)) {
+   *     res.writeHead(401);
+   *     res.end('Invalid signature');
+   *     return;
+   *   }
+   *
+   *   // Handle the webhook
+   *   const eventType = req.headers['x-webhook-type'];
+   *   if (eventType === 'entry.publish') {
+   *     await actions.createNode(transformEntry(body), { ... });
+   *   }
+   *
+   *   res.writeHead(200);
+   *   res.end();
+   * }
+   * ```
+   */
+  registerWebhookHandler?: PluginWebhookHandler;
   /**
    * Optional reference resolver configuration.
    * Defines how references from this plugin are identified and resolved.
@@ -439,19 +450,11 @@ export async function loadConfigFile(
         store: options.store,
         owner: options.pluginName,
       });
-      const webhookRegistry = options.webhookRegistry ?? defaultWebhookRegistry;
-
-      // Create a bound registerWebhook function for this plugin
-      const registerWebhook = (webhook: WebhookRegistration): void => {
-        webhookRegistry.register(options.pluginName!, webhook);
-      };
-
       await module.sourceNodes({
         actions,
         createNodeId,
         createContentDigest,
         options: options.context?.options,
-        registerWebhook,
       });
     }
 
@@ -825,28 +828,28 @@ export async function loadPlugins(
             owner: actualPluginName,
           });
 
-          // Create a bound registerWebhook function for this plugin
-          const registerWebhook = (webhook: WebhookRegistration): void => {
-            webhookRegistry.register(actualPluginName, webhook);
-          };
-
           await module.sourceNodes({
             actions,
             createNodeId,
             createContentDigest,
             options: context?.options,
             cacheDir: cacheLocation,
-            registerWebhook,
           });
 
           registerPluginIndexes(nodeStore, actualPluginName, allIndexes);
 
-          // Register default webhook handler if enabled in config
-          if (appConfig?.defaultWebhook) {
+          // Register webhook handler for the plugin
+          // If plugin exports registerWebhookHandler, use it instead of default
+          if (module.registerWebhookHandler) {
+            registerPluginWebhookHandler(
+              webhookRegistry,
+              actualPluginName,
+              module.registerWebhookHandler
+            );
+          } else {
             registerDefaultWebhook(
               webhookRegistry,
               actualPluginName,
-              appConfig.defaultWebhook,
               pluginIdField
             );
           }

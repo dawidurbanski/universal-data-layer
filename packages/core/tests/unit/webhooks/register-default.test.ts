@@ -1,10 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { WebhookRegistry } from '@/webhooks/registry.js';
 import {
   registerDefaultWebhook,
-  registerDefaultWebhooks,
+  registerPluginWebhookHandler,
 } from '@/webhooks/register-default.js';
-import type { DefaultWebhookHandlerConfig } from '@/webhooks/types.js';
+import { DEFAULT_WEBHOOK_PATH } from '@/webhooks/default-handler.js';
+import type {
+  PluginWebhookHandler,
+  PluginWebhookHandlerContext,
+  WebhookHandlerContext,
+} from '@/webhooks/types.js';
+import type { NodeStore } from '@/nodes/store.js';
+import type { NodeActions } from '@/nodes/actions/index.js';
 
 describe('registerDefaultWebhook', () => {
   let registry: WebhookRegistry;
@@ -15,198 +23,158 @@ describe('registerDefaultWebhook', () => {
     consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
-  it('should not register if config is undefined', () => {
-    const result = registerDefaultWebhook(registry, 'test-plugin', undefined);
+  it('should register with default path "sync"', () => {
+    const result = registerDefaultWebhook(registry, 'test-plugin');
 
-    expect(result).toBeNull();
-    expect(registry.size()).toBe(0);
-  });
-
-  it('should not register if enabled is false', () => {
-    const config: DefaultWebhookHandlerConfig = { enabled: false };
-    const result = registerDefaultWebhook(registry, 'test-plugin', config);
-
-    expect(result).toBeNull();
-    expect(registry.size()).toBe(0);
-  });
-
-  it('should register with default path "sync" when enabled', () => {
-    const config: DefaultWebhookHandlerConfig = { enabled: true };
-    const result = registerDefaultWebhook(registry, 'test-plugin', config);
-
-    expect(result).toBe('sync');
-    expect(registry.has('test-plugin', 'sync')).toBe(true);
+    expect(result).toBe(true);
+    expect(registry.has('test-plugin')).toBe(true);
     expect(consoleSpy).toHaveBeenCalledWith(
-      '📬 Default webhook registered: /_webhooks/test-plugin/sync'
-    );
-  });
-
-  it('should register when config is empty object (enabled by default)', () => {
-    const config: DefaultWebhookHandlerConfig = {};
-    const result = registerDefaultWebhook(registry, 'test-plugin', config);
-
-    expect(result).toBe('sync');
-    expect(registry.has('test-plugin', 'sync')).toBe(true);
-  });
-
-  it('should use custom global path', () => {
-    const config: DefaultWebhookHandlerConfig = {
-      enabled: true,
-      path: 'custom-sync',
-    };
-    const result = registerDefaultWebhook(registry, 'test-plugin', config);
-
-    expect(result).toBe('custom-sync');
-    expect(registry.has('test-plugin', 'custom-sync')).toBe(true);
-  });
-
-  it('should use per-plugin path override', () => {
-    const config: DefaultWebhookHandlerConfig = {
-      enabled: true,
-      path: 'global-sync',
-      plugins: {
-        'test-plugin': { path: 'plugin-specific' },
-      },
-    };
-    const result = registerDefaultWebhook(registry, 'test-plugin', config);
-
-    expect(result).toBe('plugin-specific');
-    expect(registry.has('test-plugin', 'plugin-specific')).toBe(true);
-    expect(registry.has('test-plugin', 'global-sync')).toBe(false);
-  });
-
-  it('should use global path for plugins without override', () => {
-    const config: DefaultWebhookHandlerConfig = {
-      enabled: true,
-      path: 'global-sync',
-      plugins: {
-        'other-plugin': { path: 'other-path' },
-      },
-    };
-    const result = registerDefaultWebhook(registry, 'test-plugin', config);
-
-    expect(result).toBe('global-sync');
-    expect(registry.has('test-plugin', 'global-sync')).toBe(true);
-  });
-
-  it('should not register if plugin is explicitly disabled', () => {
-    const config: DefaultWebhookHandlerConfig = {
-      enabled: true,
-      plugins: {
-        'disabled-plugin': false,
-      },
-    };
-    const result = registerDefaultWebhook(registry, 'disabled-plugin', config);
-
-    expect(result).toBeNull();
-    expect(registry.size()).toBe(0);
-    expect(consoleSpy).toHaveBeenCalledWith(
-      '📭 Default webhook disabled for plugin: disabled-plugin'
+      `📬 Default webhook registered: /_webhooks/test-plugin/${DEFAULT_WEBHOOK_PATH}`
     );
   });
 
   it('should not overwrite existing handler', () => {
     // Register a custom handler first
     registry.register('test-plugin', {
-      path: 'sync',
       handler: async () => {},
       description: 'Custom handler',
     });
 
-    const config: DefaultWebhookHandlerConfig = { enabled: true };
-    const result = registerDefaultWebhook(registry, 'test-plugin', config);
+    const result = registerDefaultWebhook(registry, 'test-plugin');
 
-    expect(result).toBeNull();
+    expect(result).toBe(false);
     // Verify original handler is preserved
-    const handler = registry.getHandler('test-plugin', 'sync');
+    const handler = registry.getHandler('test-plugin');
     expect(handler?.description).toBe('Custom handler');
     expect(consoleSpy).toHaveBeenCalledWith(
-      "📌 Plugin test-plugin already has handler for 'sync', skipping default registration"
+      `📌 Plugin test-plugin already has handler, skipping default registration`
     );
   });
 
   it('should register handler with correct description', () => {
-    const config: DefaultWebhookHandlerConfig = { enabled: true };
-    registerDefaultWebhook(registry, 'my-plugin', config);
+    registerDefaultWebhook(registry, 'my-plugin');
 
-    const handler = registry.getHandler('my-plugin', 'sync');
+    const handler = registry.getHandler('my-plugin');
     expect(handler?.description).toBe('Default UDL sync handler for my-plugin');
+  });
+
+  it('should include idField in description when provided', () => {
+    registerDefaultWebhook(registry, 'my-plugin', 'externalId');
+
+    const handler = registry.getHandler('my-plugin');
+    expect(handler?.description).toBe(
+      'Default UDL sync handler for my-plugin (idField: externalId)'
+    );
+    expect(consoleSpy).toHaveBeenCalledWith(
+      `📬 Default webhook registered: /_webhooks/my-plugin/${DEFAULT_WEBHOOK_PATH} (idField: externalId)`
+    );
+  });
+
+  it('should register for multiple plugins independently', () => {
+    registerDefaultWebhook(registry, 'plugin-a');
+    registerDefaultWebhook(registry, 'plugin-b');
+    registerDefaultWebhook(registry, 'plugin-c');
+
+    expect(registry.has('plugin-a')).toBe(true);
+    expect(registry.has('plugin-b')).toBe(true);
+    expect(registry.has('plugin-c')).toBe(true);
+    expect(registry.size()).toBe(3);
   });
 });
 
-describe('registerDefaultWebhooks', () => {
+describe('registerPluginWebhookHandler', () => {
   let registry: WebhookRegistry;
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     registry = new WebhookRegistry();
-    vi.spyOn(console, 'log').mockImplementation(() => {});
+    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
-  it('should register for multiple plugins', () => {
-    const config: DefaultWebhookHandlerConfig = { enabled: true };
-    const plugins = ['plugin-a', 'plugin-b', 'plugin-c'];
+  it('should register a custom plugin handler', () => {
+    const customHandler: PluginWebhookHandler = async () => {};
 
-    const results = registerDefaultWebhooks(registry, plugins, config);
+    const result = registerPluginWebhookHandler(
+      registry,
+      'my-plugin',
+      customHandler
+    );
 
-    expect(results.size).toBe(3);
-    expect(results.get('plugin-a')).toBe('sync');
-    expect(results.get('plugin-b')).toBe('sync');
-    expect(results.get('plugin-c')).toBe('sync');
-    expect(registry.size()).toBe(3);
+    expect(result).toBe(true);
+    expect(registry.has('my-plugin')).toBe(true);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      `📬 Custom webhook registered: /_webhooks/my-plugin/${DEFAULT_WEBHOOK_PATH}`
+    );
   });
 
-  it('should handle mixed enable/disable per plugin', () => {
-    const config: DefaultWebhookHandlerConfig = {
-      enabled: true,
-      plugins: {
-        'plugin-b': false,
-      },
+  it('should register handler with correct description', () => {
+    const customHandler: PluginWebhookHandler = async () => {};
+
+    registerPluginWebhookHandler(registry, 'my-plugin', customHandler);
+
+    const handler = registry.getHandler('my-plugin');
+    expect(handler?.description).toBe('Custom webhook handler for my-plugin');
+  });
+
+  it('should wrap the plugin handler to match WebhookHandlerFn signature', async () => {
+    const mockReq = {} as IncomingMessage;
+    const mockRes = {} as ServerResponse;
+    const mockContext: WebhookHandlerContext = {
+      store: {} as NodeStore,
+      actions: { createNode: vi.fn() } as unknown as NodeActions,
+      body: { test: true },
+      rawBody: Buffer.from('test'),
     };
-    const plugins = ['plugin-a', 'plugin-b', 'plugin-c'];
 
-    const results = registerDefaultWebhooks(registry, plugins, config);
-
-    expect(results.get('plugin-a')).toBe('sync');
-    expect(results.get('plugin-b')).toBeNull();
-    expect(results.get('plugin-c')).toBe('sync');
-    expect(registry.size()).toBe(2);
-  });
-
-  it('should handle custom paths per plugin', () => {
-    const config: DefaultWebhookHandlerConfig = {
-      enabled: true,
-      path: 'default-path',
-      plugins: {
-        'plugin-a': { path: 'path-a' },
-        'plugin-c': { path: 'path-c' },
-      },
+    let receivedContext: PluginWebhookHandlerContext | null = null;
+    const customHandler: PluginWebhookHandler = async (ctx) => {
+      receivedContext = ctx;
     };
-    const plugins = ['plugin-a', 'plugin-b', 'plugin-c'];
 
-    const results = registerDefaultWebhooks(registry, plugins, config);
+    registerPluginWebhookHandler(registry, 'my-plugin', customHandler);
 
-    expect(results.get('plugin-a')).toBe('path-a');
-    expect(results.get('plugin-b')).toBe('default-path');
-    expect(results.get('plugin-c')).toBe('path-c');
+    const handler = registry.getHandler('my-plugin');
+    await handler!.handler(mockReq, mockRes, mockContext);
+
+    expect(receivedContext).toEqual({
+      req: mockReq,
+      res: mockRes,
+      actions: mockContext.actions,
+      store: mockContext.store,
+      body: mockContext.body,
+      rawBody: mockContext.rawBody,
+    });
   });
 
-  it('should return empty results when config is undefined', () => {
-    const plugins = ['plugin-a', 'plugin-b'];
+  it('should allow plugin handler to access node actions', async () => {
+    const mockReq = {} as IncomingMessage;
+    const mockRes = {
+      writeHead: vi.fn(),
+      end: vi.fn(),
+    } as unknown as ServerResponse;
+    const createNodeFn = vi.fn();
+    const mockContext: WebhookHandlerContext = {
+      store: {} as NodeStore,
+      actions: { createNode: createNodeFn } as unknown as NodeActions,
+      body: { nodeType: 'Test', data: { name: 'test' } },
+      rawBody: Buffer.from('test'),
+    };
 
-    const results = registerDefaultWebhooks(registry, plugins, undefined);
+    const customHandler: PluginWebhookHandler = async ({ actions }) => {
+      await actions.createNode({
+        internal: { id: '1', type: 'Test', owner: 'my-plugin' },
+        name: 'test',
+      });
+    };
 
-    expect(results.size).toBe(2);
-    expect(results.get('plugin-a')).toBeNull();
-    expect(results.get('plugin-b')).toBeNull();
-    expect(registry.size()).toBe(0);
-  });
+    registerPluginWebhookHandler(registry, 'my-plugin', customHandler);
 
-  it('should handle empty plugin list', () => {
-    const config: DefaultWebhookHandlerConfig = { enabled: true };
+    const handler = registry.getHandler('my-plugin');
+    await handler!.handler(mockReq, mockRes, mockContext);
 
-    const results = registerDefaultWebhooks(registry, [], config);
-
-    expect(results.size).toBe(0);
-    expect(registry.size()).toBe(0);
+    expect(createNodeFn).toHaveBeenCalledWith({
+      internal: { id: '1', type: 'Test', owner: 'my-plugin' },
+      name: 'test',
+    });
   });
 });

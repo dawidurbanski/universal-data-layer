@@ -4,30 +4,22 @@
 
 Add default webhook handler for standardized CRUD operations
 
-This release introduces a default webhook handler that provides a standardized way to create, update, and delete nodes via webhooks. This eliminates the need for plugins to implement their own webhook handlers for basic CRUD operations.
+This release introduces a default webhook handler that provides a standardized way to create, update, and delete nodes via webhooks. Every loaded plugin automatically gets a webhook endpoint registered with zero configuration required.
 
 **Features:**
 
-- Automatic registration of `/sync` webhook endpoint for each loaded plugin
+- Automatic registration of `/_webhooks/{plugin-name}/sync` endpoint for every plugin
 - Standardized payload format for `create`, `update`, `delete`, and `upsert` operations
 - Support for custom `idField` to look up nodes by external identifiers
-- Configurable per-plugin path overrides or disabling
-- Integration with plugin loading for automatic setup
+- Won't overwrite custom handlers if plugin registers its own
 
-**Configuration:**
+**Zero Configuration:**
 
 ```typescript
+// No config needed - default webhooks just work
+// Every plugin gets: /_webhooks/{plugin-name}/sync
 export const { config } = defineConfig({
-  defaultWebhook: {
-    enabled: true,
-    path: 'sync', // Default endpoint path
-    plugins: {
-      // Customize path for specific plugin
-      contentful: { path: 'content-sync' },
-      // Disable for a specific plugin
-      'legacy-plugin': false,
-    },
-  },
+  plugins: ['@universal-data-layer/plugin-source-contentful'],
 });
 ```
 
@@ -65,7 +57,7 @@ curl -X POST http://localhost:4000/_webhooks/my-plugin/sync \
 
 **idField support:**
 
-When a plugin specifies an `idField` in its config, the default webhook handler can look up existing nodes by that field:
+When a plugin specifies an `idField` in its config, the default webhook handler looks up existing nodes by that field:
 
 ```typescript
 // Plugin config

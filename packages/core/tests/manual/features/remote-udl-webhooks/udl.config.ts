@@ -17,10 +17,6 @@ export const config = defineConfig({
       options: {},
     },
   ],
-  // Enable default webhook handler for all plugins
-  // This allows the MSW handlers to send webhooks to update UDL nodes
-  defaultWebhook: {
-    enabled: true,
-    path: 'sync', // Endpoint: /_webhooks/remote-todo-source/sync
-  },
+  // Default webhook handler is now automatically registered for all plugins
+  // Endpoint: /_webhooks/remote-todo-source/sync
 });
