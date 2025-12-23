@@ -94,7 +94,7 @@ describe('runStart', () => {
     vi.restoreAllMocks();
   });
 
-  it('should spawn UDL with default port', async () => {
+  it('should spawn UDL without explicit port (uses UDL default)', async () => {
     const startPromise = runStart({}, [], {
       exit: mockExit,
       signal: abortController.signal,
@@ -104,9 +104,10 @@ describe('runStart', () => {
     signalHandlers.get('SIGINT')?.();
     await startPromise;
 
+    // When no port is specified, UDL uses its own default (from config or 4000)
     expect(mockSpawnWithPrefix).toHaveBeenCalledWith(
       'npx',
-      ['universal-data-layer', '--port', '4000'],
+      ['universal-data-layer'],
       expect.stringContaining('[udl]')
     );
   });
