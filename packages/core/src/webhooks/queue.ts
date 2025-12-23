@@ -73,6 +73,8 @@ export interface WebhookQueueConfig {
  * Events emitted by the WebhookQueue.
  */
 export interface WebhookQueueEvents {
+  /** Emitted immediately when a webhook is queued (before debounce) */
+  'webhook:queued': (webhook: QueuedWebhook) => void;
   /** Emitted for each webhook when batch processing occurs */
   'webhook:process': (webhook: QueuedWebhook) => void;
   /** Emitted after a batch of webhooks has been processed successfully */
@@ -141,6 +143,9 @@ export class WebhookQueue extends EventEmitter {
     console.log(
       `📥 Webhook queued: ${webhook.pluginName} (${this.queue.length} in queue)`
     );
+
+    // Emit immediately for instant relay to WebSocket subscribers
+    this.emit('webhook:queued', webhook);
 
     // Check if we've hit max queue size
     if (this.queue.length >= this.maxQueueSize) {
