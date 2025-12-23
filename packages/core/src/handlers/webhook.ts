@@ -20,8 +20,8 @@ import { defaultStore } from '@/nodes/defaultStore.js';
 /** URL path prefix for webhook endpoints */
 export const WEBHOOK_PATH_PREFIX = '/_webhooks/';
 
-/** Pattern for webhook URLs: /_webhooks/{plugin-name}/sync */
-const WEBHOOK_PATTERN = /^\/_webhooks\/([^/]+)\/sync(?:\?.*)?$/;
+/** Pattern for webhook URLs: /_webhooks/{plugin-name}/sync (supports scoped packages like @org/name) */
+const WEBHOOK_PATTERN = /^\/_webhooks\/(.+)\/sync(?:\?.*)?$/;
 
 /** Maximum request body size (1MB) */
 const MAX_BODY_SIZE = 1024 * 1024;
@@ -43,7 +43,9 @@ export function isWebhookRequest(url: string): boolean {
  * @returns The plugin name, or null if invalid format
  */
 export function getPluginFromWebhookUrl(url: string): string | null {
-  const match = url.match(WEBHOOK_PATTERN);
+  // URL-decode the path to handle encoded characters like %40 for @
+  const decodedUrl = decodeURIComponent(url);
+  const match = decodedUrl.match(WEBHOOK_PATTERN);
   if (!match) {
     return null;
   }

@@ -124,10 +124,39 @@ describe('getPluginFromWebhookUrl', () => {
     );
   });
 
+  it('should extract scoped package names from webhook URLs', () => {
+    expect(
+      getPluginFromWebhookUrl(
+        '/_webhooks/@universal-data-layer/plugin-source-contentful/sync'
+      )
+    ).toBe('@universal-data-layer/plugin-source-contentful');
+    expect(getPluginFromWebhookUrl('/_webhooks/@org/my-plugin/sync')).toBe(
+      '@org/my-plugin'
+    );
+    expect(getPluginFromWebhookUrl('/_webhooks/@scope/name/sync')).toBe(
+      '@scope/name'
+    );
+  });
+
+  it('should handle URL-encoded scoped package names', () => {
+    // %40 is the URL-encoded form of @
+    expect(
+      getPluginFromWebhookUrl(
+        '/_webhooks/%40universal-data-layer/plugin-source-contentful/sync'
+      )
+    ).toBe('@universal-data-layer/plugin-source-contentful');
+    expect(getPluginFromWebhookUrl('/_webhooks/%40org/my-plugin/sync')).toBe(
+      '@org/my-plugin'
+    );
+  });
+
   it('should handle query strings', () => {
     expect(getPluginFromWebhookUrl('/_webhooks/plugin/sync?foo=bar')).toBe(
       'plugin'
     );
+    expect(
+      getPluginFromWebhookUrl('/_webhooks/@org/my-plugin/sync?foo=bar')
+    ).toBe('@org/my-plugin');
   });
 
   it('should return null for invalid URLs', () => {
@@ -426,6 +455,46 @@ describe('webhookHandler', () => {
       expect(consoleLogSpy).toHaveBeenCalledWith(
         'Webhook received: my-plugin/sync'
       );
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should queue webhook for scoped package names', async () => {
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      let queuedWebhook: QueuedWebhook | undefined;
+
+      // Listen for enqueue
+      const originalEnqueue = queue.enqueue.bind(queue);
+      queue.enqueue = (webhook: QueuedWebhook) => {
+        queuedWebhook = webhook;
+        originalEnqueue(webhook);
+      };
+
+      registry.register(
+        '@universal-data-layer/plugin-source-contentful',
+        createTestWebhook()
+      );
+
+      const req = createMockRequest(
+        'POST',
+        '/_webhooks/@universal-data-layer/plugin-source-contentful/sync',
+        {
+          'content-type': 'application/json',
+        }
+      );
+      const res = createMockResponse();
+
+      emitBody(req, '{"test": true}');
+      await webhookHandler(req, res);
+
+      expect(res._statusCode).toBe(202);
+      expect(queuedWebhook).toBeDefined();
+      expect(queuedWebhook?.pluginName).toBe(
+        '@universal-data-layer/plugin-source-contentful'
+      );
+      expect(queuedWebhook?.body).toEqual({ test: true });
 
       consoleLogSpy.mockRestore();
     });
