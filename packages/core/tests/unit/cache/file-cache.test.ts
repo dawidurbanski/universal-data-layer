@@ -33,7 +33,7 @@ vi.mock('node:fs', () => ({
 
 describe('FileCacheStorage', () => {
   const mockBasePath = '/test/project';
-  const expectedFilePath = '/test/project/.udl-cache/nodes.json';
+  const expectedFilePath = '/test/project/.udl/cache/nodes.json';
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -60,7 +60,7 @@ describe('FileCacheStorage', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
       cache.load();
       expect(fs.existsSync).toHaveBeenCalledWith(
-        `${originalCwd}/.udl-cache/nodes.json`
+        `${originalCwd}/.udl/cache/nodes.json`
       );
     });
   });
@@ -204,7 +204,7 @@ describe('FileCacheStorage', () => {
 
       await cache.save(data);
 
-      expect(fs.mkdirSync).toHaveBeenCalledWith('/test/project/.udl-cache', {
+      expect(fs.mkdirSync).toHaveBeenCalledWith('/test/project/.udl/cache', {
         recursive: true,
       });
     });

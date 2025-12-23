@@ -10,8 +10,8 @@ out/
 .env.local
 .env.*.local
 
-# Cache
-.udl-cache/
+# UDL (cache and other internal files)
+.udl/
 
 # TypeScript
 *.tsbuildinfo

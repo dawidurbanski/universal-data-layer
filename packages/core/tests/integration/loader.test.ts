@@ -1384,7 +1384,7 @@ describe('loader integration tests', () => {
 
     it('should load and save nodes from cache when caching is enabled', async () => {
       const pluginDir = join(pluginsDir, 'cached-plugin');
-      const cacheDir = join(pluginDir, '.udl-cache');
+      const cacheDir = join(pluginDir, '.udl', 'cache');
       mkdirSync(pluginDir, { recursive: true });
 
       // Create a plugin that creates nodes
@@ -1459,7 +1459,7 @@ describe('loader integration tests', () => {
 
     it('should restore indexes from cache', async () => {
       const pluginDir = join(pluginsDir, 'cached-indexed-plugin');
-      const cacheDir = join(pluginDir, '.udl-cache');
+      const cacheDir = join(pluginDir, '.udl', 'cache');
       mkdirSync(pluginDir, { recursive: true });
 
       writeFileSync(
@@ -1522,7 +1522,7 @@ describe('loader integration tests', () => {
 
     it('should not cache when plugin config has cache: false', async () => {
       const pluginDir = join(pluginsDir, 'no-cache-plugin');
-      const cacheDir = join(pluginDir, '.udl-cache');
+      const cacheDir = join(pluginDir, '.udl', 'cache');
       mkdirSync(pluginDir, { recursive: true });
 
       writeFileSync(

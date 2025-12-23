@@ -315,7 +315,7 @@ export interface UDLConfig {
   codegen?: CodegenConfig;
   /**
    * Cache storage for persisting nodes across server restarts.
-   * - `undefined` (default): Uses FileCacheStorage (stores in .udl-cache/nodes.json)
+   * - `undefined` (default): Uses FileCacheStorage (stores in .udl/cache/nodes.json)
    * - `false`: Disables caching entirely
    * - Custom `CacheStorage`: Use a custom cache implementation (e.g., Redis, SQLite)
    */
@@ -602,7 +602,7 @@ export interface LoadPluginsOptions {
   /**
    * Directory where cache files should be stored.
    * This should be the directory containing the udl.config.ts that specifies the plugins.
-   * Each plugin will store its cache in `cacheDir/.udl-cache/`.
+   * Each plugin will store its cache in `cacheDir/.udl/cache/`.
    */
   cacheDir?: string;
   /**

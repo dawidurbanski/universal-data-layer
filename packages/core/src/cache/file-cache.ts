@@ -41,12 +41,12 @@ function safeStringify(obj: unknown, indent?: number): string {
 /**
  * File-based cache storage implementation.
  *
- * Stores node data in `.udl-cache/nodes.json` by default.
+ * Stores node data in `.udl/cache/nodes.json` by default.
  * This is the default cache storage used when no custom implementation is provided.
  *
  * @example
  * ```typescript
- * // Use default path (.udl-cache/nodes.json in cwd)
+ * // Use default path (.udl/cache/nodes.json in cwd)
  * const cache = new FileCacheStorage();
  *
  * // Use custom base path
@@ -61,7 +61,7 @@ export class FileCacheStorage implements CacheStorage {
    * @param basePath - Base directory for cache files (default: process.cwd())
    */
   constructor(basePath: string = process.cwd()) {
-    this.filePath = join(basePath, '.udl-cache', 'nodes.json');
+    this.filePath = join(basePath, '.udl', 'cache', 'nodes.json');
   }
 
   /**

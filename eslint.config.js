@@ -61,7 +61,7 @@ export default [
       '**/coverage/**',
       '**/docs/**',
       '**/generated/**',
-      '**/.udl-cache/**',
+      '**/.udl/**',
       '**/.next/**',
     ],
   },

@@ -33,7 +33,7 @@ export interface SyncResult {
 
 /**
  * Default file-based sync token storage.
- * Stores tokens in `.udl-cache/contentful-sync-tokens.json`.
+ * Stores tokens in `.udl/cache/contentful-sync-tokens.json`.
  */
 export class FileSyncTokenStorage implements SyncTokenStorage {
   private readonly filePath: string;
@@ -41,7 +41,12 @@ export class FileSyncTokenStorage implements SyncTokenStorage {
   private loaded = false;
 
   constructor(basePath: string = process.cwd()) {
-    this.filePath = join(basePath, '.udl-cache', 'contentful-sync-tokens.json');
+    this.filePath = join(
+      basePath,
+      '.udl',
+      'cache',
+      'contentful-sync-tokens.json'
+    );
   }
 
   private ensureLoaded(): void {
