@@ -53,6 +53,12 @@ export const config = defineConfig({
   type: 'source',
   name: '@universal-data-layer/plugin-source-contentful',
   indexes: ['contentfulId'],
+  /**
+   * Use 'sync' strategy because Contentful has its own Sync API.
+   * When webhooks arrive, sourceNodes will be re-invoked to fetch
+   * changes via the Sync API (delta sync using stored token).
+   */
+  updateStrategy: 'sync',
   codegen: {
     output: './generated',
     guards: true,

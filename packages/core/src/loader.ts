@@ -26,6 +26,7 @@ import {
   type WebhookHooksConfig,
   type PluginWebhookHandler,
 } from '@/webhooks/index.js';
+import { defaultPluginRegistry, type PluginRegistry } from '@/plugins/index.js';
 import type { ServerOptions as WebSocketServerOptions } from 'ws';
 
 export const pluginTypes = ['core', 'source', 'other'] as const;
@@ -251,6 +252,18 @@ export interface RemoteConfig {
 }
 
 /**
+ * Strategy for handling incremental updates from webhooks.
+ *
+ * - `'webhook'` (default): Process webhook payload directly via `registerWebhookHandler`
+ *   or the default CRUD handler. Use this when the webhook payload contains the data.
+ *
+ * - `'sync'`: Webhooks are treated as notifications only. When received, the plugin's
+ *   `sourceNodes` function is re-invoked to fetch changes via its sync API.
+ *   Use this when the source has its own sync/delta API (e.g., Contentful Sync API).
+ */
+export type UpdateStrategy = 'webhook' | 'sync';
+
+/**
  * Core UDL configuration object
  */
 export interface UDLConfig {
@@ -285,6 +298,19 @@ export interface UDLConfig {
 
   /** Additional indexed fields for this plugin (for source plugins) */
   indexes?: string[];
+  /**
+   * Strategy for handling incremental updates from webhooks.
+   *
+   * - `'webhook'` (default): Process webhook payload directly via `registerWebhookHandler`
+   *   or the default CRUD handler. Use this when the webhook payload contains the data.
+   *
+   * - `'sync'`: Webhooks are treated as notifications only. When received, the plugin's
+   *   `sourceNodes` function is re-invoked to fetch changes via its sync API.
+   *   Use this when the source has its own sync/delta API (e.g., Contentful Sync API).
+   *
+   * @default 'webhook'
+   */
+  updateStrategy?: UpdateStrategy;
   /** Code generation configuration - when set, automatically generates types after sourceNodes */
   codegen?: CodegenConfig;
   /**
@@ -585,6 +611,11 @@ export interface LoadPluginsOptions {
    */
   webhookRegistry?: WebhookRegistry;
   /**
+   * Plugin registry for storing plugin information.
+   * If not provided, uses the defaultPluginRegistry singleton.
+   */
+  pluginRegistry?: PluginRegistry;
+  /**
    * Indicates this is a local development instance syncing from a remote UDL.
    * When true, plugins are loaded and webhook handlers are registered,
    * but sourceNodes is skipped (data comes from remote).
@@ -721,6 +752,7 @@ export async function loadPlugins(
     cache: cacheEnabled = true,
     cacheDir,
     webhookRegistry = defaultWebhookRegistry,
+    pluginRegistry = defaultPluginRegistry,
   } = options ?? {};
   const nodeStore = store ?? defaultStore;
   const codegenConfigs: PluginCodegenInfo[] = [];
@@ -872,15 +904,53 @@ export async function loadPlugins(
           }
         }
 
+        // Get update strategy (default: 'webhook')
+        const updateStrategy = module.config?.updateStrategy ?? 'webhook';
+
+        // Warn if both updateStrategy: 'sync' and registerWebhookHandler are provided
+        if (updateStrategy === 'sync' && module.registerWebhookHandler) {
+          console.warn(
+            `⚠️ [${actualPluginName}] registerWebhookHandler is ignored when updateStrategy is "sync". ` +
+              `Use onWebhookReceived hook for webhook filtering/validation.`
+          );
+        }
+
+        // Register plugin in the registry for webhook processor to use
+        pluginRegistry.register({
+          name: actualPluginName,
+          sourceNodes: module.sourceNodes,
+          updateStrategy,
+          sourceNodesContext: module.sourceNodes
+            ? {
+                createNodeId,
+                createContentDigest,
+                options: context?.options,
+                cacheDir: cacheLocation,
+              }
+            : undefined,
+          store: nodeStore,
+        });
+
         // Register webhook handler for the plugin (always, regardless of isLocal)
-        // If plugin exports registerWebhookHandler, use it instead of default
-        if (module.registerWebhookHandler) {
+        // For 'sync' strategy, we register a no-op handler - the processor will
+        // re-invoke sourceNodes instead of processing the webhook payload
+        if (updateStrategy === 'sync') {
+          // Register a placeholder handler for sync strategy plugins
+          // The actual work is done by the webhook processor calling sourceNodes
+          registerDefaultWebhook(
+            webhookRegistry,
+            actualPluginName,
+            pluginIdField
+          );
+        } else if (module.registerWebhookHandler) {
+          // Use plugin's custom handler for 'webhook' strategy
           registerPluginWebhookHandler(
             webhookRegistry,
             actualPluginName,
             module.registerWebhookHandler
           );
         } else {
+          // Use default CRUD handler for 'webhook' strategy
           registerDefaultWebhook(
             webhookRegistry,
             actualPluginName,
@@ -922,6 +992,7 @@ export async function loadPlugins(
             // Nested plugins store their cache in the parent plugin's directory
             cacheDir: pluginPath,
             webhookRegistry,
+            pluginRegistry,
           });
 
           codegenConfigs.push(...nestedResult.codegenConfigs);

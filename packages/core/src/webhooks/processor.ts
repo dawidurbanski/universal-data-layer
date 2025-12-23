@@ -18,6 +18,8 @@ import { defaultStore } from '@/nodes/defaultStore.js';
 import { createNodeActions } from '@/nodes/actions/index.js';
 import type { WebhookHandlerContext } from './types.js';
 import { DEFAULT_WEBHOOK_PATH } from './default-handler.js';
+import { defaultPluginRegistry } from '@/plugins/index.js';
+import { savePluginCache } from '@/cache/manager.js';
 
 /**
  * Create a minimal mock IncomingMessage for queued webhook processing.
@@ -175,8 +177,57 @@ export function initializeWebhookProcessor(): void {
 }
 
 /**
+ * Re-invoke a plugin's sourceNodes function.
+ * Used for plugins with updateStrategy: 'sync'.
+ */
+async function invokeSourceNodes(pluginName: string): Promise<void> {
+  const plugin = defaultPluginRegistry.get(pluginName);
+
+  if (!plugin) {
+    console.warn(`⚠️ Plugin not found in registry: ${pluginName}`);
+    return;
+  }
+
+  if (!plugin.sourceNodes || !plugin.sourceNodesContext || !plugin.store) {
+    console.warn(
+      `⚠️ Plugin ${pluginName} has updateStrategy: 'sync' but no sourceNodes function`
+    );
+    return;
+  }
+
+  console.log(`🔄 [${pluginName}] Re-syncing via sourceNodes...`);
+
+  try {
+    // Create fresh actions for this plugin
+    const actions = createNodeActions({
+      store: plugin.store,
+      owner: pluginName,
+    });
+
+    // Invoke sourceNodes with the stored context
+    await plugin.sourceNodes({
+      ...plugin.sourceNodesContext,
+      actions,
+    });
+
+    // Save updated cache
+    await savePluginCache(pluginName);
+
+    console.log(`✅ [${pluginName}] Re-sync complete`);
+  } catch (error) {
+    console.error(`❌ [${pluginName}] Re-sync failed:`, error);
+  }
+}
+
+/**
  * Process a batch of webhooks with lifecycle hooks.
  * This is called by the queue before emitting individual webhook:process events.
+ *
+ * For plugins with updateStrategy: 'sync', the batch is processed by
+ * re-invoking sourceNodes once per affected plugin (not once per webhook).
+ *
+ * For plugins with updateStrategy: 'webhook', each webhook is processed
+ * individually via the registered handler.
  *
  * @param webhooks - The webhooks to process
  * @returns The processed batch
@@ -208,9 +259,31 @@ export async function processWebhookBatch(
     }
   }
 
-  // Process each webhook
+  // Group webhooks by plugin and strategy
+  const syncPlugins = new Set<string>();
+  const webhookStrategyWebhooks: QueuedWebhook[] = [];
+
   for (const webhook of webhooks) {
+    const plugin = defaultPluginRegistry.get(webhook.pluginName);
+    const strategy = plugin?.updateStrategy ?? 'webhook';
+
+    if (strategy === 'sync') {
+      // Collect unique plugin names for sync strategy
+      syncPlugins.add(webhook.pluginName);
+    } else {
+      // Queue for individual processing
+      webhookStrategyWebhooks.push(webhook);
+    }
+  }
+
+  // Process webhooks with 'webhook' strategy individually
+  for (const webhook of webhookStrategyWebhooks) {
     await processWebhook(webhook);
+  }
+
+  // Process plugins with 'sync' strategy - call sourceNodes once per plugin
+  for (const pluginName of syncPlugins) {
+    await invokeSourceNodes(pluginName);
   }
 
   batch.completedAt = Date.now();

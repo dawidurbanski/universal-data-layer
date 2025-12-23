@@ -23,6 +23,7 @@ export {
   type LoadPluginsOptions,
   type RegisterTypesContext,
   type CodegenConfig,
+  type UpdateStrategy,
 } from './loader.js';
 
 // Re-export codegen integration
@@ -188,3 +189,11 @@ export type { WebSocketConfig } from './loader.js';
 
 // Export the default server for programmatic usage
 export { default } from './server.js';
+
+// Re-export plugin registry
+export {
+  PluginRegistry,
+  defaultPluginRegistry,
+  type RegisteredPlugin,
+  type SourceNodesFn,
+} from './plugins/index.js';
