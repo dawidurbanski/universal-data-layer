@@ -48,45 +48,35 @@ export type WebhookHandlerFn = (
 ) => Promise<void>;
 
 /**
+ * Signature verification function type.
+ * Returns true if the signature is valid, false otherwise.
+ */
+export type SignatureVerifier = (
+  req: IncomingMessage,
+  rawBody: Buffer
+) => boolean | Promise<boolean>;
+
+/**
  * Configuration for registering a webhook handler.
  *
- * Plugins provide this configuration when calling `registerWebhook()` in
- * their `sourceNodes` hook. The path is combined with the plugin name to
- * create the full webhook URL.
+ * Simplified registration that only requires the handler function.
+ * All webhooks are registered at the convention-based path:
+ * `/_webhooks/{pluginName}/sync`
  *
  * @example
  * ```typescript
- * // In plugin's sourceNodes hook
- * registerWebhook({
- *   path: 'entry-update',
- *   description: 'Handles Contentful entry publish/unpublish events',
+ * // Internal registration
+ * registry.register('my-plugin', {
  *   handler: async (req, res, context) => {
- *     const { body, actions } = context;
- *     // Process webhook payload and update nodes
  *     await actions.createNode(transformEntry(body), { ... });
- *     res.writeHead(200, { 'Content-Type': 'application/json' });
- *     res.end(JSON.stringify({ received: true }));
+ *     res.writeHead(200);
+ *     res.end();
  *   },
- *   verifySignature: (req, body) => {
- *     const signature = req.headers['x-contentful-signature'];
- *     return verifyHmac(body, signature, secret);
- *   },
+ *   description: 'Default UDL sync handler',
  * });
  * ```
  */
 export interface WebhookRegistration {
-  /**
-   * Path suffix for the webhook endpoint.
-   * Combined with plugin name to form full path: `/_webhooks/{pluginName}/{path}`
-   *
-   * Must not start with `/` and can only contain alphanumeric characters,
-   * hyphens, and underscores.
-   *
-   * @example 'entry-update'
-   * @example 'product_sync'
-   */
-  path: string;
-
   /**
    * Handler function to process incoming webhook payloads.
    * Receives raw request/response objects and a context with node store access.
@@ -94,24 +84,25 @@ export interface WebhookRegistration {
   handler: WebhookHandlerFn;
 
   /**
-   * Optional function to verify webhook signatures.
-   * Called before the handler to validate the request authenticity.
-   * Return `true` if signature is valid, `false` to reject the request.
-   *
-   * @param req - The incoming HTTP request with headers
-   * @param body - Raw body buffer for computing signatures
-   * @returns Whether the signature is valid
-   */
-  verifySignature?: (
-    req: IncomingMessage,
-    body: Buffer
-  ) => boolean | Promise<boolean>;
-
-  /**
    * Optional description for logging and debugging purposes.
-   * @example 'Handles Contentful entry publish/unpublish events'
+   * @example 'Default UDL sync handler for my-plugin'
    */
   description?: string;
+
+  /**
+   * Optional signature verification function.
+   * If provided, webhooks will be rejected with 401 if verification fails.
+   * Called before the webhook is queued for processing.
+   *
+   * @example
+   * ```typescript
+   * verifySignature: (req, rawBody) => {
+   *   const signature = req.headers['x-webhook-signature'];
+   *   return verifyHmac(rawBody, signature, secret);
+   * }
+   * ```
+   */
+  verifySignature?: SignatureVerifier;
 }
 
 /**
@@ -122,6 +113,77 @@ export interface WebhookHandler extends WebhookRegistration {
   /** Name of the plugin that registered this webhook */
   pluginName: string;
 }
+
+/**
+ * Context passed to plugin's `registerWebhookHandler` export.
+ *
+ * This is a flattened context that combines request, response, and node operations
+ * into a single object for convenience.
+ *
+ * @example
+ * ```typescript
+ * // In plugin's udl.config.ts
+ * export async function registerWebhookHandler({ req, res, actions, body }) {
+ *   const eventType = req.headers['x-webhook-type'];
+ *
+ *   if (eventType === 'entry.publish') {
+ *     await actions.createNode(transformEntry(body), { ... });
+ *   } else if (eventType === 'entry.delete') {
+ *     await actions.deleteNode(body.sys.id);
+ *   }
+ *
+ *   res.writeHead(200);
+ *   res.end();
+ * }
+ * ```
+ */
+export interface PluginWebhookHandlerContext {
+  /** The incoming HTTP request */
+  req: IncomingMessage;
+  /** The server response */
+  res: ServerResponse;
+  /** Bound node actions for creating, updating, or deleting nodes */
+  actions: NodeActions;
+  /** Access to the node store for querying existing nodes */
+  store: NodeStore;
+  /** Parsed JSON body (if content-type is application/json), otherwise undefined */
+  body: unknown;
+  /** Raw body buffer for signature verification */
+  rawBody: Buffer;
+}
+
+/**
+ * Function signature for plugin's `registerWebhookHandler` export.
+ *
+ * Plugins can export this function to handle webhooks with custom logic.
+ * When exported, it replaces the default CRUD handler for the plugin's
+ * `/_webhooks/{plugin-name}/sync` endpoint.
+ *
+ * @example
+ * ```typescript
+ * // Plugin's udl.config.ts
+ * export async function registerWebhookHandler({ req, res, actions, body }) {
+ *   // Verify signature using your CMS's method
+ *   if (!verifySignature(req, body)) {
+ *     res.writeHead(401);
+ *     res.end('Invalid signature');
+ *     return;
+ *   }
+ *
+ *   // Handle different event types
+ *   const eventType = req.headers['x-webhook-type'];
+ *   if (eventType === 'entry.publish') {
+ *     await actions.createNode(transformEntry(body), { ... });
+ *   }
+ *
+ *   res.writeHead(200);
+ *   res.end();
+ * }
+ * ```
+ */
+export type PluginWebhookHandler = (
+  context: PluginWebhookHandlerContext
+) => Promise<void>;
 
 /**
  * Standardized webhook payload for default handlers.
@@ -152,58 +214,4 @@ export interface DefaultWebhookPayload {
    * Not required for delete operations.
    */
   data?: Record<string, unknown>;
-}
-
-/**
- * Per-plugin configuration for default webhook handler.
- */
-export interface PluginDefaultWebhookConfig {
-  /**
-   * Custom path for this plugin's default webhook.
-   * If not specified, uses the global default path.
-   */
-  path?: string;
-}
-
-/**
- * Configuration for the default webhook handler feature.
- * When enabled, automatically registers a standardized webhook endpoint
- * for each loaded plugin that has an `idField` configured.
- *
- * The webhook handler uses the plugin's `idField` config to look up existing
- * nodes when processing update/delete operations.
- *
- * @example
- * ```typescript
- * defineConfig({
- *   defaultWebhook: {
- *     enabled: true,
- *     path: 'sync',
- *     plugins: {
- *       'contentful': { path: 'content-sync' },
- *       'legacy-plugin': false,  // Disable for this plugin
- *     },
- *   },
- * });
- * ```
- */
-export interface DefaultWebhookHandlerConfig {
-  /**
-   * Whether default handlers are enabled.
-   * @default true (when this config object is present)
-   */
-  enabled?: boolean;
-
-  /**
-   * The default path for all plugin webhooks.
-   * @default 'sync'
-   */
-  path?: string;
-
-  /**
-   * Per-plugin configuration overrides.
-   * Set to `false` to disable default handler for a specific plugin.
-   * Set to `{ path: 'custom' }` to use a custom path for that plugin.
-   */
-  plugins?: Record<string, PluginDefaultWebhookConfig | false>;
 }

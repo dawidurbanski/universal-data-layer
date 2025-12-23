@@ -2,23 +2,13 @@
  * Webhook Registry
  *
  * Central registry for webhook handlers from all plugins.
- * Stores registered webhooks and provides lookup for routing
- * incoming webhook requests to the appropriate handler.
+ * Each plugin has exactly one webhook handler at /_webhooks/{plugin-name}/sync.
  */
 
 import type { WebhookRegistration, WebhookHandler } from './types.js';
 
 /**
- * Regular expression for validating webhook paths.
- * Paths must:
- * - Not start with a slash
- * - Contain only alphanumeric characters, hyphens, and underscores
- * - Not be empty
- */
-const PATH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
-
-/**
- * Error thrown when webhook registration fails validation.
+ * Error thrown when webhook registration fails.
  */
 export class WebhookRegistrationError extends Error {
   constructor(message: string) {
@@ -30,88 +20,48 @@ export class WebhookRegistrationError extends Error {
 /**
  * Central registry for webhook handlers.
  *
- * Plugins register their webhook handlers and the registry
- * provides lookup for routing incoming requests.
+ * Plugins register their webhook handler and the registry
+ * provides lookup for routing incoming requests. Each plugin
+ * can only have one handler (at the convention-based path /sync).
  *
  * @example
  * ```typescript
  * const registry = new WebhookRegistry();
  *
- * // Register a webhook
+ * // Register a webhook handler
  * registry.register('my-plugin', {
- *   path: 'entry-update',
  *   handler: async (req, res, context) => { ... },
+ *   description: 'My plugin handler',
  * });
  *
  * // Look up a handler
- * const handler = registry.getHandler('my-plugin', 'entry-update');
+ * const handler = registry.getHandler('my-plugin');
  * ```
  */
 export class WebhookRegistry {
   private handlers: Map<string, WebhookHandler> = new Map();
 
   /**
-   * Generate the map key for a webhook handler.
-   * @param pluginName - The plugin that registered the webhook
-   * @param path - The webhook path
-   * @returns The map key in format "pluginName/path"
-   */
-  private getKey(pluginName: string, path: string): string {
-    return `${pluginName}/${path}`;
-  }
-
-  /**
-   * Validate a webhook path.
-   * @param path - The path to validate
-   * @throws {WebhookRegistrationError} If the path is invalid
-   */
-  private validatePath(path: string): void {
-    if (!path) {
-      throw new WebhookRegistrationError('Webhook path cannot be empty');
-    }
-
-    if (path.startsWith('/')) {
-      throw new WebhookRegistrationError(
-        `Webhook path cannot start with '/': ${path}`
-      );
-    }
-
-    if (!PATH_REGEX.test(path)) {
-      throw new WebhookRegistrationError(
-        `Webhook path contains invalid characters: ${path}. ` +
-          'Path must contain only alphanumeric characters, hyphens, and underscores, ' +
-          'and must start with an alphanumeric character.'
-      );
-    }
-  }
-
-  /**
    * Register a webhook handler for a plugin.
    *
    * @param pluginName - The name of the plugin registering the webhook
    * @param webhook - The webhook registration configuration
-   * @throws {WebhookRegistrationError} If the path is invalid or already registered
+   * @throws {WebhookRegistrationError} If a handler is already registered for this plugin
    *
    * @example
    * ```typescript
-   * registry.register('@my-org/plugin-source-cms', {
-   *   path: 'content-update',
+   * registry.register('my-plugin', {
    *   handler: async (req, res, context) => {
    *     // Handle webhook
    *   },
-   *   verifySignature: (req, body) => verifyHmac(body, req.headers['x-signature']),
-   *   description: 'Handles content update events',
+   *   description: 'Handles webhook events',
    * });
    * ```
    */
   register(pluginName: string, webhook: WebhookRegistration): void {
-    this.validatePath(webhook.path);
-
-    const key = this.getKey(pluginName, webhook.path);
-
-    if (this.handlers.has(key)) {
+    if (this.handlers.has(pluginName)) {
       throw new WebhookRegistrationError(
-        `Webhook path '${webhook.path}' is already registered for plugin '${pluginName}'`
+        `Webhook handler is already registered for plugin '${pluginName}'`
       );
     }
 
@@ -120,39 +70,35 @@ export class WebhookRegistry {
       pluginName,
     };
 
-    this.handlers.set(key, handler);
+    this.handlers.set(pluginName, handler);
   }
 
   /**
-   * Get a webhook handler by plugin name and path.
+   * Get a webhook handler by plugin name.
    *
    * @param pluginName - The plugin that registered the webhook
-   * @param path - The webhook path
    * @returns The webhook handler, or undefined if not found
    *
    * @example
    * ```typescript
-   * const handler = registry.getHandler('my-plugin', 'entry-update');
+   * const handler = registry.getHandler('my-plugin');
    * if (handler) {
    *   await handler.handler(req, res, context);
    * }
    * ```
    */
-  getHandler(pluginName: string, path: string): WebhookHandler | undefined {
-    const key = this.getKey(pluginName, path);
-    return this.handlers.get(key);
+  getHandler(pluginName: string): WebhookHandler | undefined {
+    return this.handlers.get(pluginName);
   }
 
   /**
-   * Check if a webhook handler exists.
+   * Check if a webhook handler exists for a plugin.
    *
    * @param pluginName - The plugin name
-   * @param path - The webhook path
    * @returns True if the handler exists
    */
-  has(pluginName: string, path: string): boolean {
-    const key = this.getKey(pluginName, path);
-    return this.handlers.has(key);
+  has(pluginName: string): boolean {
+    return this.handlers.has(pluginName);
   }
 
   /**
@@ -163,7 +109,7 @@ export class WebhookRegistry {
    * @example
    * ```typescript
    * const allHandlers = registry.getAllHandlers();
-   * console.log(`${allHandlers.length} webhooks registered`);
+   * console.log(`${allHandlers.length} webhook handlers registered`);
    * ```
    */
   getAllHandlers(): WebhookHandler[] {
@@ -171,34 +117,13 @@ export class WebhookRegistry {
   }
 
   /**
-   * Get all webhook handlers registered by a specific plugin.
-   *
-   * @param pluginName - The plugin name to filter by
-   * @returns Array of webhook handlers for the specified plugin
-   *
-   * @example
-   * ```typescript
-   * const contentfulWebhooks = registry.getHandlersByPlugin(
-   *   '@universal-data-layer/plugin-source-contentful'
-   * );
-   * ```
-   */
-  getHandlersByPlugin(pluginName: string): WebhookHandler[] {
-    return Array.from(this.handlers.values()).filter(
-      (handler) => handler.pluginName === pluginName
-    );
-  }
-
-  /**
    * Remove a webhook handler.
    *
    * @param pluginName - The plugin name
-   * @param path - The webhook path
    * @returns True if a handler was removed, false if it didn't exist
    */
-  unregister(pluginName: string, path: string): boolean {
-    const key = this.getKey(pluginName, path);
-    return this.handlers.delete(key);
+  unregister(pluginName: string): boolean {
+    return this.handlers.delete(pluginName);
   }
 
   /**

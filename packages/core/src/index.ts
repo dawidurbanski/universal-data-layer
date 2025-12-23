@@ -155,12 +155,13 @@ export {
   type WebhookHandler,
   // Default webhook handler
   type DefaultWebhookPayload,
-  type DefaultWebhookHandlerConfig,
-  type PluginDefaultWebhookConfig,
   createDefaultWebhookHandler,
   DEFAULT_WEBHOOK_PATH,
   registerDefaultWebhook,
-  registerDefaultWebhooks,
+  registerPluginWebhookHandler,
+  // Plugin webhook handler export types
+  type PluginWebhookHandler,
+  type PluginWebhookHandlerContext,
 } from './webhooks/index.js';
 
 // Re-export WebSocket server utilities
