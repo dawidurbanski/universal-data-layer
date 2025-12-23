@@ -8,6 +8,7 @@ import type { WebSocketConfig } from '@/loader.js';
  */
 export type ServerMessage =
   | NodeChangeMessage
+  | WebhookReceivedMessage
   | SubscribedMessage
   | PongMessage
   | ConnectedMessage;
@@ -21,6 +22,18 @@ export interface NodeChangeMessage {
   nodeType: string;
   timestamp: string;
   data: unknown | null;
+}
+
+/**
+ * Webhook received notification for instant relay.
+ * Sent immediately when a webhook is received, before batch processing.
+ */
+export interface WebhookReceivedMessage {
+  type: 'webhook:received';
+  pluginName: string;
+  body: unknown;
+  headers: Record<string, string | string[] | undefined>;
+  timestamp: string;
 }
 
 /**
@@ -249,6 +262,34 @@ export class UDLWebSocketServer {
       // Check if client is subscribed to this node type
       const { types } = trackedWs.subscription;
       if (types === '*' || types.includes(event.nodeType)) {
+        this.send(trackedWs, message);
+      }
+    });
+  }
+
+  /**
+   * Broadcast a webhook received event to all connected clients.
+   * This is called immediately when a webhook is queued, before batch processing.
+   *
+   * @param webhook - The queued webhook to broadcast
+   */
+  broadcastWebhookReceived(webhook: {
+    pluginName: string;
+    body: unknown;
+    headers: Record<string, string | string[] | undefined>;
+    timestamp: number;
+  }): void {
+    const message: WebhookReceivedMessage = {
+      type: 'webhook:received',
+      pluginName: webhook.pluginName,
+      body: webhook.body,
+      headers: webhook.headers,
+      timestamp: new Date(webhook.timestamp).toISOString(),
+    };
+
+    this.wss.clients.forEach((ws) => {
+      const trackedWs = ws as TrackedWebSocket;
+      if (trackedWs.readyState === WebSocket.OPEN) {
         this.send(trackedWs, message);
       }
     });

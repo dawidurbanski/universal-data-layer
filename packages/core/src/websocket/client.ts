@@ -1,10 +1,22 @@
 import WebSocket from 'ws';
 import type { NodeStore } from '@/nodes/store.js';
+import { savePluginCache } from '@/cache/manager.js';
 import type {
   ServerMessage,
   NodeChangeMessage,
+  WebhookReceivedMessage,
   ClientMessage,
 } from './server.js';
+
+/**
+ * Webhook received event data passed to the callback.
+ */
+export interface WebhookReceivedEvent {
+  pluginName: string;
+  body: unknown;
+  headers: Record<string, string | string[] | undefined>;
+  timestamp: string;
+}
 
 /**
  * Configuration for the WebSocket client.
@@ -18,6 +30,11 @@ export interface WebSocketClientConfig {
   maxReconnectAttempts?: number;
   /** Ping interval in milliseconds. Default: 30000 */
   pingIntervalMs?: number;
+  /**
+   * Callback invoked immediately when a webhook:received message is received.
+   * This enables instant processing of webhooks without waiting for batch debounce.
+   */
+  onWebhookReceived?: (event: WebhookReceivedEvent) => void | Promise<void>;
 }
 
 /**
@@ -35,13 +52,17 @@ export interface WebSocketClientConfig {
  * ```
  */
 export class UDLWebSocketClient {
-  private config: Required<WebSocketClientConfig>;
+  private config: Required<Omit<WebSocketClientConfig, 'onWebhookReceived'>> & {
+    onWebhookReceived?: WebSocketClientConfig['onWebhookReceived'];
+  };
   private ws: WebSocket | null = null;
   private store: NodeStore | null = null;
   private reconnectAttempts = 0;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private isClosing = false;
+  /** When true, node events are handled locally via webhook processing */
+  private handlesWebhooksLocally: boolean;
 
   constructor(config: WebSocketClientConfig) {
     this.config = {
@@ -49,7 +70,11 @@ export class UDLWebSocketClient {
       reconnectDelayMs: config.reconnectDelayMs ?? 5000,
       maxReconnectAttempts: config.maxReconnectAttempts ?? Infinity,
       pingIntervalMs: config.pingIntervalMs ?? 30000,
+      onWebhookReceived: config.onWebhookReceived,
     };
+    // When onWebhookReceived is configured, we process webhooks locally
+    // and should skip redundant node:created/updated events from remote
+    this.handlesWebhooksLocally = !!config.onWebhookReceived;
   }
 
   /**
@@ -134,12 +159,21 @@ export class UDLWebSocketClient {
           // Connection is alive
           break;
 
+        case 'webhook:received':
+          this.handleWebhookReceived(message);
+          break;
+
         case 'node:created':
         case 'node:updated':
-          this.handleNodeUpdate(message);
+          // Skip node events when we handle webhooks locally to avoid double processing
+          // The webhook:received handler already creates nodes in the local store
+          if (!this.handlesWebhooksLocally) {
+            this.handleNodeUpdate(message);
+          }
           break;
 
         case 'node:deleted':
+          // Always handle deletions - they may come from sources other than webhooks
           this.handleNodeDelete(message);
           break;
       }
@@ -169,6 +203,12 @@ export class UDLWebSocketClient {
     console.log(
       `🔄 Remote ${message.type}: ${message.nodeType}:${message.nodeId}`
     );
+
+    // Save plugin cache immediately for maximum sync on local UDL
+    const internal = node['internal'] as Record<string, unknown>;
+    if (internal?.['owner'] && typeof internal['owner'] === 'string') {
+      void savePluginCache(internal['owner']);
+    }
   }
 
   /**
@@ -177,10 +217,47 @@ export class UDLWebSocketClient {
   private handleNodeDelete(message: NodeChangeMessage): void {
     if (!this.store) return;
 
+    // Get the node's owner before deleting for cache update
+    const existingNode = this.store.get(message.nodeId);
+    const owner = existingNode?.internal.owner;
+
     this.store.delete(message.nodeId);
     console.log(
       `🔄 Remote node:deleted: ${message.nodeType}:${message.nodeId}`
     );
+
+    // Save plugin cache immediately for maximum sync on local UDL
+    if (owner) {
+      void savePluginCache(owner);
+    }
+  }
+
+  /**
+   * Handle webhook received from remote.
+   * This is called immediately when the remote receives a webhook, before batch processing.
+   */
+  private handleWebhookReceived(message: WebhookReceivedMessage): void {
+    console.log(`📥 Remote webhook:received: ${message.pluginName}`);
+
+    if (this.config.onWebhookReceived) {
+      // Call the callback to process the webhook locally
+      void Promise.resolve(
+        this.config.onWebhookReceived({
+          pluginName: message.pluginName,
+          body: message.body,
+          headers: message.headers,
+          timestamp: message.timestamp,
+        })
+      )
+        .then(() => {
+          // Save plugin cache immediately after webhook is processed
+          // This ensures local UDL has maximum sync with remote
+          return savePluginCache(message.pluginName);
+        })
+        .catch((error) => {
+          console.error('❌ Error processing relayed webhook:', error);
+        });
+    }
   }
 
   /**
